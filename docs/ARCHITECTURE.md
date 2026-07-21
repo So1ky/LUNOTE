@@ -5,8 +5,9 @@
 
 ## 1. 서비스 개요
 
-한국 거주/입국 예정 외국인을 위한 컨시어지 플랫폼. 실결제가 발생하는 상용 서비스이며,
-동시에 클라우드 엔지니어링 포트폴리오(IaC, K8s, GitOps, Observability)를 겸한다.
+한국 거주/입국 예정 외국인을 위한 컨시어지 플랫폼. 실결제가 발생하는 상용 서비스로,
+1인이 개발·운영하므로 자동화(IaC, GitOps)와 관측성을 통해 운영 부담을 최소화하는 것을
+아키텍처의 제1원칙으로 한다.
 
 **핵심 플로우**: 소셜 로그인 → 카테고리별 문의 등록(사진/파일 첨부) → 관리자 견적 발송 →
 해외카드 결제(PortOne) → 상태 추적 (Reviewing → Paid → In Progress → Completed)
@@ -131,8 +132,8 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 ## 10. 비용 전략
 
 - 워커 노드: Karpenter + Spot. 코어 노드그룹(On-Demand 소형)에는 CoreDNS, ArgoCD 등 필수 컴포넌트만.
-- 예상 월 비용 $150~250 (EKS $73 + 노드 + NAT + RDS + ALB). 
-- 전체 스택은 Terraform으로 재현 가능해야 하며, 필요시 destroy/apply로 비활성 기간 비용 절감.
+- 예상 월 비용 $150~250 (EKS $73 + 노드 + NAT + RDS + ALB). 매출 발생 전 고정비이므로 월 단위로 실측·기록한다.
+- 전체 스택은 Terraform만으로 재현 가능해야 한다 — 리전 장애 등 최악의 상황에서 RDS 백업 + `terraform apply`로 복구하는 것이 DR 전략의 기본이다.
 
 ## 11. 로드맵
 
