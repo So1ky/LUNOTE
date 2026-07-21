@@ -1,0 +1,64 @@
+#!/bin/sh
+# 시크릿이 커밋되는 것을 물리적으로 차단한다.
+# 설치: sh scripts/setup-hooks.sh
+# 긴급 우회: git commit --no-verify  (되도록 쓰지 말 것)
+
+set -e
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+fail=0
+
+# 1) 시크릿 파일 자체가 스테이징된 경우
+for f in $staged; do
+  case "$f" in
+    *.env | *.env.local | *.env.production | *.pem | *.key | *.p12 | *.jks | *.mobileprovision | *.tfvars)
+      echo "❌ 시크릿 파일이 커밋에 포함되어 있습니다: $f"
+      fail=1
+      ;;
+  esac
+done
+
+# 2) 파일 내용에 시크릿처럼 보이는 값이 있는 경우.
+#    .env.example의 placeholder를 통과시키려고 값 길이(24자 이상)로 판별한다.
+#    패턴은 개행으로 구분해 읽는다 (공백/하이픈 포함 패턴 때문에 for 루프 사용 불가).
+check_content() {
+  file="$1"
+  while IFS= read -r pattern; do
+    [ -z "$pattern" ] && continue
+    # -e 를 써야 하이픈으로 시작하는 패턴이 옵션으로 해석되지 않는다
+    if git show ":$file" 2>/dev/null | grep -qE -e "$pattern"; then
+      echo "❌ 시크릿으로 보이는 값이 발견되었습니다: $file"
+      echo "   패턴: $pattern"
+      return 1
+    fi
+  done <<'PATTERNS'
+AKIA[0-9A-Z]{16}
+-----BEGIN [A-Z ]*PRIVATE KEY-----
+(JWT_SECRET|SECRET_KEY|API_SECRET|PORTONE_API_SECRET|DB_PASSWORD)[[:space:]]*[=:][[:space:]]*"?[A-Za-z0-9+/_-]{24,}
+aws_secret_access_key[[:space:]]*=[[:space:]]*[A-Za-z0-9+/]{30,}
+PATTERNS
+  return 0
+}
+
+for f in $staged; do
+  # 바이너리/락파일은 오탐이 잦아 건너뜀
+  case "$f" in
+    *.lock | *lock.json | *.png | *.jpg | *.jpeg | *.pdf | *.ico) continue ;;
+  esac
+  [ -f "$f" ] || continue
+
+  if ! check_content "$f"; then
+    fail=1
+  fi
+done
+
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "커밋이 차단되었습니다. 시크릿은 AWS Secrets Manager가 원천이며,"
+  echo "로컬 값은 .env(gitignore 대상)에만 둡니다. docs/ARCHITECTURE.md §5 참조."
+  exit 1
+fi
+
+exit 0
