@@ -7,9 +7,9 @@ const LunoteTheme = {
   colors: {
     ...DarkTheme.colors,
     primary: Brand.purple,
-    background: Brand.navy,
-    card: Brand.navyDeep,
-    text: '#FFFFFF',
+    background: Brand.bg,
+    card: Brand.surface,
+    text: Brand.text,
   },
 };
 

@@ -6,7 +6,7 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -16,7 +16,8 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 export default function AppTabs() {
   return (
     <Tabs>
-      <TabSlot style={{ height: '100%' }} />
+      {/* 웹 탭바는 상단 고정이라 화면 내용이 가려지지 않게 위 여백을 준다 */}
+      <TabSlot style={{ height: '100%', paddingTop: 72 }} />
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/home" asChild>
@@ -52,12 +53,19 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 }
 
 export function CustomTabList(props: TabListProps) {
+  const { width } = useWindowDimensions();
+  const compact = width < 560;
+
   return (
     <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          LUNOTE
-        </ThemedText>
+      <ThemedView
+        type="backgroundElement"
+        style={[styles.innerContainer, compact && styles.innerContainerCompact]}>
+        {!compact && (
+          <ThemedText type="smallBold" style={styles.brandText}>
+            LUNOTE
+          </ThemedText>
+        )}
 
         {props.children}
       </ThemedView>
@@ -83,6 +91,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
+  },
+  innerContainerCompact: {
+    paddingHorizontal: Spacing.two,
+    justifyContent: 'space-evenly',
   },
   brandText: {
     marginRight: 'auto',

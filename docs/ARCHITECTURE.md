@@ -21,7 +21,7 @@
 | ORM | **Prisma** | 타입 안전 쿼리 + 마이그레이션 관리 |
 | DB | AWS RDS PostgreSQL, Single-AZ + PITR(5분) | 파일은 S3 (presigned URL) |
 | 큐/캐시 | **Redis + BullMQ** | 푸시 알림 발송, 웹훅 재처리 잡 |
-| 인증 | Passport (Google / Apple OAuth) + JWT | |
+| 인증 | Passport — Google/Apple OAuth **+ 이메일/비밀번호** + JWT | 비밀번호는 argon2 해싱, 재설정은 이메일 링크 방식 |
 | 결제 | PortOne (해외카드/Apple Pay 허브) | 웹훅 서명 검증 + 멱등성 필수 |
 | 컨테이너 오케스트레이션 | AWS EKS | 코어 노드그룹 On-Demand + 워커 Spot(Karpenter) |
 | CI/CD | Jenkins(동적 에이전트 Pod) + ArgoCD | GitOps 무중단 배포 |

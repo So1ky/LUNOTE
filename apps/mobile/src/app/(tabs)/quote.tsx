@@ -1,32 +1,46 @@
-import { FlatList, Pressable, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Brand, BottomTabInset, Spacing } from '@/constants/theme';
+import { Badge, type BadgeTone } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Brand, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 // TODO: GET /quotes API 연동 후 교체
-const MOCK_QUOTES = [
-  { id: '3', date: '2026.7.4' },
-  { id: '2', date: '2026.7.1' },
-  { id: '1', date: '2026.6.28' },
+const MOCK_QUOTES: { id: string; category: string; date: string; tone: BadgeTone }[] = [
+  { id: '3', category: 'Housing', date: 'Jul 4, 2026', tone: 'reviewing' },
+  { id: '2', category: 'Visa', date: 'Jul 1, 2026', tone: 'quoted' },
+  { id: '1', category: 'Hospital', date: 'Jun 28, 2026', tone: 'completed' },
 ];
 
 export default function QuoteScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <ThemedText type="subtitle" style={styles.heading}>
-        Quote
-      </ThemedText>
       <FlatList
         data={MOCK_QUOTES}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <Pressable style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-            <ThemedText type="default" style={styles.rowText}>
-              #{item.id} {item.date}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <ThemedText type="subtitle">My Requests</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Track the status of your requests
             </ThemedText>
-          </Pressable>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <Card style={styles.row} onPress={() => {}}>
+            <View style={styles.rowText}>
+              <ThemedText type="default">
+                #{item.id} · {item.category}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {item.date}
+              </ThemedText>
+            </View>
+            <Badge tone={item.tone} />
+          </Card>
         )}
       />
     </SafeAreaView>
@@ -36,27 +50,32 @@ export default function QuoteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Brand.navy,
-  },
-  heading: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
+    backgroundColor: Brand.bg,
+    alignItems: 'center',
   },
   list: {
+    width: '100%',
+  },
+  listContent: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
     padding: Spacing.four,
+    paddingTop: Spacing.five,
     gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
+    paddingBottom: BottomTabInset + Spacing.four,
+  },
+  header: {
+    gap: Spacing.one,
+    marginBottom: Spacing.two,
   },
   row: {
-    backgroundColor: Brand.field,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
   },
   rowText: {
-    color: Brand.fieldText,
-  },
-  pressed: {
-    opacity: 0.8,
+    gap: 2,
   },
 });
