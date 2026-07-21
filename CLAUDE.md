@@ -36,9 +36,18 @@ design/          # Figma에서 export한 와이어프레임 PNG
 - 앱 실행은 Expo Go가 아니라 **개발 빌드**를 쓴다 (`npm run ios` = `expo run:ios`).
   PortOne 결제와 Apple 로그인은 네이티브 모듈이라 Expo Go에서 동작하지 않는다.
 
+## 최초 셋업 (clone 직후 1회)
+
+```sh
+sh scripts/setup-hooks.sh   # 시크릿 커밋 차단 훅 설치 (git hook은 clone에 포함되지 않음)
+```
+
 ## 절대 규칙
 
 - **시크릿(.env, API 키, 인증서)을 커밋하지 않는다.** 시크릿은 AWS Secrets Manager가 원천.
+  `.githooks/pre-commit`이 물리적으로 차단한다.
+- **JWT 페이로드에 민감정보를 넣지 않는다.** JWT는 서명될 뿐 암호화되지 않아
+  페이로드는 누구나 base64 디코드로 읽을 수 있다. 사용자 ID와 role까지만.
 - AWS 리소스는 Terraform으로만 생성/변경한다. 콘솔 수동 조작 금지.
 - 결제 상태 변경은 반드시 웹훅 + PortOne 조회 API 교차검증 후에만.
 - 이미지 태그에 `latest` 사용 금지 (git SHA 태그).

@@ -81,6 +81,13 @@ graph TB
 - EKS에는 **External Secrets Operator**를 설치해 Secrets Manager → K8s Secret 동기화.
 - Pod의 AWS 권한은 **IRSA**(IAM Roles for Service Accounts)로 부여. 노드 롤에 권한 몰아주기 금지.
 - **시크릿은 어떤 형태로든 git에 커밋하지 않는다.** `.env`는 로컬 개발 전용이며 `.gitignore` 대상.
+  추가 방어선으로 `.githooks/pre-commit`이 시크릿 파일(.env/.pem/.key/.tfvars)과
+  시크릿 패턴(AWS 액세스 키, 개인키 헤더, 긴 SECRET 값)을 커밋 단계에서 차단한다.
+  로컬 `.env`는 권한 600으로 제한한다.
+- **JWT는 암호화가 아니라 서명이다.** 페이로드는 base64로 누구나 읽을 수 있으므로
+  사용자 ID와 role 외의 개인정보를 넣지 않는다. 서명키(JWT_SECRET)가 유출되면
+  임의 사용자로 위장 가능하므로 프로덕션 값은 Secrets Manager에서만 관리하고
+  환경별로 다른 값을 쓴다.
 
 ## 6. Terraform 상태 관리
 
