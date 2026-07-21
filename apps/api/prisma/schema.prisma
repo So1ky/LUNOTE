@@ -1,0 +1,148 @@
+// LUNOTE 도메인 스키마
+// 주문 상태 머신과 결제 멱등성 설계는 docs/ARCHITECTURE.md §7 참조
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  APPLE
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum Category {
+  HOUSING
+  VISA
+  HOSPITAL
+  BANK
+  TELECOM
+  OTHER
+}
+
+// 상태 머신: REVIEWING → QUOTED → PAID → IN_PROGRESS → COMPLETED (+ CANCELLED, REFUNDED)
+enum RequestStatus {
+  REVIEWING
+  QUOTED
+  PAID
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  passwordHash String? // EMAIL 가입자만. 소셜 로그인은 null
+  provider     AuthProvider
+  providerId   String? // 소셜 로그인 계정 식별자
+  name         String?
+  nationality  String? // ISO 3166-1 alpha-2
+  language     String? // BCP 47 (예: en, ko, vi)
+  role         UserRole     @default(CUSTOMER)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  requests QuoteRequest[]
+
+  @@unique([provider, providerId])
+  @@map("users")
+}
+
+model QuoteRequest {
+  id            Int           @id @default(autoincrement())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  category      Category
+  desiredAmount Decimal?      @db.Decimal(12, 2) // 사용자가 제시한 희망 예산 (선택)
+  currency      String        @default("USD")
+  description   String
+  contactMethod String // 관리자가 회신할 연락 수단 (이메일 등)
+  status        RequestStatus @default(REVIEWING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  attachments Attachment[]
+  quote       Quote?
+
+  @@index([userId, status])
+  @@map("quote_requests")
+}
+
+model Attachment {
+  id        String       @id @default(uuid())
+  requestId Int
+  request   QuoteRequest @relation(fields: [requestId], references: [id])
+  s3Key     String // 파일 본문은 S3. DB에는 키만 저장
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime     @default(now())
+
+  @@map("attachments")
+}
+
+model Quote {
+  id          String       @id @default(uuid())
+  requestId   Int          @unique
+  request     QuoteRequest @relation(fields: [requestId], references: [id])
+  amount      Decimal      @db.Decimal(12, 2)
+  currency    String       @default("USD")
+  explanation String // 가격 책정 근거 (와이어프레임의 explanation)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  payments Payment[]
+
+  @@map("quotes")
+}
+
+model Payment {
+  id        String        @id @default(uuid()) // PortOne paymentId로 사용하는 우리 쪽 식별자
+  quoteId   String
+  quote     Quote         @relation(fields: [quoteId], references: [id])
+  amount    Decimal       @db.Decimal(12, 2)
+  currency  String
+  status    PaymentStatus @default(PENDING)
+  paidAt    DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  events PaymentEvent[]
+
+  @@index([quoteId])
+  @@map("payments")
+}
+
+// PortOne 웹훅 멱등성의 핵심: eventId UNIQUE.
+// 같은 이벤트가 중복 전송되면 INSERT가 충돌하고, 그 경우 200으로 무시한다 (ARCHITECTURE §7).
+model PaymentEvent {
+  id        Int      @id @default(autoincrement())
+  eventId   String   @unique // PortOne 웹훅 이벤트 ID
+  paymentId String?
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+  type      String // 이벤트 종류 (Transaction.Paid 등)
+  payload   Json // 원문 보존 (감사/재처리용)
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
+  @@map("payment_events")
+}
