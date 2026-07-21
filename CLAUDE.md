@@ -10,7 +10,7 @@
 
 ## 확정 스택 요약
 
-- 백엔드: NestJS + Prisma + PostgreSQL, Redis/BullMQ, Passport(Google/Apple)
+- 백엔드: NestJS + Prisma + PostgreSQL, Redis/BullMQ, Passport(Google/Apple + 이메일/비밀번호)
 - 앱: React Native (Expo)
 - 인프라: AWS EKS(Spot+Karpenter) / Terraform / Jenkins+ArgoCD / Prometheus+Grafana+Loki
 - 결제: PortOne — 웹훅은 서명 검증 + 이벤트ID UNIQUE 멱등성 처리 필수
@@ -25,6 +25,16 @@ infra/k8s/       # K8s 매니페스트 (ArgoCD GitOps 소스)
 docs/            # 아키텍처, 의사결정 기록
 design/          # Figma에서 export한 와이어프레임 PNG
 ```
+
+## 로컬 개발 환경 (macOS)
+
+- **프로젝트를 iCloud 동기화 폴더(`~/Desktop`, `~/Documents`)에 두지 않는다.**
+  iCloud가 파일에 확장 속성을 붙여 iOS 빌드의 codesign이
+  `resource fork, Finder information, or similar detritus not allowed`로 실패한다.
+- CocoaPods는 UTF-8 로케일이 필요하다. 셸에 `export LANG=en_US.UTF-8`가 있어야
+  `pod install`이 `Encoding::CompatibilityError`로 죽지 않는다.
+- 앱 실행은 Expo Go가 아니라 **개발 빌드**를 쓴다 (`npm run ios` = `expo run:ios`).
+  PortOne 결제와 Apple 로그인은 네이티브 모듈이라 Expo Go에서 동작하지 않는다.
 
 ## 절대 규칙
 

@@ -16,7 +16,7 @@
 
 | 분류 | 선택 | 비고 |
 |---|---|---|
-| 모바일 앱 | React Native (Expo, EAS Build) | iOS/Android 동시 출시 |
+| 모바일 앱 | React Native (Expo SDK 57) | iOS/Android 동시 출시. Expo Go 불가 — 개발 빌드 사용 |
 | 백엔드 | **NestJS (TypeScript)** | 프론트와 언어 통일, 1인 운영 속도 최우선 |
 | ORM | **Prisma** | 타입 안전 쿼리 + 마이그레이션 관리 |
 | DB | AWS RDS PostgreSQL, Single-AZ + PITR(5분) | 파일은 S3 (presigned URL) |
@@ -135,7 +135,14 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 - 예상 월 비용 $150~250 (EKS $73 + 노드 + NAT + RDS + ALB). 매출 발생 전 고정비이므로 월 단위로 실측·기록한다.
 - 전체 스택은 Terraform만으로 재현 가능해야 한다 — 리전 장애 등 최악의 상황에서 RDS 백업 + `terraform apply`로 복구하는 것이 DR 전략의 기본이다.
 
-## 11. 로드맵
+## 11. 미결정 사항
+
+- **번들 식별자**: 현재 prebuild가 생성한 임시값 `com.anonymous.lunote`.
+  App Store에 최초 등록하면 **영구히 변경 불가**하므로, 출시 전 실제 도메인 기반
+  (예: `app.lunote`)으로 확정해야 한다. iOS/Android 양쪽을 같은 값으로 맞춘다.
+- **앱 최소 지원 OS**: Expo SDK 57(RN 0.86) 기준 iOS 15.1 이상. 출시 시 확정한다.
+
+## 12. 로드맵
 
 백엔드/인프라 트랙과 앱(Expo) 트랙을 병행한다. 앱은 백엔드 API 계약이 잡히는 대로
 화면을 붙여나가며, 백엔드의 TypeScript 타입(DTO)을 공유해 재작업을 방지한다.
