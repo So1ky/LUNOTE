@@ -1,0 +1,30 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Expo
+.expo/
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.auto.tfvars.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
