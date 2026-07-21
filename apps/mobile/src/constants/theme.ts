@@ -7,14 +7,23 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-/** LUNOTE 브랜드 팔레트 — design/LUNOTE.png 와이어프레임 기준 */
+/**
+ * LUNOTE 브랜드 팔레트 — design/LUNOTE.png 와이어프레임의 네이비/퍼플 톤 기반.
+ * 서피스는 bg → surface → surfaceAlt 3단계로 깊이를 표현한다.
+ */
 export const Brand = {
-  navy: '#131A3C',
-  navyDeep: '#0B102A',
-  purple: '#5B1FC4',
-  field: '#D9D9D9',
-  fieldText: '#4A4F5E',
-  textMuted: '#9BA0B8',
+  bg: '#0F1430',
+  surface: '#1A2148',
+  surfaceAlt: '#242C5E',
+  border: '#2A3468',
+  purple: '#6C3DF4',
+  purplePressed: '#5A2FD8',
+  text: '#F4F5FB',
+  textSecondary: '#A0A7C4',
+  textMuted: '#6B7299',
+  success: '#34D399',
+  warning: '#FBBF24',
+  danger: '#F87171',
 } as const;
 
 export const Colors = {
@@ -26,12 +35,19 @@ export const Colors = {
     textSecondary: '#60646C',
   },
   dark: {
-    text: '#ffffff',
-    background: Brand.navy,
-    backgroundElement: '#1C2450',
-    backgroundSelected: '#28306A',
-    textSecondary: Brand.textMuted,
+    text: Brand.text,
+    background: Brand.bg,
+    backgroundElement: Brand.surface,
+    backgroundSelected: Brand.surfaceAlt,
+    textSecondary: Brand.textSecondary,
   },
+} as const;
+
+export const Radius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
