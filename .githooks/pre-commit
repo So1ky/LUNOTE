@@ -23,12 +23,17 @@ done
 # 2) 파일 내용에 시크릿처럼 보이는 값이 있는 경우.
 #    .env.example의 placeholder를 통과시키려고 값 길이(24자 이상)로 판별한다.
 #    패턴은 개행으로 구분해 읽는다 (공백/하이픈 포함 패턴 때문에 for 루프 사용 불가).
+# placeholder로 보이는 줄은 검사에서 제외한다 (.env.example 등의 안내용 값)
+PLACEHOLDER='change-?me|changeme|your-|yourkey|placeholder|example|dummy|todo|fixme|xxxx|<.*>|\.\.\.'
+
 check_content() {
   file="$1"
   while IFS= read -r pattern; do
     [ -z "$pattern" ] && continue
     # -e 를 써야 하이픈으로 시작하는 패턴이 옵션으로 해석되지 않는다
-    if git show ":$file" 2>/dev/null | grep -qE -e "$pattern"; then
+    if git show ":$file" 2>/dev/null |
+      grep -viE "$PLACEHOLDER" |
+      grep -qE -e "$pattern"; then
       echo "❌ 시크릿으로 보이는 값이 발견되었습니다: $file"
       echo "   패턴: $pattern"
       return 1
