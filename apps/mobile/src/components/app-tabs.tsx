@@ -1,6 +1,6 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
-import { Colors } from '@/constants/theme';
+import { Brand, Colors } from '@/constants/theme';
 
 export default function AppTabs() {
   const colors = Colors.dark;
@@ -9,7 +9,8 @@ export default function AppTabs() {
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      iconColor={{ selected: Brand.purple }}
+      labelStyle={{ selected: { color: Brand.purple } }}>
       <NativeTabs.Trigger name="home">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
