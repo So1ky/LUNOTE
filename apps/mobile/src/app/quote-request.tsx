@@ -25,6 +25,38 @@ import {
 
 const CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 
+type ContactChannel = 'email' | 'phone' | 'whatsapp';
+
+const CONTACT_CHANNELS: {
+  key: ContactChannel;
+  emoji: string;
+  label: string;
+  placeholder: string;
+  keyboardType: 'email-address' | 'phone-pad';
+}[] = [
+  {
+    key: 'email',
+    emoji: '📧',
+    label: 'Email',
+    placeholder: 'you@example.com',
+    keyboardType: 'email-address',
+  },
+  {
+    key: 'phone',
+    emoji: '📞',
+    label: 'Phone',
+    placeholder: '+82 10-1234-5678',
+    keyboardType: 'phone-pad',
+  },
+  {
+    key: 'whatsapp',
+    emoji: '💬',
+    label: 'WhatsApp',
+    placeholder: '+1 555 123 4567',
+    keyboardType: 'phone-pad',
+  },
+];
+
 export default function QuoteRequestScreen() {
   const router = useRouter();
   const { token } = useAuth();
@@ -37,9 +69,12 @@ export default function QuoteRequestScreen() {
   const [category, setCategory] = useState<Category | null>(initial);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [contactMethod, setContactMethod] = useState('');
+  const [channel, setChannel] = useState<ContactChannel | null>(null);
+  const [contactValue, setContactValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const selectedChannel = CONTACT_CHANNELS.find((c) => c.key === channel);
 
   const onSubmit = async () => {
     if (!token || !category) return;
@@ -53,11 +88,12 @@ export default function QuoteRequestScreen() {
 
     setSubmitting(true);
     try {
+      // 서버에는 "채널: 값" 형태의 문자열로 저장 (예: "whatsapp: +1 555 123 4567")
       await createQuoteRequest(token, {
         category,
         desiredAmount,
         description: description.trim(),
-        contactMethod: contactMethod.trim(),
+        contactMethod: `${channel}: ${contactValue.trim()}`,
       });
       router.replace('/quote'); // 등록 후 내 문의 목록으로
     } catch (e) {
@@ -68,7 +104,10 @@ export default function QuoteRequestScreen() {
   };
 
   const canSubmit =
-    !!category && description.trim().length >= 10 && contactMethod.trim().length >= 3;
+    !!category &&
+    description.trim().length >= 10 &&
+    !!channel &&
+    contactValue.trim().length >= 3;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -127,13 +166,35 @@ export default function QuoteRequestScreen() {
               onChangeText={setDescription}
             />
 
-            <TextField
-              label="How should we contact you?"
-              placeholder="email: you@example.com / WhatsApp: +82..."
-              autoCapitalize="none"
-              value={contactMethod}
-              onChangeText={setContactMethod}
-            />
+            <View style={styles.section}>
+              <ThemedText type="small" themeColor="textSecondary">
+                How should we contact you?
+              </ThemedText>
+              <View style={styles.channelRow}>
+                {CONTACT_CHANNELS.map((c) => (
+                  <Card
+                    key={c.key}
+                    onPress={() => setChannel(c.key)}
+                    style={{
+                      ...styles.channelCard,
+                      ...(channel === c.key ? styles.categorySelected : {}),
+                    }}>
+                    <ThemedText type="small">
+                      {c.emoji} {c.label}
+                    </ThemedText>
+                  </Card>
+                ))}
+              </View>
+              {selectedChannel && (
+                <TextField
+                  placeholder={selectedChannel.placeholder}
+                  keyboardType={selectedChannel.keyboardType}
+                  autoCapitalize="none"
+                  value={contactValue}
+                  onChangeText={setContactValue}
+                />
+              )}
+            </View>
 
             {error && (
               <ThemedText type="small" style={styles.error}>
@@ -202,6 +263,17 @@ const styles = StyleSheet.create({
   categorySelected: {
     borderColor: Brand.purple,
     backgroundColor: Brand.surfaceAlt,
+  },
+  channelRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  channelCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: Spacing.two + 2,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Radius.md,
   },
   categoryEmoji: {
     fontSize: 20,
