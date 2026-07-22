@@ -1,45 +1,102 @@
-import { FlatList, StyleSheet, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Badge, type BadgeTone } from '@/components/ui/badge';
+import { Badge, STATUS_TONE } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Brand, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-// TODO: GET /quotes API 연동 후 교체
-const MOCK_QUOTES: { id: string; category: string; date: string; tone: BadgeTone }[] = [
-  { id: '3', category: 'Housing', date: 'Jul 4, 2026', tone: 'reviewing' },
-  { id: '2', category: 'Visa', date: 'Jul 1, 2026', tone: 'quoted' },
-  { id: '1', category: 'Hospital', date: 'Jun 28, 2026', tone: 'completed' },
-];
+import { ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import {
+  CATEGORY_META,
+  formatDate,
+  listQuoteRequests,
+  type QuoteRequest,
+} from '@/lib/quote-requests';
 
 export default function QuoteScreen() {
+  const router = useRouter();
+  const { token } = useAuth();
+  const [requests, setRequests] = useState<QuoteRequest[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    try {
+      setError(null);
+      setRequests(await listQuoteRequests(token));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+    }
+  }, [token]);
+
+  // 탭에 들어올 때마다 새로고침 (문의 등록/취소 직후 반영)
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={MOCK_QUOTES}
-        keyExtractor={(item) => item.id}
+        data={requests ?? []}
+        keyExtractor={(item) => String(item.id)}
         style={styles.list}
         contentContainerStyle={styles.listContent}
+        refreshing={refreshing}
+        onRefresh={() => void onRefresh()}
         ListHeaderComponent={
           <View style={styles.header}>
             <ThemedText type="subtitle">My Requests</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               Track the status of your requests
             </ThemedText>
+            {error && (
+              <ThemedText type="small" style={styles.error}>
+                {error}
+              </ThemedText>
+            )}
           </View>
         }
+        ListEmptyComponent={
+          requests === null ? (
+            <ActivityIndicator color={Brand.purple} style={styles.empty} />
+          ) : (
+            <View style={styles.empty}>
+              <ThemedText type="default" themeColor="textSecondary">
+                No requests yet.
+              </ThemedText>
+              <Button
+                label="Request a Quote"
+                onPress={() => router.push('/quote-request')}
+              />
+            </View>
+          )
+        }
         renderItem={({ item }) => (
-          <Card style={styles.row} onPress={() => {}}>
+          <Card
+            style={styles.row}
+            onPress={() => router.push(`/request/${item.id}`)}>
             <View style={styles.rowText}>
               <ThemedText type="default">
-                #{item.id} · {item.category}
+                #{item.id} · {CATEGORY_META[item.category].label}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {item.date}
+                {formatDate(item.createdAt)}
               </ThemedText>
             </View>
-            <Badge tone={item.tone} />
+            <Badge tone={STATUS_TONE[item.status] ?? 'completed'} />
           </Card>
         )}
       />
@@ -68,6 +125,14 @@ const styles = StyleSheet.create({
   header: {
     gap: Spacing.one,
     marginBottom: Spacing.two,
+  },
+  error: {
+    color: Brand.danger,
+  },
+  empty: {
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.six,
   },
   row: {
     flexDirection: 'row',

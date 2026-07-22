@@ -4,7 +4,14 @@ import { ThemedText } from '@/components/themed-text';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 
 /** 주문 상태 머신(docs/ARCHITECTURE.md §7)의 사용자 노출 상태 */
-export type BadgeTone = 'reviewing' | 'quoted' | 'paid' | 'inProgress' | 'completed';
+export type BadgeTone =
+  | 'reviewing'
+  | 'quoted'
+  | 'paid'
+  | 'inProgress'
+  | 'completed'
+  | 'cancelled'
+  | 'refunded';
 
 const TONES: Record<BadgeTone, { label: string; color: string }> = {
   reviewing: { label: 'Reviewing', color: Brand.warning },
@@ -12,6 +19,19 @@ const TONES: Record<BadgeTone, { label: string; color: string }> = {
   paid: { label: 'Paid', color: Brand.success },
   inProgress: { label: 'In progress', color: '#60A5FA' },
   completed: { label: 'Completed', color: Brand.textMuted },
+  cancelled: { label: 'Cancelled', color: Brand.danger },
+  refunded: { label: 'Refunded', color: Brand.textMuted },
+};
+
+/** 서버 RequestStatus → 배지 톤 */
+export const STATUS_TONE: Record<string, BadgeTone> = {
+  REVIEWING: 'reviewing',
+  QUOTED: 'quoted',
+  PAID: 'paid',
+  IN_PROGRESS: 'inProgress',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+  REFUNDED: 'refunded',
 };
 
 export function Badge({ tone }: { tone: BadgeTone }) {

@@ -1,33 +1,62 @@
-import { FlatList, StyleSheet, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Badge, type BadgeTone } from '@/components/ui/badge';
+import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Brand, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAuth } from '@/lib/auth-context';
+import {
+  CATEGORY_META,
+  formatAmount,
+  formatDate,
+  listQuoteRequests,
+  type QuoteRequest,
+} from '@/lib/quote-requests';
 
-// TODO: 결제 대기/완료 견적 API 연동 후 교체
-const MOCK_PAYMENTS: {
-  id: string;
-  category: string;
-  date: string;
-  amount: string;
-  tone: BadgeTone;
-  payable: boolean;
-}[] = [
-  { id: '2', category: 'Visa', date: 'Jul 1, 2026', amount: '$300', tone: 'quoted', payable: true },
-  { id: '1', category: 'Hospital', date: 'Jun 28, 2026', amount: '$120', tone: 'paid', payable: false },
-];
+/** 결제 탭에 보여줄 상태: 견적 도착(결제 대기) + 결제 이후 단계들 */
+const PAYMENT_STATUSES = new Set(['QUOTED', 'PAID', 'IN_PROGRESS', 'COMPLETED', 'REFUNDED']);
 
 export default function PaymentScreen() {
+  const router = useRouter();
+  const { token } = useAuth();
+  const [items, setItems] = useState<QuoteRequest[] | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    try {
+      const all = await listQuoteRequests(token);
+      setItems(all.filter((r) => r.quote && PAYMENT_STATUSES.has(r.status)));
+    } catch {
+      setItems([]);
+    }
+  }, [token]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={MOCK_PAYMENTS}
-        keyExtractor={(item) => item.id}
+        data={items ?? []}
+        keyExtractor={(item) => String(item.id)}
         style={styles.list}
         contentContainerStyle={styles.listContent}
+        refreshing={refreshing}
+        onRefresh={() => void onRefresh()}
         ListHeaderComponent={
           <View style={styles.header}>
             <ThemedText type="subtitle">Payments</ThemedText>
@@ -36,25 +65,38 @@ export default function PaymentScreen() {
             </ThemedText>
           </View>
         }
+        ListEmptyComponent={
+          items === null ? (
+            <ActivityIndicator color={Brand.purple} style={styles.empty} />
+          ) : (
+            <View style={styles.empty}>
+              <ThemedText type="default" themeColor="textSecondary">
+                Nothing to pay yet — quotes will appear here.
+              </ThemedText>
+            </View>
+          )
+        }
         renderItem={({ item }) => (
-          <Card style={styles.row}>
+          <Card style={styles.row} onPress={() => router.push(`/request/${item.id}`)}>
             <View style={styles.rowTop}>
               <View style={styles.rowText}>
                 <ThemedText type="default">
-                  #{item.id} · {item.category}
+                  #{item.id} · {CATEGORY_META[item.category].label}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {item.date}
+                  {formatDate(item.quote!.createdAt)}
                 </ThemedText>
               </View>
               <ThemedText type="subtitle" style={styles.amount}>
-                {item.amount}
+                {formatAmount(item.quote!.amount, item.quote!.currency)}
               </ThemedText>
             </View>
             <View style={styles.rowBottom}>
-              <Badge tone={item.tone} />
-              {/* TODO: PortOne 결제 화면 연동 */}
-              {item.payable && <Button label="Pay now" onPress={() => {}} />}
+              <Badge tone={STATUS_TONE[item.status] ?? 'completed'} />
+              {item.status === 'QUOTED' && (
+                // TODO: PortOne 결제 연동 — 현재는 상세 화면으로 이동
+                <Button label="Pay now" onPress={() => router.push(`/request/${item.id}`)} />
+              )}
             </View>
           </Card>
         )}
@@ -84,6 +126,10 @@ const styles = StyleSheet.create({
   header: {
     gap: Spacing.one,
     marginBottom: Spacing.two,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: Spacing.six,
   },
   row: {
     gap: Spacing.three,
