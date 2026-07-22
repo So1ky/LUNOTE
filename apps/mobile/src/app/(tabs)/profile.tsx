@@ -17,7 +17,29 @@ const MENU = [
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { profile, signOut } = useAuth();
+  const { token, profile, signOut } = useAuth();
+
+  if (!token) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.guest}>
+          <ThemedText type="subtitle">Welcome to LUNOTE</ThemedText>
+          <ThemedText
+            type="small"
+            themeColor="textSecondary"
+            style={styles.guestText}>
+            Log in to manage your requests, quotes and payments.
+          </ThemedText>
+          <Button label="Log in" size="lg" onPress={() => router.push('/login')} />
+          <Button
+            label="Create account"
+            variant="outline"
+            onPress={() => router.push('/signup')}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const displayName = profile?.name || profile?.email.split('@')[0] || 'Guest';
   const initial = displayName.charAt(0).toUpperCase();
@@ -72,6 +94,18 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  guest: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.five,
+    gap: Spacing.three,
+    maxWidth: MaxContentWidth / 2,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  guestText: {
+    marginBottom: Spacing.two,
+  },
   container: {
     flex: 1,
     backgroundColor: Brand.bg,

@@ -16,11 +16,8 @@ export default function Index() {
     );
   }
 
-  if (!token) {
-    return <Redirect href="/login" />;
-  }
-  // 이메일 인증 강제 잠금 — 인증 완료 전에는 앱 진입 불가
-  if (profile && !profile.emailVerifiedAt) {
+  // 로그인한 미인증 사용자만 잠금 — 비회원(게스트)은 홈에서 서비스 구경 가능
+  if (token && profile && !profile.emailVerifiedAt) {
     return <Redirect href="/verify-email" />;
   }
   return <Redirect href="/home" />;

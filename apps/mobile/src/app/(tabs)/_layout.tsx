@@ -6,10 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 export default function TabsLayout() {
   const { loading, token, profile } = useAuth();
 
-  if (!loading && !token) {
-    return <Redirect href="/login" />;
-  }
-  // 이메일 인증 강제 잠금 — 딥링크 등으로 탭에 직접 진입하는 우회도 차단
+  // 게스트는 탭 구경 가능. 로그인한 미인증 사용자만 인증 화면으로 잠금.
   if (!loading && token && profile && !profile.emailVerifiedAt) {
     return <Redirect href="/verify-email" />;
   }
