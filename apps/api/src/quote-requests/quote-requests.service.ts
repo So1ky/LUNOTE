@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, RequestStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
@@ -56,9 +57,10 @@ export class QuoteRequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly notifications: NotificationsService,
   ) {}
 
-  create(userId: string, dto: CreateQuoteRequestDto) {
+  async create(userId: string, userEmail: string, dto: CreateQuoteRequestDto) {
     // 소유권 검증: presign이 발급한 키는 항상 본인 프리픽스로 시작한다.
     // 다른 사용자의 키(또는 임의 경로)를 첨부하려는 시도를 차단.
     const myPrefix = `uploads/${userId}/`;
@@ -68,7 +70,7 @@ export class QuoteRequestsService {
       }
     }
 
-    return this.prisma.quoteRequest.create({
+    const created = await this.prisma.quoteRequest.create({
       data: {
         userId,
         category: dto.category,
@@ -89,6 +91,16 @@ export class QuoteRequestsService {
       },
       select: REQUEST_SELECT,
     });
+
+    // 운영자에게 접수 알림 (큐 등록 실패는 서비스 내부에서 삼킴 — 응답에 영향 없음)
+    await this.notifications.notifyAdmin({
+      type: 'REQUEST_CREATED',
+      requestId: created.id,
+      category: created.category,
+      userEmail,
+    });
+
+    return created;
   }
 
   findMine(userId: string) {
