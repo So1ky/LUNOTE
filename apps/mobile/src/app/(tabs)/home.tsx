@@ -67,16 +67,6 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {profile && !profile.emailVerifiedAt && (
-            <Card
-              style={styles.verifyBanner}
-              onPress={() => router.push('/verify-email')}>
-              <ThemedText type="small">
-                📬 Verify your email to submit requests — tap here
-              </ThemedText>
-            </Card>
-          )}
-
           <Card style={styles.cta} onPress={() => router.push('/quote-request')}>
             <View style={styles.ctaText}>
               <ThemedText type="subtitle" style={styles.ctaTitle}>
@@ -195,10 +185,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '700',
-  },
-  verifyBanner: {
-    borderColor: Brand.warning,
-    paddingVertical: Spacing.three,
   },
   cta: {
     backgroundColor: Brand.purple,
