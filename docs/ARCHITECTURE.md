@@ -155,7 +155,7 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 - [x] JWT 페이로드에 개인정보 미포함 (§5)
 - [x] rate limiting — 로그인/가입은 강하게, 전역은 완만하게
 - [x] 보안 HTTP 헤더 (helmet), CORS 허용 출처 명시
-- [ ] **리소스 소유권 검증(IDOR 방지)** — 문의/견적/결제 조회 시 `userId` 일치 확인. 관리자만 전체 접근
+- [x] **리소스 소유권 검증(IDOR 방지)** — 문의 API에 적용 완료 (타인 접근 404, e2e 검증). 견적/결제 API에도 동일 패턴 적용 예정
 - [ ] 파일 업로드: S3 presigned URL, 용량/MIME 제한, 실행 가능 확장자 차단
 - [ ] 토큰 무효화 수단 (refresh token + 블랙리스트, 또는 만료 단축)
 - [ ] 관리자 API에 role 기반 가드 (RolesGuard)
