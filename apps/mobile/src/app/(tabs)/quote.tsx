@@ -70,7 +70,14 @@ export default function QuoteScreen() {
           </View>
         }
         ListEmptyComponent={
-          requests === null ? (
+          !token ? (
+            <View style={styles.empty}>
+              <ThemedText type="default" themeColor="textSecondary">
+                Log in to create and track your requests.
+              </ThemedText>
+              <Button label="Log in" onPress={() => router.push('/login')} />
+            </View>
+          ) : requests === null ? (
             <ActivityIndicator color={Brand.purple} style={styles.empty} />
           ) : (
             <View style={styles.empty}>

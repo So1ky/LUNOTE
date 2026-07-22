@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Image,
@@ -84,6 +84,11 @@ export default function QuoteRequestScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const selectedChannel = CONTACT_CHANNELS.find((c) => c.key === channel);
+
+  // 게스트는 문의 작성 불가 — 로그인으로 유도
+  if (!token) {
+    return <Redirect href="/login" />;
+  }
 
   const onAddPhotos = async () => {
     if (!token) return;

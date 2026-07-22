@@ -109,6 +109,11 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.footer}>
+              <Pressable onPress={() => router.replace('/home')} hitSlop={8}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  ← Continue browsing as guest
+                </ThemedText>
+              </Pressable>
               <ThemedText type="small" themeColor="textSecondary">
                 New to LUNOTE?{' '}
                 <Link href="/signup">
@@ -171,6 +176,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
+    gap: Spacing.three,
     marginTop: Spacing.two,
   },
 });

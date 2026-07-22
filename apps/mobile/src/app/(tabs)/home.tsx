@@ -39,6 +39,19 @@ export default function HomeScreen() {
 
   const firstName = profile?.name?.split(' ')[0];
 
+  // 게스트가 실사용 진입점을 누르면 로그인으로 유도
+  const goRequest = (category?: string) => {
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    router.push(
+      category
+        ? { pathname: '/quote-request', params: { category } }
+        : '/quote-request',
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -52,6 +65,7 @@ export default function HomeScreen() {
                 How can we help you settle in Korea?
               </ThemedText>
             </View>
+            {token && (
             <Pressable
               style={styles.bell}
               hitSlop={8}
@@ -65,9 +79,10 @@ export default function HomeScreen() {
                 </View>
               )}
             </Pressable>
+            )}
           </View>
 
-          <Card style={styles.cta} onPress={() => router.push('/quote-request')}>
+          <Card style={styles.cta} onPress={() => goRequest()}>
             <View style={styles.ctaText}>
               <ThemedText type="subtitle" style={styles.ctaTitle}>
                 Request a Quote
@@ -90,9 +105,7 @@ export default function HomeScreen() {
                 <Card
                   key={c}
                   style={styles.categoryCard}
-                  onPress={() =>
-                    router.push({ pathname: '/quote-request', params: { category: c } })
-                  }>
+                  onPress={() => goRequest(c)}>
                   <ThemedText style={styles.categoryEmoji}>
                     {CATEGORY_META[c].emoji}
                   </ThemedText>
@@ -108,7 +121,9 @@ export default function HomeScreen() {
             </ThemedText>
             {recent.length === 0 && (
               <ThemedText type="small" themeColor="textSecondary">
-                Your requests will appear here.
+                {token
+                  ? 'Your requests will appear here.'
+                  : 'Log in to create and track your requests.'}
               </ThemedText>
             )}
             {recent.map((r) => (

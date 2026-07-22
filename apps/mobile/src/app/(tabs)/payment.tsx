@@ -66,7 +66,14 @@ export default function PaymentScreen() {
           </View>
         }
         ListEmptyComponent={
-          items === null ? (
+          !token ? (
+            <View style={styles.empty}>
+              <ThemedText type="default" themeColor="textSecondary">
+                Log in to review quotes and payments.
+              </ThemedText>
+              <Button label="Log in" onPress={() => router.push('/login')} />
+            </View>
+          ) : items === null ? (
             <ActivityIndicator color={Brand.purple} style={styles.empty} />
           ) : (
             <View style={styles.empty}>
@@ -129,6 +136,7 @@ const styles = StyleSheet.create({
   },
   empty: {
     alignItems: 'center',
+    gap: Spacing.three,
     paddingVertical: Spacing.six,
   },
   row: {
