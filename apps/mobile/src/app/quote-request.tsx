@@ -1,6 +1,8 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,12 +18,15 @@ import { Card } from '@/components/ui/card';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
+import { uploadAttachment, type AttachmentInput } from '@/lib/attachments';
 import { useAuth } from '@/lib/auth-context';
 import {
   CATEGORY_META,
   createQuoteRequest,
   type Category,
 } from '@/lib/quote-requests';
+
+const MAX_ATTACHMENTS = 5;
 
 const CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 
@@ -71,10 +76,46 @@ export default function QuoteRequestScreen() {
   const [description, setDescription] = useState('');
   const [channel, setChannel] = useState<ContactChannel | null>(null);
   const [contactValue, setContactValue] = useState('');
+  const [attachments, setAttachments] = useState<
+    (AttachmentInput & { uri: string })[]
+  >([]);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const selectedChannel = CONTACT_CHANNELS.find((c) => c.key === channel);
+
+  const onAddPhotos = async () => {
+    if (!token) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_ATTACHMENTS - attachments.length,
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      // 선택 즉시 업로드 — 제출 시점에는 메타데이터만 보낸다
+      for (const asset of result.assets) {
+        const uploaded = await uploadAttachment(token, {
+          uri: asset.uri,
+          fileName: asset.fileName ?? `photo-${Date.now()}.jpg`,
+          mimeType: asset.mimeType ?? 'image/jpeg',
+        });
+        setAttachments((prev) => [...prev, { ...uploaded, uri: asset.uri }]);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeAttachment = (s3Key: string) =>
+    setAttachments((prev) => prev.filter((a) => a.s3Key !== s3Key));
 
   const onSubmit = async () => {
     if (!token || !category) return;
@@ -94,6 +135,9 @@ export default function QuoteRequestScreen() {
         desiredAmount,
         description: description.trim(),
         contactMethod: `${channel}: ${contactValue.trim()}`,
+        attachments: attachments.length
+          ? attachments.map(({ uri: _uri, ...meta }) => meta)
+          : undefined,
       });
       router.replace('/quote'); // 등록 후 내 문의 목록으로
     } catch (e) {
@@ -165,6 +209,32 @@ export default function QuoteRequestScreen() {
               value={description}
               onChangeText={setDescription}
             />
+
+            <View style={styles.section}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Photos (optional, up to {MAX_ATTACHMENTS})
+              </ThemedText>
+              <View style={styles.attachmentRow}>
+                {attachments.map((a) => (
+                  <View key={a.s3Key} style={styles.thumbWrap}>
+                    <Image source={{ uri: a.uri }} style={styles.thumb} />
+                    <Pressable
+                      style={styles.thumbRemove}
+                      hitSlop={8}
+                      onPress={() => removeAttachment(a.s3Key)}>
+                      <ThemedText type="small">✕</ThemedText>
+                    </Pressable>
+                  </View>
+                ))}
+                {attachments.length < MAX_ATTACHMENTS && (
+                  <Card style={styles.addThumb} onPress={() => void onAddPhotos()}>
+                    <ThemedText type="subtitle" themeColor="textSecondary">
+                      {uploading ? '…' : '＋'}
+                    </ThemedText>
+                  </Card>
+                )}
+              </View>
+            </View>
 
             <View style={styles.section}>
               <ThemedText type="small" themeColor="textSecondary">
@@ -267,6 +337,39 @@ const styles = StyleSheet.create({
   channelRow: {
     flexDirection: 'row',
     gap: Spacing.two,
+  },
+  attachmentRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  thumbWrap: {
+    position: 'relative',
+  },
+  thumb: {
+    width: 72,
+    height: 72,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.surface,
+  },
+  thumbRemove: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Brand.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addThumb: {
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    borderRadius: Radius.md,
   },
   channelCard: {
     flex: 1,

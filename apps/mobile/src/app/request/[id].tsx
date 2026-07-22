@@ -2,6 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -107,6 +109,30 @@ export default function RequestDetailScreen() {
                 <ThemedText type="small" themeColor="textSecondary">
                   Contact: {request.contactMethod}
                 </ThemedText>
+
+                {request.attachments && request.attachments.length > 0 && (
+                  <View style={styles.attachments}>
+                    {request.attachments.map((a) =>
+                      a.mimeType.startsWith('image/') ? (
+                        <Pressable
+                          key={a.id}
+                          onPress={() => void Linking.openURL(a.downloadUrl)}>
+                          <Image
+                            source={{ uri: a.downloadUrl }}
+                            style={styles.attachImage}
+                          />
+                        </Pressable>
+                      ) : (
+                        <Pressable
+                          key={a.id}
+                          style={styles.attachFile}
+                          onPress={() => void Linking.openURL(a.downloadUrl)}>
+                          <ThemedText type="small">📄 {a.fileName}</ThemedText>
+                        </Pressable>
+                      ),
+                    )}
+                  </View>
+                )}
               </Card>
 
               {request.quote ? (
@@ -191,6 +217,25 @@ const styles = StyleSheet.create({
   quoteCard: {
     gap: Spacing.two,
     borderColor: Brand.purple,
+  },
+  attachments: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  attachImage: {
+    width: 84,
+    height: 84,
+    borderRadius: 12,
+    backgroundColor: Brand.surfaceAlt,
+  },
+  attachFile: {
+    backgroundColor: Brand.surfaceAlt,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    justifyContent: 'center',
   },
   amount: {
     fontSize: 40,

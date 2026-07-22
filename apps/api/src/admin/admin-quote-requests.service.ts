@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, RequestStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateQuoteDto, UpdateQuoteDto } from './dto/create-quote.dto';
 
 /** 관리자 화면용 — 사용자 요약 정보를 포함해 노출한다 */
@@ -39,9 +40,26 @@ const ADMIN_REQUEST_SELECT = {
   },
 } satisfies Prisma.QuoteRequestSelect;
 
+/** 상세 전용 — 첨부파일 포함 */
+const ADMIN_DETAIL_SELECT = {
+  ...ADMIN_REQUEST_SELECT,
+  attachments: {
+    select: {
+      id: true,
+      s3Key: true,
+      fileName: true,
+      mimeType: true,
+      sizeBytes: true,
+    },
+  },
+} satisfies Prisma.QuoteRequestSelect;
+
 @Injectable()
 export class AdminQuoteRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   findAll(status?: RequestStatus) {
     return this.prisma.quoteRequest.findMany({
@@ -54,12 +72,18 @@ export class AdminQuoteRequestsService {
   async findOne(id: number) {
     const request = await this.prisma.quoteRequest.findUnique({
       where: { id },
-      select: ADMIN_REQUEST_SELECT,
+      select: ADMIN_DETAIL_SELECT,
     });
     if (!request) {
       throw new NotFoundException('Quote request not found');
     }
-    return request;
+    const attachments = await Promise.all(
+      request.attachments.map(async (a) => ({
+        ...a,
+        downloadUrl: await this.storage.presignDownload(a.s3Key),
+      })),
+    );
+    return { ...request, attachments };
   }
 
   /** 견적 발송: Quote 생성 + REVIEWING → QUOTED 전이를 한 트랜잭션으로 */
