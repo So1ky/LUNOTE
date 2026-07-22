@@ -19,8 +19,8 @@ describe('API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    // main.ts와 동일한 설정 유지
-    app.use(helmet());
+    // main.ts와 동일한 설정 유지 (테스트는 비프로덕션이므로 hsts off)
+    app.use(helmet({ hsts: false }));
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -97,9 +97,11 @@ describe('API (e2e)', () => {
   it('보안 헤더(helmet)가 응답에 포함된다', async () => {
     const res = await request(app.getHttpServer()).get('/health').expect(200);
     expect(res.headers['x-content-type-options']).toBe('nosniff');
-    expect(res.headers['strict-transport-security']).toBeDefined();
     expect(res.headers['x-frame-options']).toBeDefined();
+    expect(res.headers['content-security-policy']).toBeDefined();
     expect(res.headers['x-powered-by']).toBeUndefined(); // 기술스택 노출 제거
+    // HSTS는 프로덕션 전용 — 로컬에 보내면 브라우저가 localhost를 https로 강제 전환해버린다
+    expect(res.headers['strict-transport-security']).toBeUndefined();
   });
 
   it('로그인 무차별 대입은 rate limit(429)으로 차단된다', async () => {
