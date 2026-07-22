@@ -1,35 +1,53 @@
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Badge } from '@/components/ui/badge';
+import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Brand, BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useAuth } from '@/lib/auth-context';
+import {
+  CATEGORY_META,
+  formatDate,
+  listQuoteRequests,
+  type Category,
+  type QuoteRequest,
+} from '@/lib/quote-requests';
 
-/** 문의 카테고리 — 아키텍처 문서의 서비스 범주 기준 */
-const CATEGORIES = [
-  { key: 'housing', emoji: '🏠', label: 'Housing' },
-  { key: 'visa', emoji: '🛂', label: 'Visa' },
-  { key: 'hospital', emoji: '🏥', label: 'Hospital' },
-  { key: 'bank', emoji: '🏦', label: 'Bank' },
-  { key: 'telecom', emoji: '📱', label: 'Telecom' },
-  { key: 'other', emoji: '✨', label: 'Other' },
-];
+const CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const { token, profile } = useAuth();
+  const [recent, setRecent] = useState<QuoteRequest[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!token) return;
+      void listQuoteRequests(token)
+        .then((all) => setRecent(all.slice(0, 2)))
+        .catch(() => setRecent([]));
+    }, [token]),
+  );
+
+  const firstName = profile?.name?.split(' ')[0];
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <ThemedText type="subtitle">Hello 👋</ThemedText>
+            <ThemedText type="subtitle">
+              Hello{firstName ? ` ${firstName}` : ''} 👋
+            </ThemedText>
             <ThemedText type="default" themeColor="textSecondary">
               How can we help you settle in Korea?
             </ThemedText>
           </View>
 
-          {/* TODO: 문의 등록 폼 화면(/quote-request) 연결 */}
-          <Card style={styles.cta} onPress={() => {}}>
+          <Card style={styles.cta} onPress={() => router.push('/quote-request')}>
             <View style={styles.ctaText}>
               <ThemedText type="subtitle" style={styles.ctaTitle}>
                 Request a Quote
@@ -49,9 +67,16 @@ export default function HomeScreen() {
             </ThemedText>
             <View style={styles.grid}>
               {CATEGORIES.map((c) => (
-                <Card key={c.key} style={styles.categoryCard} onPress={() => {}}>
-                  <ThemedText style={styles.categoryEmoji}>{c.emoji}</ThemedText>
-                  <ThemedText type="small">{c.label}</ThemedText>
+                <Card
+                  key={c}
+                  style={styles.categoryCard}
+                  onPress={() =>
+                    router.push({ pathname: '/quote-request', params: { category: c } })
+                  }>
+                  <ThemedText style={styles.categoryEmoji}>
+                    {CATEGORY_META[c].emoji}
+                  </ThemedText>
+                  <ThemedText type="small">{CATEGORY_META[c].label}</ThemedText>
                 </Card>
               ))}
             </View>
@@ -61,25 +86,27 @@ export default function HomeScreen() {
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
               RECENT REQUESTS
             </ThemedText>
-            {/* TODO: GET /quotes 최근 항목 연동 */}
-            <Card style={styles.recentRow} onPress={() => {}}>
-              <View style={styles.recentText}>
-                <ThemedText type="default">#3 · Housing</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Jul 4, 2026
-                </ThemedText>
-              </View>
-              <Badge tone="reviewing" />
-            </Card>
-            <Card style={styles.recentRow} onPress={() => {}}>
-              <View style={styles.recentText}>
-                <ThemedText type="default">#2 · Visa</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Jul 1, 2026
-                </ThemedText>
-              </View>
-              <Badge tone="quoted" />
-            </Card>
+            {recent.length === 0 && (
+              <ThemedText type="small" themeColor="textSecondary">
+                Your requests will appear here.
+              </ThemedText>
+            )}
+            {recent.map((r) => (
+              <Card
+                key={r.id}
+                style={styles.recentRow}
+                onPress={() => router.push(`/request/${r.id}`)}>
+                <View style={styles.recentText}>
+                  <ThemedText type="default">
+                    #{r.id} · {CATEGORY_META[r.category].label}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {formatDate(r.createdAt)}
+                  </ThemedText>
+                </View>
+                <Badge tone={STATUS_TONE[r.status] ?? 'completed'} />
+              </Card>
+            ))}
           </View>
         </View>
       </ScrollView>
