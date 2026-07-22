@@ -6,8 +6,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Brand, BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useAuth } from '@/lib/auth-context';
 
-// TODO: GET /me API 연동 후 교체
 const MENU = [
   { key: 'account', label: 'Account details' },
   { key: 'language', label: 'Language', value: 'English' },
@@ -17,6 +17,15 @@ const MENU = [
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { profile, signOut } = useAuth();
+
+  const displayName = profile?.name || profile?.email.split('@')[0] || 'Guest';
+  const initial = displayName.charAt(0).toUpperCase();
+
+  const onLogout = async () => {
+    await signOut();
+    router.replace('/login');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -24,12 +33,12 @@ export default function ProfileScreen() {
         <View style={styles.content}>
           <View style={styles.header}>
             <View style={styles.avatar}>
-              <ThemedText type="subtitle">G</ThemedText>
+              <ThemedText type="subtitle">{initial}</ThemedText>
             </View>
             <View style={styles.headerText}>
-              <ThemedText type="default">Guest</ThemedText>
+              <ThemedText type="default">{displayName}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                guest@lunote.app
+                {profile?.email ?? ''}
               </ThemedText>
             </View>
           </View>
@@ -55,7 +64,7 @@ export default function ProfileScreen() {
             ))}
           </Card>
 
-          <Button label="Log out" variant="danger" onPress={() => router.replace('/login')} />
+          <Button label="Log out" variant="danger" onPress={() => void onLogout()} />
         </View>
       </ScrollView>
     </SafeAreaView>
