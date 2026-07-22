@@ -1,3 +1,4 @@
+import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -113,6 +114,34 @@ export default function QuoteRequestScreen() {
     }
   };
 
+  // PDF 첨부 — 서버 허용 형식(이미지+PDF) 중 문서 쪽 (attachments presign이 검증)
+  const onAddFiles = async () => {
+    if (!token) return;
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'application/pdf',
+      multiple: true,
+    });
+    if (result.canceled) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      const slots = MAX_ATTACHMENTS - attachments.length;
+      for (const asset of result.assets.slice(0, slots)) {
+        const uploaded = await uploadAttachment(token, {
+          uri: asset.uri,
+          fileName: asset.name,
+          mimeType: asset.mimeType ?? 'application/pdf',
+        });
+        setAttachments((prev) => [...prev, { ...uploaded, uri: asset.uri }]);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const removeAttachment = (s3Key: string) =>
     setAttachments((prev) => prev.filter((a) => a.s3Key !== s3Key));
 
@@ -204,26 +233,52 @@ export default function QuoteRequestScreen() {
 
         <View style={styles.section}>
           <ThemedText type="smallStrong" themeColor="textSecondary">
-            Photos (optional, up to {MAX_ATTACHMENTS})
+            Attachments (optional, up to {MAX_ATTACHMENTS} — photos or PDF)
           </ThemedText>
           <View style={styles.attachmentRow}>
-            {attachments.map((a) => (
-              <View key={a.s3Key} style={styles.thumbWrap}>
-                <Image source={{ uri: a.uri }} style={styles.thumb} />
-                <Pressable
-                  style={styles.thumbRemove}
-                  hitSlop={8}
-                  onPress={() => removeAttachment(a.s3Key)}>
-                  <ThemedText type="small">✕</ThemedText>
-                </Pressable>
-              </View>
-            ))}
+            {attachments.map((a) =>
+              a.mimeType.startsWith('image/') ? (
+                <View key={a.s3Key} style={styles.thumbWrap}>
+                  <Image source={{ uri: a.uri }} style={styles.thumb} />
+                  <Pressable
+                    style={styles.thumbRemove}
+                    hitSlop={8}
+                    onPress={() => removeAttachment(a.s3Key)}>
+                    <ThemedText type="small">✕</ThemedText>
+                  </Pressable>
+                </View>
+              ) : (
+                <View key={a.s3Key} style={styles.fileChip}>
+                  <ThemedText type="small" numberOfLines={1} style={styles.fileName}>
+                    📄 {a.fileName}
+                  </ThemedText>
+                  <Pressable hitSlop={8} onPress={() => removeAttachment(a.s3Key)}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      ✕
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              ),
+            )}
             {attachments.length < MAX_ATTACHMENTS && (
-              <Card style={styles.addThumb} onPress={() => void onAddPhotos()}>
-                <ThemedText type="heading" themeColor="textSecondary">
-                  {uploading ? '…' : '＋'}
-                </ThemedText>
-              </Card>
+              <>
+                <Card style={styles.addThumb} onPress={() => void onAddPhotos()}>
+                  <ThemedText style={styles.addEmoji}>
+                    {uploading ? '…' : '🖼️'}
+                  </ThemedText>
+                  <ThemedText type="caption" themeColor="textSecondary">
+                    PHOTO
+                  </ThemedText>
+                </Card>
+                <Card style={styles.addThumb} onPress={() => void onAddFiles()}>
+                  <ThemedText style={styles.addEmoji}>
+                    {uploading ? '…' : '📄'}
+                  </ThemedText>
+                  <ThemedText type="caption" themeColor="textSecondary">
+                    PDF
+                  </ThemedText>
+                </Card>
+              </>
             )}
           </View>
         </View>
@@ -328,7 +383,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 0,
+    gap: 2,
     borderRadius: Radius.md,
+  },
+  addEmoji: {
+    fontSize: 20,
+    lineHeight: 26,
+  },
+  fileChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    maxWidth: '100%',
+    height: 40,
+    alignSelf: 'center',
+    backgroundColor: Brand.surfaceAlt,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.sm,
+  },
+  fileName: {
+    flexShrink: 1,
   },
   categoryEmoji: {
     fontSize: 20,
