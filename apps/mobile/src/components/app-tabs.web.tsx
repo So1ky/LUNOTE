@@ -11,7 +11,7 @@ import { Pressable, View, StyleSheet, useWindowDimensions } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
   return (
@@ -62,7 +62,7 @@ export function CustomTabList(props: TabListProps) {
         type="backgroundElement"
         style={[styles.innerContainer, compact && styles.innerContainerCompact]}>
         {!compact && (
-          <ThemedText type="smallBold" style={styles.brandText}>
+          <ThemedText type="smallStrong" style={styles.brandText}>
             LUNOTE
           </ThemedText>
         )}
@@ -77,23 +77,23 @@ const styles = StyleSheet.create({
   tabListContainer: {
     position: 'absolute',
     width: '100%',
-    padding: Spacing.three,
+    padding: Spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
   },
   innerContainer: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.five,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.xxl,
+    borderRadius: Radius.full,
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
-    gap: Spacing.two,
+    gap: Spacing.xs,
     maxWidth: MaxContentWidth,
   },
   innerContainerCompact: {
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: Spacing.xs,
     justifyContent: 'space-evenly',
   },
   brandText: {
@@ -103,8 +103,8 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    paddingVertical: Spacing.xxs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.full,
   },
 });

@@ -1,22 +1,15 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Screen } from '@/components/ui/screen';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { TextField } from '@/components/ui/text-field';
-import { Brand, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Brand, Radius, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { uploadAttachment, type AttachmentInput } from '@/lib/attachments';
 import { useAuth } from '@/lib/auth-context';
@@ -164,180 +157,147 @@ export default function QuoteRequestScreen() {
     contactValue.trim().length >= 3;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.content}>
-            <View style={styles.header}>
-              <Pressable onPress={() => router.back()} hitSlop={12}>
-                <ThemedText type="subtitle">‹</ThemedText>
-              </Pressable>
-              <ThemedText type="subtitle">Request a Quote</ThemedText>
-            </View>
+    <Screen keyboard>
+      <ScreenHeader back title="Request a Quote" />
 
-            <View style={styles.section}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Category
-              </ThemedText>
-              <View style={styles.grid}>
-                {CATEGORIES.map((c) => (
-                  <Card
-                    key={c}
-                    onPress={() => setCategory(c)}
-                    style={{
-                      ...styles.categoryCard,
-                      ...(category === c ? styles.categorySelected : {}),
-                    }}>
-                    <ThemedText style={styles.categoryEmoji}>
-                      {CATEGORY_META[c].emoji}
-                    </ThemedText>
-                    <ThemedText type="small">{CATEGORY_META[c].label}</ThemedText>
-                  </Card>
-                ))}
-              </View>
-            </View>
-
-            <TextField
-              label="Desired budget (optional, USD)"
-              placeholder="400"
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-            />
-
-            <TextField
-              label="What do you need? (at least 10 characters)"
-              placeholder="Describe your situation — the more detail, the better the quote."
-              multiline
-              numberOfLines={5}
-              style={styles.textArea}
-              value={description}
-              onChangeText={setDescription}
-            />
-
-            <View style={styles.section}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Photos (optional, up to {MAX_ATTACHMENTS})
-              </ThemedText>
-              <View style={styles.attachmentRow}>
-                {attachments.map((a) => (
-                  <View key={a.s3Key} style={styles.thumbWrap}>
-                    <Image source={{ uri: a.uri }} style={styles.thumb} />
-                    <Pressable
-                      style={styles.thumbRemove}
-                      hitSlop={8}
-                      onPress={() => removeAttachment(a.s3Key)}>
-                      <ThemedText type="small">✕</ThemedText>
-                    </Pressable>
-                  </View>
-                ))}
-                {attachments.length < MAX_ATTACHMENTS && (
-                  <Card style={styles.addThumb} onPress={() => void onAddPhotos()}>
-                    <ThemedText type="subtitle" themeColor="textSecondary">
-                      {uploading ? '…' : '＋'}
-                    </ThemedText>
-                  </Card>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <ThemedText type="small" themeColor="textSecondary">
-                How should we contact you?
-              </ThemedText>
-              <View style={styles.channelRow}>
-                {CONTACT_CHANNELS.map((c) => (
-                  <Card
-                    key={c.key}
-                    onPress={() => setChannel(c.key)}
-                    style={{
-                      ...styles.channelCard,
-                      ...(channel === c.key ? styles.categorySelected : {}),
-                    }}>
-                    <ThemedText type="small">
-                      {c.emoji} {c.label}
-                    </ThemedText>
-                  </Card>
-                ))}
-              </View>
-              {selectedChannel && (
-                <TextField
-                  placeholder={selectedChannel.placeholder}
-                  keyboardType={selectedChannel.keyboardType}
-                  autoCapitalize="none"
-                  value={contactValue}
-                  onChangeText={setContactValue}
-                />
-              )}
-            </View>
-
-            {error && (
-              <ThemedText type="small" style={styles.error}>
-                {error}
-              </ThemedText>
-            )}
-
-            <Button
-              label="Send a Request"
-              size="lg"
-              loading={submitting}
-              disabled={!canSubmit}
-              onPress={() => void onSubmit()}
-            />
-
-            <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-              We will review your request and send a quote within 24 hours.
-            </ThemedText>
+      <View style={styles.form}>
+        <View style={styles.section}>
+          <ThemedText type="smallStrong" themeColor="textSecondary">
+            Category
+          </ThemedText>
+          <View style={styles.grid}>
+            {CATEGORIES.map((c) => (
+              <Card
+                key={c}
+                onPress={() => setCategory(c)}
+                style={{
+                  ...styles.categoryCard,
+                  ...(category === c ? styles.categorySelected : {}),
+                }}>
+                <ThemedText style={styles.categoryEmoji}>
+                  {CATEGORY_META[c].emoji}
+                </ThemedText>
+                <ThemedText type="smallStrong">{CATEGORY_META[c].label}</ThemedText>
+              </Card>
+            ))}
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </View>
+
+        <TextField
+          label="Desired budget (optional, USD)"
+          placeholder="400"
+          keyboardType="numeric"
+          value={amount}
+          onChangeText={setAmount}
+        />
+
+        <TextField
+          label="What do you need? (at least 10 characters)"
+          placeholder="Describe your situation — the more detail, the better the quote."
+          multiline
+          numberOfLines={5}
+          style={styles.textArea}
+          value={description}
+          onChangeText={setDescription}
+        />
+
+        <View style={styles.section}>
+          <ThemedText type="smallStrong" themeColor="textSecondary">
+            Photos (optional, up to {MAX_ATTACHMENTS})
+          </ThemedText>
+          <View style={styles.attachmentRow}>
+            {attachments.map((a) => (
+              <View key={a.s3Key} style={styles.thumbWrap}>
+                <Image source={{ uri: a.uri }} style={styles.thumb} />
+                <Pressable
+                  style={styles.thumbRemove}
+                  hitSlop={8}
+                  onPress={() => removeAttachment(a.s3Key)}>
+                  <ThemedText type="small">✕</ThemedText>
+                </Pressable>
+              </View>
+            ))}
+            {attachments.length < MAX_ATTACHMENTS && (
+              <Card style={styles.addThumb} onPress={() => void onAddPhotos()}>
+                <ThemedText type="heading" themeColor="textSecondary">
+                  {uploading ? '…' : '＋'}
+                </ThemedText>
+              </Card>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="smallStrong" themeColor="textSecondary">
+            How should we contact you?
+          </ThemedText>
+          <View style={styles.channelRow}>
+            {CONTACT_CHANNELS.map((c) => (
+              <Card
+                key={c.key}
+                onPress={() => setChannel(c.key)}
+                style={{
+                  ...styles.channelCard,
+                  ...(channel === c.key ? styles.categorySelected : {}),
+                }}>
+                <ThemedText type="smallStrong">
+                  {c.emoji} {c.label}
+                </ThemedText>
+              </Card>
+            ))}
+          </View>
+          {selectedChannel && (
+            <TextField
+              placeholder={selectedChannel.placeholder}
+              keyboardType={selectedChannel.keyboardType}
+              autoCapitalize="none"
+              value={contactValue}
+              onChangeText={setContactValue}
+            />
+          )}
+        </View>
+
+        {error && (
+          <ThemedText type="small" style={styles.error}>
+            {error}
+          </ThemedText>
+        )}
+
+        <Button
+          label="Send a Request"
+          size="lg"
+          loading={submitting}
+          disabled={!canSubmit}
+          onPress={() => void onSubmit()}
+        />
+
+        <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
+          We will review your request and send a quote within 24 hours.
+        </ThemedText>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Brand.bg,
-  },
-  flex: {
-    flex: 1,
-  },
-  scroll: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.four,
-  },
-  content: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
+  form: {
+    gap: Spacing.xl,
   },
   section: {
-    gap: Spacing.two,
+    gap: Spacing.xs,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: Spacing.xs,
   },
   categoryCard: {
     flexBasis: '30%',
     flexGrow: 1,
     alignItems: 'center',
-    gap: Spacing.one,
-    paddingVertical: Spacing.two,
+    gap: Spacing.xxs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     borderRadius: Radius.md,
   },
   categorySelected: {
@@ -346,12 +306,12 @@ const styles = StyleSheet.create({
   },
   channelRow: {
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: Spacing.xs,
   },
   attachmentRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: Spacing.xs,
   },
   thumbWrap: {
     position: 'relative',
@@ -368,7 +328,7 @@ const styles = StyleSheet.create({
     right: -6,
     width: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: Radius.full,
     backgroundColor: Brand.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
@@ -384,8 +344,8 @@ const styles = StyleSheet.create({
   channelCard: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: Spacing.two + 2,
-    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     borderRadius: Radius.md,
   },
   categoryEmoji: {
@@ -394,7 +354,7 @@ const styles = StyleSheet.create({
   },
   textArea: {
     minHeight: 120,
-    paddingTop: Spacing.three,
+    paddingTop: Spacing.md,
     textAlignVertical: 'top',
   },
   error: {

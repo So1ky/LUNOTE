@@ -1,21 +1,16 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Badge, STATUS_TONE } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Brand, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { EmptyState } from '@/components/ui/empty-state';
+import { RequestRow } from '@/components/ui/request-row';
+import { listStyles, Screen } from '@/components/ui/screen';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { Brand, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import {
-  CATEGORY_META,
-  formatDate,
-  listQuoteRequests,
-  type QuoteRequest,
-} from '@/lib/quote-requests';
+import { listQuoteRequests, type QuoteRequest } from '@/lib/quote-requests';
 
 export default function QuoteScreen() {
   const router = useRouter();
@@ -48,20 +43,20 @@ export default function QuoteScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen scroll={false}>
       <FlatList
         data={requests ?? []}
         keyExtractor={(item) => String(item.id)}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
+        style={listStyles.list}
+        contentContainerStyle={listStyles.content}
         refreshing={refreshing}
         onRefresh={() => void onRefresh()}
         ListHeaderComponent={
           <View style={styles.header}>
-            <ThemedText type="subtitle">My Requests</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              Track the status of your requests
-            </ThemedText>
+            <ScreenHeader
+              title="My Requests"
+              subtitle="Track the status of your requests"
+            />
             {error && (
               <ThemedText type="small" style={styles.error}>
                 {error}
@@ -71,83 +66,44 @@ export default function QuoteScreen() {
         }
         ListEmptyComponent={
           !token ? (
-            <View style={styles.empty}>
-              <ThemedText type="default" themeColor="textSecondary">
-                Log in to create and track your requests.
-              </ThemedText>
-              <Button label="Log in" onPress={() => router.push('/login')} />
-            </View>
+            <EmptyState
+              emoji="🔐"
+              message="Log in to create and track your requests."
+              action={{ label: 'Log in', onPress: () => router.push('/login') }}
+            />
           ) : requests === null ? (
-            <ActivityIndicator color={Brand.purple} style={styles.empty} />
+            <ActivityIndicator color={Brand.purple} style={styles.loading} />
           ) : (
-            <View style={styles.empty}>
-              <ThemedText type="default" themeColor="textSecondary">
-                No requests yet.
-              </ThemedText>
-              <Button
-                label="Request a Quote"
-                onPress={() => router.push('/quote-request')}
-              />
-            </View>
+            <EmptyState
+              emoji="📋"
+              message="No requests yet — tell us what you need."
+              action={{
+                label: 'Request a Quote',
+                onPress: () => router.push('/quote-request'),
+              }}
+            />
           )
         }
         renderItem={({ item }) => (
-          <Card
-            style={styles.row}
-            onPress={() => router.push(`/request/${item.id}`)}>
-            <View style={styles.rowText}>
-              <ThemedText type="default">
-                #{item.id} · {CATEGORY_META[item.category].label}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {formatDate(item.createdAt)}
-              </ThemedText>
-            </View>
-            <Badge tone={STATUS_TONE[item.status] ?? 'completed'} />
-          </Card>
+          <RequestRow
+            request={item}
+            onPress={() => router.push(`/request/${item.id}`)}
+          />
         )}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Brand.bg,
-    alignItems: 'center',
-  },
-  list: {
-    width: '100%',
-  },
-  listContent: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    padding: Spacing.four,
-    paddingTop: Spacing.five,
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.four,
-  },
   header: {
-    gap: Spacing.one,
-    marginBottom: Spacing.two,
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
   },
   error: {
     color: Brand.danger,
   },
-  empty: {
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.six,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-  },
-  rowText: {
-    gap: 2,
+  loading: {
+    paddingVertical: Spacing.xxxl,
   },
 });

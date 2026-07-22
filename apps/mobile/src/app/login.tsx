@@ -1,19 +1,12 @@
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
-import { Brand, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
@@ -39,124 +32,92 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.content}>
-            <View style={styles.hero}>
-              <ThemedText type="title">LUNOTE</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                Life in Korea, made easy
-              </ThemedText>
-            </View>
+    <Screen keyboard center narrow>
+      <View style={styles.hero}>
+        <ThemedText type="display">LUNOTE</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Life in Korea, made easy
+        </ThemedText>
+      </View>
 
-            <View style={styles.form}>
-              <TextField
-                label="Email"
-                placeholder="you@example.com"
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-              <TextField
-                label="Password"
-                placeholder="••••••••"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
+      <View style={styles.form}>
+        <TextField
+          label="Email"
+          placeholder="you@example.com"
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextField
+          label="Password"
+          placeholder="••••••••"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-              {error && (
-                <ThemedText type="small" style={styles.error}>
-                  {error}
-                </ThemedText>
-              )}
+        {error && (
+          <ThemedText type="small" style={styles.error}>
+            {error}
+          </ThemedText>
+        )}
 
-              <Pressable style={styles.forgot}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Forgot password?
-                </ThemedText>
-              </Pressable>
+        <Pressable style={styles.forgot}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Forgot password?
+          </ThemedText>
+        </Pressable>
 
-              <Button
-                label="Log in"
-                size="lg"
-                loading={submitting}
-                disabled={!email.trim() || !password}
-                onPress={() => void onLogin()}
-              />
-            </View>
+        <Button
+          label="Log in"
+          size="lg"
+          loading={submitting}
+          disabled={!email.trim() || !password}
+          onPress={() => void onLogin()}
+        />
+      </View>
 
-            <View style={styles.dividerRow}>
-              <View style={styles.divider} />
-              <ThemedText type="small" themeColor="textSecondary">
-                or continue with
-              </ThemedText>
-              <View style={styles.divider} />
-            </View>
+      <View style={styles.dividerRow}>
+        <View style={styles.divider} />
+        <ThemedText type="small" themeColor="textSecondary">
+          or continue with
+        </ThemedText>
+        <View style={styles.divider} />
+      </View>
 
-            <View style={styles.form}>
-              {/* TODO: Google OAuth (B2 후반), Apple 로그인 (Apple Developer 가입 후) */}
-              <Button label="Continue with Google" variant="outline" disabled />
-              <Button label="Continue with Apple" variant="outline" disabled />
-            </View>
+      <View style={styles.form}>
+        {/* TODO: Google OAuth (B2 후반), Apple 로그인 (Apple Developer 가입 후) */}
+        <Button label="Continue with Google" variant="outline" disabled />
+        <Button label="Continue with Apple" variant="outline" disabled />
+      </View>
 
-            <View style={styles.footer}>
-              <Pressable onPress={() => router.replace('/home')} hitSlop={8}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  ← Continue browsing as guest
-                </ThemedText>
-              </Pressable>
-              <ThemedText type="small" themeColor="textSecondary">
-                New to LUNOTE?{' '}
-                <Link href="/signup">
-                  <ThemedText type="smallBold" style={{ color: Brand.purple }}>
-                    Create account
-                  </ThemedText>
-                </Link>
-              </ThemedText>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <View style={styles.footer}>
+        <Pressable onPress={() => router.replace('/home')} hitSlop={8}>
+          <ThemedText type="small" themeColor="textSecondary">
+            ← Continue browsing as guest
+          </ThemedText>
+        </Pressable>
+        <ThemedText type="small" themeColor="textSecondary">
+          New to LUNOTE?{' '}
+          <Link href="/signup">
+            <ThemedText type="link">Create account</ThemedText>
+          </Link>
+        </ThemedText>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Brand.bg,
-  },
-  flex: {
-    flex: 1,
-  },
-  scroll: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.six,
-  },
-  content: {
-    width: '100%',
-    maxWidth: MaxContentWidth / 2,
-    paddingHorizontal: Spacing.five,
-    gap: Spacing.four,
-  },
   hero: {
     alignItems: 'center',
-    gap: Spacing.one,
-    marginBottom: Spacing.four,
+    gap: Spacing.xxs,
+    marginBottom: Spacing.md,
   },
   form: {
-    gap: Spacing.three,
+    gap: Spacing.md,
   },
   error: {
     color: Brand.danger,
@@ -167,7 +128,7 @@ const styles = StyleSheet.create({
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.md,
   },
   divider: {
     flex: 1,
@@ -176,7 +137,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    gap: Spacing.three,
-    marginTop: Spacing.two,
+    gap: Spacing.md,
   },
 });

@@ -41,7 +41,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={textColor} />
       ) : (
-        <ThemedText type="smallBold" style={{ color: textColor }}>
+        <ThemedText type="smallStrong" style={{ color: textColor }}>
           {label}
         </ThemedText>
       )}
@@ -54,8 +54,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.md,
-    paddingVertical: Spacing.three - 2,
-    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
     minHeight: 48,
   },
   lg: {
