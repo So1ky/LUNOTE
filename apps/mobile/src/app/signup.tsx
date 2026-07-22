@@ -1,4 +1,4 @@
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -17,20 +17,25 @@ import { Brand, MaxContentWidth, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signUp } = useAuth();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const onLogin = async () => {
+  const onSignup = async () => {
     setError(null);
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
     setSubmitting(true);
     try {
-      await signIn(email.trim(), password);
-      router.replace('/home');
+      await signUp(email.trim(), password, name.trim() || undefined);
+      router.replace('/home'); // 가입 성공 = 자동 로그인
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Something went wrong');
     } finally {
@@ -49,13 +54,19 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
             <View style={styles.hero}>
-              <ThemedText type="title">LUNOTE</ThemedText>
+              <ThemedText type="subtitle">Create account</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Life in Korea, made easy
+                Start your life in Korea with LUNOTE
               </ThemedText>
             </View>
 
             <View style={styles.form}>
+              <TextField
+                label="Name (optional)"
+                placeholder="Your name"
+                value={name}
+                onChangeText={setName}
+              />
               <TextField
                 label="Email"
                 placeholder="you@example.com"
@@ -67,7 +78,7 @@ export default function LoginScreen() {
               />
               <TextField
                 label="Password"
-                placeholder="••••••••"
+                placeholder="At least 8 characters"
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
@@ -79,45 +90,23 @@ export default function LoginScreen() {
                 </ThemedText>
               )}
 
-              <Pressable style={styles.forgot}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Forgot password?
-                </ThemedText>
-              </Pressable>
-
               <Button
-                label="Log in"
+                label="Create account"
                 size="lg"
                 loading={submitting}
                 disabled={!email.trim() || !password}
-                onPress={() => void onLogin()}
+                onPress={() => void onSignup()}
               />
             </View>
 
-            <View style={styles.dividerRow}>
-              <View style={styles.divider} />
+            <Pressable style={styles.footer} onPress={() => router.back()}>
               <ThemedText type="small" themeColor="textSecondary">
-                or continue with
+                Already have an account?{' '}
+                <ThemedText type="smallBold" style={{ color: Brand.purple }}>
+                  Log in
+                </ThemedText>
               </ThemedText>
-              <View style={styles.divider} />
-            </View>
-
-            <View style={styles.form}>
-              {/* TODO: Google OAuth (B2 후반), Apple 로그인 (Apple Developer 가입 후) */}
-              <Button label="Continue with Google" variant="outline" disabled />
-              <Button label="Continue with Apple" variant="outline" disabled />
-            </View>
-
-            <View style={styles.footer}>
-              <ThemedText type="small" themeColor="textSecondary">
-                New to LUNOTE?{' '}
-                <Link href="/signup">
-                  <ThemedText type="smallBold" style={{ color: Brand.purple }}>
-                    Create account
-                  </ThemedText>
-                </Link>
-              </ThemedText>
-            </View>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -148,26 +137,13 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     gap: Spacing.one,
-    marginBottom: Spacing.four,
+    marginBottom: Spacing.two,
   },
   form: {
     gap: Spacing.three,
   },
   error: {
     color: Brand.danger,
-  },
-  forgot: {
-    alignSelf: 'flex-end',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  divider: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Brand.border,
   },
   footer: {
     alignItems: 'center',
