@@ -1,0 +1,126 @@
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma, RequestStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateQuoteDto, UpdateQuoteDto } from './dto/create-quote.dto';
+
+/** 관리자 화면용 — 사용자 요약 정보를 포함해 노출한다 */
+const ADMIN_REQUEST_SELECT = {
+  id: true,
+  category: true,
+  desiredAmount: true,
+  currency: true,
+  description: true,
+  contactMethod: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+  user: {
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      nationality: true,
+      language: true,
+    },
+  },
+  quote: {
+    select: {
+      id: true,
+      amount: true,
+      currency: true,
+      explanation: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  },
+} satisfies Prisma.QuoteRequestSelect;
+
+@Injectable()
+export class AdminQuoteRequestsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findAll(status?: RequestStatus) {
+    return this.prisma.quoteRequest.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      select: ADMIN_REQUEST_SELECT,
+    });
+  }
+
+  async findOne(id: number) {
+    const request = await this.prisma.quoteRequest.findUnique({
+      where: { id },
+      select: ADMIN_REQUEST_SELECT,
+    });
+    if (!request) {
+      throw new NotFoundException('Quote request not found');
+    }
+    return request;
+  }
+
+  /** 견적 발송: Quote 생성 + REVIEWING → QUOTED 전이를 한 트랜잭션으로 */
+  async createQuote(requestId: number, dto: CreateQuoteDto) {
+    const request = await this.findOne(requestId);
+
+    if (request.quote) {
+      throw new ConflictException(
+        'Quote already exists — use PATCH to update it',
+      );
+    }
+    if (request.status !== RequestStatus.REVIEWING) {
+      throw new ConflictException(
+        `Cannot quote a request in ${request.status} status`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.quote.create({
+        data: {
+          requestId,
+          amount: dto.amount,
+          currency: dto.currency ?? 'USD',
+          explanation: dto.explanation,
+        },
+      });
+      // 상태 조건을 다시 걸어 동시 견적 발송 경쟁을 차단
+      const { count } = await tx.quoteRequest.updateMany({
+        where: { id: requestId, status: RequestStatus.REVIEWING },
+        data: { status: RequestStatus.QUOTED },
+      });
+      if (count === 0) {
+        throw new ConflictException('Request status changed concurrently');
+      }
+    });
+
+    return this.findOne(requestId);
+  }
+
+  /** 견적 수정: 결제 전(QUOTED)에만 — 결제 후 금액 변경은 불가 (ARCHITECTURE §7) */
+  async updateQuote(requestId: number, dto: UpdateQuoteDto) {
+    const request = await this.findOne(requestId);
+
+    if (!request.quote) {
+      throw new NotFoundException('No quote to update — create one first');
+    }
+    if (request.status !== RequestStatus.QUOTED) {
+      throw new ConflictException(
+        `Cannot update quote in ${request.status} status — only before payment`,
+      );
+    }
+
+    await this.prisma.quote.update({
+      where: { requestId },
+      data: {
+        amount: dto.amount,
+        currency: dto.currency,
+        explanation: dto.explanation,
+      },
+    });
+
+    return this.findOne(requestId);
+  }
+}
