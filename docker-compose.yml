@@ -37,5 +37,38 @@ services:
       timeout: 3s
       retries: 10
 
+  # S3 호환 로컬 스토리지 — 프로덕션은 실제 S3 (env만 교체)
+  minio:
+    image: minio/minio:latest
+    container_name: lunote-minio
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: lunote
+      MINIO_ROOT_PASSWORD: lunote_local # 로컬 전용
+    ports:
+      - '9000:9000' # S3 API
+      - '9001:9001' # 웹 콘솔 (http://localhost:9001)
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # 시작 시 버킷 자동 생성 후 종료
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 lunote lunote_local &&
+      mc mb --ignore-existing local/lunote-attachments &&
+      echo '버킷 준비 완료'
+      "
+
 volumes:
   db-data:
+  minio-data:

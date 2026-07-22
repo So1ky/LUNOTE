@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { Attachment, AttachmentInput } from './attachments';
 
 /** 백엔드 QuoteRequest 응답 (apps/api REQUEST_SELECT와 동일 형태) */
 export type RequestStatus =
@@ -37,6 +38,8 @@ export type QuoteRequest = {
   createdAt: string;
   updatedAt: string;
   quote: Quote | null;
+  /** 상세 조회에서만 포함된다 */
+  attachments?: Attachment[];
 };
 
 export type CreateQuoteRequestInput = {
@@ -44,6 +47,7 @@ export type CreateQuoteRequestInput = {
   desiredAmount?: number;
   description: string;
   contactMethod: string;
+  attachments?: AttachmentInput[];
 };
 
 export function listQuoteRequests(token: string) {

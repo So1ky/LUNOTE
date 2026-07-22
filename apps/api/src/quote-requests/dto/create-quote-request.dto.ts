@@ -1,7 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Category } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -9,8 +13,36 @@ import {
   Matches,
   Max,
   MaxLength,
+  Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import {
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE_BYTES,
+} from '../../attachments/dto/presign.dto';
+
+export class AttachmentInputDto {
+  @ApiProperty({ example: 'uploads/<userId>/<uuid>/contract.pdf' })
+  @IsString()
+  @MaxLength(500)
+  s3Key: string;
+
+  @ApiProperty({ example: 'contract.pdf' })
+  @IsString()
+  @MaxLength(200)
+  fileName: string;
+
+  @ApiProperty({ enum: ALLOWED_MIME_TYPES })
+  @IsString()
+  mimeType: string;
+
+  @ApiProperty({ example: 123456 })
+  @IsInt()
+  @Min(1)
+  @Max(MAX_FILE_SIZE_BYTES)
+  sizeBytes: number;
+}
 
 export class CreateQuoteRequestDto {
   @ApiProperty({ enum: Category, example: Category.HOUSING })
@@ -44,4 +76,13 @@ export class CreateQuoteRequestDto {
   @MinLength(3)
   @MaxLength(100)
   contactMethod: string;
+
+  // presign → 업로드 완료 후 메타데이터를 함께 제출
+  @ApiPropertyOptional({ type: [AttachmentInputDto], description: '최대 5개' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentInputDto)
+  attachments?: AttachmentInputDto[];
 }
