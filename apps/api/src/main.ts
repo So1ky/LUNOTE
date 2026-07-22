@@ -7,8 +7,21 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const isProd = process.env.NODE_ENV === 'production';
 
-  app.use(helmet());
+  // HTTPS 강제 전환 지시는 프로덕션에서만 켠다.
+  // - hsts: 로컬에 보내면 브라우저가 이후 모든 localhost 요청을 https로 바꿔버려
+  //   다른 포트/프로젝트까지 최대 1년간 접속 불가가 된다.
+  // - upgrade-insecure-requests: 같은 이유로 로컬에서는 제외한다.
+  app.use(
+    helmet({
+      hsts: isProd,
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: isProd ? {} : { 'upgrade-insecure-requests': null },
+      },
+    }),
+  );
 
   // ALB 뒤에서 동작하므로 X-Forwarded-For를 신뢰해야 rate limit이 실제 클라이언트 IP 기준으로 동작한다
   app.set('trust proxy', 1);
@@ -29,7 +42,7 @@ async function bootstrap() {
   );
 
   // API 문서는 개발 환경에서만 노출한다 (프로덕션에서 엔드포인트 구조를 공개하지 않기 위해)
-  if (process.env.NODE_ENV !== 'production') {
+  if (!isProd) {
     const config = new DocumentBuilder()
       .setTitle('LUNOTE API')
       .setDescription('한국 거주 외국인 대상 컨시어지 플랫폼 API')
