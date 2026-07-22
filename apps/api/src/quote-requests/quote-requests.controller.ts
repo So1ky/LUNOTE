@@ -31,7 +31,7 @@ export class QuoteRequestsController {
   @ApiOperation({ summary: '문의 등록' })
   @ApiResponse({ status: 201, description: '등록된 문의 반환 (REVIEWING)' })
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateQuoteRequestDto) {
-    return this.service.create(user.id, dto);
+    return this.service.create(user.id, user.email, dto);
   }
 
   @Get()
