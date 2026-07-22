@@ -158,7 +158,7 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 - [x] **리소스 소유권 검증(IDOR 방지)** — 문의 API에 적용 완료 (타인 접근 404, e2e 검증). 견적/결제 API에도 동일 패턴 적용 예정
 - [ ] 파일 업로드: S3 presigned URL, 용량/MIME 제한, 실행 가능 확장자 차단
 - [ ] 토큰 무효화 수단 (refresh token + 블랙리스트, 또는 만료 단축)
-- [ ] 관리자 API에 role 기반 가드 (RolesGuard)
+- [x] 관리자 API에 role 기반 가드 (RolesGuard) — admin 견적 API 적용, e2e 검증
 
 ### 결제 (§7과 연동)
 
