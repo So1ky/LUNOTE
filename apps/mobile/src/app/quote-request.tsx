@@ -141,6 +141,11 @@ export default function QuoteRequestScreen() {
       });
       router.replace('/quote'); // 등록 후 내 문의 목록으로
     } catch (e) {
+      // 이메일 미인증(403)이면 인증 화면으로 유도
+      if (e instanceof ApiError && e.status === 403) {
+        router.push('/verify-email');
+        return;
+      }
       setError(e instanceof ApiError ? e.message : 'Something went wrong');
     } finally {
       setSubmitting(false);

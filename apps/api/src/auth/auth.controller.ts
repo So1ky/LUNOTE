@@ -13,10 +13,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import type { AuthUser } from './auth-user';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @ApiTags('auth')
@@ -54,7 +56,28 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: '내 정보 조회 (JWT 필요)' })
   @ApiResponse({ status: 401, description: '토큰 없음/무효' })
-  me(@CurrentUser() user: { id: string; email: string }) {
+  me(@CurrentUser() user: AuthUser) {
     return user;
+  }
+
+  @Post('verify-email')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: '이메일 인증 코드 확인' })
+  @ApiResponse({ status: 400, description: '코드 불일치/만료/시도 초과' })
+  verifyEmail(@CurrentUser() user: AuthUser, @Body() dto: VerifyEmailDto) {
+    return this.auth.verifyEmail(user.id, dto.code);
+  }
+
+  @Post('resend-verification')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { ttl: 3_600_000, limit: 5 } })
+  @ApiOperation({ summary: '인증 코드 재발송 (1분 쿨다운, 시간당 5회)' })
+  resendVerification(@CurrentUser() user: AuthUser) {
+    return this.auth.resendVerification(user.id);
   }
 }

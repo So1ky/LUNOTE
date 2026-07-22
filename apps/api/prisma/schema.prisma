@@ -58,8 +58,15 @@ model User {
   nationality  String? // ISO 3166-1 alpha-2
   language     String? // BCP 47 (예: en, ko, vi)
   role         UserRole     @default(CUSTOMER)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+
+  // 이메일 인증 — 코드는 sha256 해시로만 저장 (원문 미저장)
+  emailVerifiedAt           DateTime?
+  verificationCodeHash      String?
+  verificationCodeExpiresAt DateTime?
+  verificationAttempts      Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   requests      QuoteRequest[]
   notifications Notification[]

@@ -24,7 +24,16 @@ describe('Notifications (e2e)', () => {
       .post('/auth/signup')
       .send({ email, password })
       .expect(201);
-    return (res.body as { accessToken: string }).accessToken;
+    const token = (res.body as { accessToken: string }).accessToken;
+    await verifyByDb(email);
+    return token;
+  };
+  const verifyByDb = async (email: string) => {
+    // 게이트(EmailVerifiedGuard) 통과용 — 인증 플로우 자체는 email-verification 스펙에서 검증
+    await prisma.user.update({
+      where: { email },
+      data: { emailVerifiedAt: new Date() },
+    });
   };
 
   const login = async (email: string) => {
@@ -148,12 +157,15 @@ describe('Notifications (e2e)', () => {
       `${MAILPIT_API}/search?query=${encodeURIComponent(userEmail)}`,
     );
     const data = (await res.json()) as {
-      messages: { To: { Address: string }[] | null }[];
+      messages: { To: { Address: string }[] | null; Subject: string }[];
     };
-    const sentToUser = data.messages.filter((m) =>
-      (m.To ?? []).some((t) => t.Address === userEmail),
+    // 가입 인증 코드 메일은 정당하므로 제외 — "견적" 메일만 없으면 된다
+    const quoteMailsToUser = data.messages.filter(
+      (m) =>
+        (m.To ?? []).some((t) => t.Address === userEmail) &&
+        m.Subject.toLowerCase().includes('quote'),
     );
-    expect(sentToUser).toHaveLength(0);
+    expect(quoteMailsToUser).toHaveLength(0);
   });
 
   it('읽음 처리 → unreadCount 감소, 타인 알림은 404', async () => {

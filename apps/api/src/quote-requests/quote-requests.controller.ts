@@ -16,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { EmailVerifiedGuard } from '../auth/email-verified.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
 import { QuoteRequestsService } from './quote-requests.service';
@@ -28,8 +29,10 @@ export class QuoteRequestsController {
   constructor(private readonly service: QuoteRequestsService) {}
 
   @Post()
-  @ApiOperation({ summary: '문의 등록' })
+  @UseGuards(EmailVerifiedGuard) // 실사용(문의 등록)은 이메일 인증 후에만
+  @ApiOperation({ summary: '문의 등록 (이메일 인증 필요)' })
   @ApiResponse({ status: 201, description: '등록된 문의 반환 (REVIEWING)' })
+  @ApiResponse({ status: 403, description: 'EMAIL_NOT_VERIFIED' })
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateQuoteRequestDto) {
     return this.service.create(user.id, user.email, dto);
   }

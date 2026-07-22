@@ -15,6 +15,7 @@ export type Profile = {
   email: string;
   name: string | null;
   role: 'CUSTOMER' | 'ADMIN';
+  emailVerifiedAt: string | null;
 };
 
 type AuthState = {
@@ -25,6 +26,8 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** 인증 상태 변경(이메일 인증 등) 후 프로필 갱신 */
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -81,6 +84,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [applyToken],
   );
 
+  const refreshProfile = useCallback(async () => {
+    if (!token) return;
+    setProfile(await api<Profile>('/auth/me', { token }));
+  }, [token]);
+
   const signOut = useCallback(async () => {
     await tokenStorage.delete();
     setToken(null);
@@ -88,8 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ loading, token, profile, signIn, signUp, signOut }),
-    [loading, token, profile, signIn, signUp, signOut],
+    () => ({ loading, token, profile, signIn, signUp, signOut, refreshProfile }),
+    [loading, token, profile, signIn, signUp, signOut, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

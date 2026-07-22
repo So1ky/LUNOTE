@@ -21,7 +21,16 @@ describe('Admin quotes (e2e)', () => {
       .post('/auth/signup')
       .send({ email, password })
       .expect(201);
-    return (res.body as { accessToken: string }).accessToken;
+    const token = (res.body as { accessToken: string }).accessToken;
+    await verifyByDb(email);
+    return token;
+  };
+  const verifyByDb = async (email: string) => {
+    // 게이트(EmailVerifiedGuard) 통과용 — 인증 플로우 자체는 email-verification 스펙에서 검증
+    await prisma.user.update({
+      where: { email },
+      data: { emailVerifiedAt: new Date() },
+    });
   };
 
   const login = async (email: string) => {

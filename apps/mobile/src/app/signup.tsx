@@ -35,7 +35,7 @@ export default function SignupScreen() {
     setSubmitting(true);
     try {
       await signUp(email.trim(), password, name.trim() || undefined);
-      router.replace('/home'); // 가입 성공 = 자동 로그인
+      router.replace('/verify-email'); // 가입 성공 = 자동 로그인 → 인증 코드 입력으로
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Something went wrong');
     } finally {

@@ -3,9 +3,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { PrismaService } from './../src/prisma/prisma.service';
 
 describe('Attachments (e2e)', () => {
   let app: INestApplication<App>;
+  let prisma: PrismaService;
   const stamp = Date.now();
   const password = 'test-password-123';
   let token: string;
@@ -15,7 +17,16 @@ describe('Attachments (e2e)', () => {
       .post('/auth/signup')
       .send({ email, password })
       .expect(201);
-    return (res.body as { accessToken: string }).accessToken;
+    const token = (res.body as { accessToken: string }).accessToken;
+    await verifyByDb(email);
+    return token;
+  };
+  const verifyByDb = async (email: string) => {
+    // 게이트(EmailVerifiedGuard) 통과용 — 인증 플로우 자체는 email-verification 스펙에서 검증
+    await prisma.user.update({
+      where: { email },
+      data: { emailVerifiedAt: new Date() },
+    });
   };
 
   beforeAll(async () => {
@@ -32,6 +43,7 @@ describe('Attachments (e2e)', () => {
       }),
     );
     await app.init();
+    prisma = app.get(PrismaService);
     token = await signup(`att-${stamp}@test.lunote.app`);
   });
 
