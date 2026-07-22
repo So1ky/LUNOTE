@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
+import { SelectField } from '@/components/ui/select-field';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
@@ -228,24 +229,16 @@ export default function QuoteRequestScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText type="smallStrong" themeColor="textSecondary">
-            How should we contact you?
-          </ThemedText>
-          <View style={styles.channelRow}>
-            {CONTACT_CHANNELS.map((c) => (
-              <Card
-                key={c.key}
-                onPress={() => setChannel(c.key)}
-                style={{
-                  ...styles.channelCard,
-                  ...(channel === c.key ? styles.categorySelected : {}),
-                }}>
-                <ThemedText type="smallStrong">
-                  {c.emoji} {c.label}
-                </ThemedText>
-              </Card>
-            ))}
-          </View>
+          <SelectField
+            label="How should we contact you?"
+            placeholder="Choose a contact method"
+            value={channel}
+            options={CONTACT_CHANNELS.map((c) => ({
+              value: c.key,
+              label: `${c.emoji}  ${c.label}`,
+            }))}
+            onChange={setChannel}
+          />
           {selectedChannel && (
             <TextField
               placeholder={selectedChannel.placeholder}
@@ -304,10 +297,6 @@ const styles = StyleSheet.create({
     borderColor: Brand.purple,
     backgroundColor: Brand.surfaceAlt,
   },
-  channelRow: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-  },
   attachmentRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -339,13 +328,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 0,
-    borderRadius: Radius.md,
-  },
-  channelCard: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
     borderRadius: Radius.md,
   },
   categoryEmoji: {
