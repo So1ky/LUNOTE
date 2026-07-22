@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, RequestStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateQuoteDto, UpdateQuoteDto } from './dto/create-quote.dto';
@@ -59,6 +60,7 @@ export class AdminQuoteRequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   findAll(status?: RequestStatus) {
@@ -118,6 +120,15 @@ export class AdminQuoteRequestsService {
       if (count === 0) {
         throw new ConflictException('Request status changed concurrently');
       }
+    });
+
+    // 사용자에게 견적 도착 알림 (인앱 + 이메일)
+    await this.notifications.enqueue({
+      type: 'QUOTE_SENT',
+      requestId,
+      ownerId: request.user.id,
+      amount: String(dto.amount),
+      currency: dto.currency ?? 'USD',
     });
 
     return this.findOne(requestId);

@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +8,7 @@ import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Brand, BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { listNotifications } from '@/lib/notifications';
 import {
   CATEGORY_META,
   formatDate,
@@ -22,6 +23,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { token, profile } = useAuth();
   const [recent, setRecent] = useState<QuoteRequest[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -29,6 +31,9 @@ export default function HomeScreen() {
       void listQuoteRequests(token)
         .then((all) => setRecent(all.slice(0, 2)))
         .catch(() => setRecent([]));
+      void listNotifications(token)
+        .then((data) => setUnreadCount(data.unreadCount))
+        .catch(() => setUnreadCount(0));
     }, [token]),
   );
 
@@ -38,13 +43,28 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <View style={styles.header}>
-            <ThemedText type="subtitle">
-              Hello{firstName ? ` ${firstName}` : ''} 👋
-            </ThemedText>
-            <ThemedText type="default" themeColor="textSecondary">
-              How can we help you settle in Korea?
-            </ThemedText>
+          <View style={styles.headerRow}>
+            <View style={styles.header}>
+              <ThemedText type="subtitle">
+                Hello{firstName ? ` ${firstName}` : ''} 👋
+              </ThemedText>
+              <ThemedText type="default" themeColor="textSecondary">
+                How can we help you settle in Korea?
+              </ThemedText>
+            </View>
+            <Pressable
+              style={styles.bell}
+              hitSlop={8}
+              onPress={() => router.push('/notifications')}>
+              <ThemedText style={styles.bellIcon}>🔔</ThemedText>
+              {unreadCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <ThemedText style={styles.bellBadgeText}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </ThemedText>
+                </View>
+              )}
+            </Pressable>
           </View>
 
           <Card style={styles.cta} onPress={() => router.push('/quote-request')}>
@@ -131,8 +151,40 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.five,
     gap: Spacing.five,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+  },
   header: {
     gap: Spacing.one,
+    flex: 1,
+  },
+  bell: {
+    position: 'relative',
+    padding: Spacing.one,
+  },
+  bellIcon: {
+    fontSize: 22,
+    lineHeight: 28,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Brand.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  bellBadgeText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
   },
   cta: {
     backgroundColor: Brand.purple,

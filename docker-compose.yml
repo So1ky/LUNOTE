@@ -56,6 +56,14 @@ services:
       timeout: 3s
       retries: 10
 
+  # 로컬 메일 서버 — 보낸 메일을 http://localhost:8025 웹 UI로 확인. 프로덕션은 SES
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: lunote-mailpit
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # 웹 UI
+
   # 시작 시 버킷 자동 생성 후 종료
   minio-init:
     image: minio/mc:latest
