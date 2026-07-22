@@ -65,6 +65,11 @@ model User {
   verificationCodeExpiresAt DateTime?
   verificationAttempts      Int       @default(0)
 
+  // 비밀번호 재설정 — 이메일 인증과 동일한 코드 정책 (해시 저장, TTL, 시도 제한)
+  passwordResetCodeHash      String?
+  passwordResetCodeExpiresAt DateTime?
+  passwordResetAttempts      Int       @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

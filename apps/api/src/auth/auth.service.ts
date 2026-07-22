@@ -130,6 +130,79 @@ export class AuthService {
     return { sent: true };
   }
 
+  /**
+   * 재설정 코드 발송. 계정 존재 여부를 노출하지 않기 위해 어떤 경우에도
+   * 동일한 응답을 돌려준다 — 미가입/소셜 계정/쿨다운이면 조용히 건너뛴다.
+   */
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    // 소셜 가입 계정(passwordHash null)은 재설정할 비밀번호가 없다
+    if (user?.passwordHash) {
+      const inCooldown =
+        user.passwordResetCodeExpiresAt &&
+        Date.now() -
+          (user.passwordResetCodeExpiresAt.getTime() - CODE_TTL_MS) <
+          RESEND_COOLDOWN_MS;
+
+      if (!inCooldown) {
+        const code = this.generateCode();
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            passwordResetCodeHash: hashCode(code),
+            passwordResetCodeExpiresAt: new Date(Date.now() + CODE_TTL_MS),
+            passwordResetAttempts: 0,
+          },
+        });
+        await this.mail.send(
+          user.email,
+          `[LUNOTE] Your password reset code: ${code}`,
+          `Your password reset code is: ${code}\n\nEnter this code in the app to set a new password. It expires in 15 minutes.\n\nIf you didn't request this, you can ignore this email — your password stays unchanged.`,
+        );
+      }
+    }
+
+    return { sent: true };
+  }
+
+  /** 코드 검증 후 새 비밀번호 저장 — 검증 정책은 verifyEmail과 동일 */
+  async resetPassword(email: string, code: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    // 어떤 실패든 동일한 에러 — 이메일/코드 중 무엇이 틀렸는지 노출하지 않는다
+    const invalid = () => new BadRequestException('Invalid or expired code');
+
+    if (!user?.passwordResetCodeHash || !user.passwordResetCodeExpiresAt) {
+      throw invalid();
+    }
+    if (user.passwordResetCodeExpiresAt < new Date()) {
+      throw invalid();
+    }
+    if (user.passwordResetAttempts >= MAX_VERIFY_ATTEMPTS) {
+      throw invalid();
+    }
+
+    if (hashCode(code) !== user.passwordResetCodeHash) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordResetAttempts: { increment: 1 } },
+      });
+      throw invalid();
+    }
+
+    const passwordHash = (await argonHash(newPassword)) as string;
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        passwordResetCodeHash: null,
+        passwordResetCodeExpiresAt: null,
+        passwordResetAttempts: 0,
+      },
+    });
+    return { reset: true };
+  }
+
   private generateCode() {
     return String(randomInt(0, 1_000_000)).padStart(6, '0');
   }
