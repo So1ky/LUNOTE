@@ -4,12 +4,24 @@ import { Queue } from 'bullmq';
 
 export const NOTIFICATIONS_QUEUE = 'notifications';
 
-export type AdminNotificationJob = {
+/** 신규 문의 접수 → 모든 관리자에게 */
+export type RequestCreatedJob = {
   type: 'REQUEST_CREATED';
   requestId: number;
   category: string;
   userEmail: string;
 };
+
+/** 견적 발송 → 문의 소유자에게 */
+export type QuoteSentJob = {
+  type: 'QUOTE_SENT';
+  requestId: number;
+  ownerId: string;
+  amount: string;
+  currency: string;
+};
+
+export type NotificationJob = RequestCreatedJob | QuoteSentJob;
 
 @Injectable()
 export class NotificationsService {
@@ -17,14 +29,14 @@ export class NotificationsService {
 
   constructor(
     @InjectQueue(NOTIFICATIONS_QUEUE)
-    private readonly queue: Queue<AdminNotificationJob>,
+    private readonly queue: Queue<NotificationJob>,
   ) {}
 
   /**
-   * 관리자 알림을 큐에 넣는다. 발송 실패는 워커가 재시도한다.
-   * 큐 등록 실패(Redis 다운 등)가 사용자 요청 자체를 실패시키지 않도록 삼킨다.
+   * 알림 잡을 큐에 넣는다. 발송(이메일)과 인앱 알림 생성은 워커가 처리한다.
+   * 큐 등록 실패(Redis 다운 등)가 원래 요청을 실패시키지 않도록 삼킨다.
    */
-  async notifyAdmin(job: AdminNotificationJob) {
+  async enqueue(job: NotificationJob) {
     try {
       await this.queue.add(job.type, job, {
         attempts: 3,

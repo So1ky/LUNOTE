@@ -1,5 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
+import { MailService } from './mail.service';
+import { NotificationsController } from './notifications.controller';
 import { NotificationsProcessor } from './notifications.processor';
 import {
   NOTIFICATIONS_QUEUE,
@@ -8,7 +10,8 @@ import {
 
 @Module({
   imports: [BullModule.registerQueue({ name: NOTIFICATIONS_QUEUE })],
-  providers: [NotificationsService, NotificationsProcessor],
+  controllers: [NotificationsController],
+  providers: [NotificationsService, NotificationsProcessor, MailService],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

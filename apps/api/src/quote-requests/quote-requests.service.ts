@@ -93,7 +93,7 @@ export class QuoteRequestsService {
     });
 
     // 운영자에게 접수 알림 (큐 등록 실패는 서비스 내부에서 삼킴 — 응답에 영향 없음)
-    await this.notifications.notifyAdmin({
+    await this.notifications.enqueue({
       type: 'REQUEST_CREATED',
       requestId: created.id,
       category: created.category,
