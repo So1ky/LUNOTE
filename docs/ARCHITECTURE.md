@@ -150,6 +150,7 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 
 - [x] 비밀번호 argon2 해싱 (원문 미저장)
 - [x] 로그인 실패 시 계정 존재 여부 비노출 (모두 401)
+- [x] 가입 이메일 인증 (6자리 코드, 해시 저장, 15분 만료, 시도 5회 제한) — 미인증 시 문의/업로드 차단
 - [x] 입력 검증: 전역 ValidationPipe (whitelist + forbidNonWhitelisted)
 - [x] SQL 인젝션: Prisma 파라미터 바인딩 (raw 쿼리 사용 시 반드시 `$queryRaw` 태그드 템플릿)
 - [x] JWT 페이로드에 개인정보 미포함 (§5)

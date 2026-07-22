@@ -12,6 +12,6 @@ import {
   imports: [BullModule.registerQueue({ name: NOTIFICATIONS_QUEUE })],
   controllers: [NotificationsController],
   providers: [NotificationsService, NotificationsProcessor, MailService],
-  exports: [NotificationsService],
+  exports: [NotificationsService, MailService],
 })
 export class NotificationsModule {}

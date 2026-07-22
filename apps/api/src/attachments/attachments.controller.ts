@@ -8,13 +8,14 @@ import {
 import { randomUUID } from 'node:crypto';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { EmailVerifiedGuard } from '../auth/email-verified.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StorageService } from '../storage/storage.service';
 import { PresignDto } from './dto/presign.dto';
 
 @ApiTags('attachments')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, EmailVerifiedGuard)
 @Controller('attachments')
 export class AttachmentsController {
   constructor(private readonly storage: StorageService) {}
