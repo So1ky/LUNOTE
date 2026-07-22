@@ -35,6 +35,8 @@ design/          # Figma에서 export한 와이어프레임 PNG
   `pod install`이 `Encoding::CompatibilityError`로 죽지 않는다.
 - 앱 실행은 Expo Go가 아니라 **개발 빌드**를 쓴다 (`npm run ios` = `expo run:ios`).
   PortOne 결제와 Apple 로그인은 네이티브 모듈이라 Expo Go에서 동작하지 않는다.
+- API 개발 서버는 기본 **127.0.0.1 바인딩** (같은 와이파이 기기로부터 차단).
+  실기기 폰 테스트 시에만 `HOST=0.0.0.0 npm run start:dev`로 임시 개방한다.
 
 ## 최초 셋업 (clone 직후 1회)
 

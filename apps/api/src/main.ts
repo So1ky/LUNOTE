@@ -53,6 +53,10 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
   }
 
-  await app.listen(process.env.PORT ?? 3000);
+  // 기본은 루프백 전용 — 같은 네트워크의 다른 기기가 개발 서버에 접근하지 못하게 한다.
+  // 실기기(폰) 테스트 등으로 LAN 노출이 필요할 때만 HOST=0.0.0.0 으로 실행한다.
+  // 프로덕션(K8s)에서는 Pod 외부에서 접근해야 하므로 HOST=0.0.0.0 이 필수다.
+  const host = process.env.HOST ?? '127.0.0.1';
+  await app.listen(process.env.PORT ?? 3000, host);
 }
 void bootstrap();
