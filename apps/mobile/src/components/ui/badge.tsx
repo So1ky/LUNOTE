@@ -17,7 +17,7 @@ const TONES: Record<BadgeTone, { label: string; color: string }> = {
   reviewing: { label: 'Reviewing', color: Brand.warning },
   quoted: { label: 'Quote ready', color: Brand.purple },
   paid: { label: 'Paid', color: Brand.success },
-  inProgress: { label: 'In progress', color: '#60A5FA' },
+  inProgress: { label: 'In progress', color: Brand.info },
   completed: { label: 'Completed', color: Brand.textMuted },
   cancelled: { label: 'Cancelled', color: Brand.danger },
   refunded: { label: 'Refunded', color: Brand.textMuted },
@@ -39,7 +39,7 @@ export function Badge({ tone }: { tone: BadgeTone }) {
   return (
     <View style={[styles.badge, { borderColor: color }]}>
       <View style={[styles.dot, { backgroundColor: color }]} />
-      <ThemedText type="small" style={{ color, fontSize: 12, lineHeight: 16 }}>
+      <ThemedText type="caption" style={{ color, letterSpacing: 0 }}>
         {label}
       </ThemedText>
     </View>
@@ -50,11 +50,11 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one + 2,
+    gap: Spacing.xxs,
     borderWidth: 1,
-    borderRadius: Radius.xl,
-    paddingVertical: 3,
-    paddingHorizontal: Spacing.two + 2,
+    borderRadius: Radius.full,
+    paddingVertical: Spacing.xxs,
+    paddingHorizontal: Spacing.xs + 2,
     alignSelf: 'flex-start',
   },
   dot: {

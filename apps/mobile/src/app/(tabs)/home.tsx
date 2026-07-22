@@ -1,17 +1,17 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Brand, BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { RequestRow } from '@/components/ui/request-row';
+import { Screen } from '@/components/ui/screen';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { Brand, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { listNotifications } from '@/lib/notifications';
 import {
   CATEGORY_META,
-  formatDate,
   listQuoteRequests,
   type Category,
   type QuoteRequest,
@@ -53,22 +53,17 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.headerRow}>
-            <View style={styles.header}>
-              <ThemedText type="subtitle">
-                Hello{firstName ? ` ${firstName}` : ''} 👋
-              </ThemedText>
-              <ThemedText type="default" themeColor="textSecondary">
-                How can we help you settle in Korea?
-              </ThemedText>
-            </View>
-            {token && (
+    <Screen tabInset>
+      <ScreenHeader
+        title={`Hello${firstName ? ` ${firstName}` : ''} 👋`}
+        subtitle="How can we help you settle in Korea?"
+        right={
+          token ? (
             <Pressable
               style={styles.bell}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
               onPress={() => router.push('/notifications')}>
               <ThemedText style={styles.bellIcon}>🔔</ThemedText>
               {unreadCount > 0 && (
@@ -79,106 +74,65 @@ export default function HomeScreen() {
                 </View>
               )}
             </Pressable>
-            )}
-          </View>
+          ) : undefined
+        }
+      />
 
-          <Card style={styles.cta} onPress={() => goRequest()}>
-            <View style={styles.ctaText}>
-              <ThemedText type="subtitle" style={styles.ctaTitle}>
-                Request a Quote
-              </ThemedText>
-              <ThemedText type="small" style={styles.ctaSub}>
-                Tell us what you need — we’ll handle the rest
-              </ThemedText>
-            </View>
-            <ThemedText type="subtitle" style={styles.ctaArrow}>
-              →
-            </ThemedText>
-          </Card>
-
-          <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-              CATEGORIES
-            </ThemedText>
-            <View style={styles.grid}>
-              {CATEGORIES.map((c) => (
-                <Card
-                  key={c}
-                  style={styles.categoryCard}
-                  onPress={() => goRequest(c)}>
-                  <ThemedText style={styles.categoryEmoji}>
-                    {CATEGORY_META[c].emoji}
-                  </ThemedText>
-                  <ThemedText type="small">{CATEGORY_META[c].label}</ThemedText>
-                </Card>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-              RECENT REQUESTS
-            </ThemedText>
-            {recent.length === 0 && (
-              <ThemedText type="small" themeColor="textSecondary">
-                {token
-                  ? 'Your requests will appear here.'
-                  : 'Log in to create and track your requests.'}
-              </ThemedText>
-            )}
-            {recent.map((r) => (
-              <Card
-                key={r.id}
-                style={styles.recentRow}
-                onPress={() => router.push(`/request/${r.id}`)}>
-                <View style={styles.recentText}>
-                  <ThemedText type="default">
-                    #{r.id} · {CATEGORY_META[r.category].label}
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {formatDate(r.createdAt)}
-                  </ThemedText>
-                </View>
-                <Badge tone={STATUS_TONE[r.status] ?? 'completed'} />
-              </Card>
-            ))}
-          </View>
+      <Card style={styles.cta} onPress={() => goRequest()}>
+        <View style={styles.ctaText}>
+          <ThemedText type="heading">Request a Quote</ThemedText>
+          <ThemedText type="small" style={styles.ctaSub}>
+            Tell us what you need — we’ll handle the rest
+          </ThemedText>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+        <ThemedText type="heading" style={styles.ctaArrow}>
+          →
+        </ThemedText>
+      </Card>
+
+      <View style={styles.section}>
+        <ThemedText type="caption" themeColor="textSecondary">
+          CATEGORIES
+        </ThemedText>
+        <View style={styles.grid}>
+          {CATEGORIES.map((c) => (
+            <Card key={c} style={styles.categoryCard} onPress={() => goRequest(c)}>
+              <ThemedText style={styles.categoryEmoji}>
+                {CATEGORY_META[c].emoji}
+              </ThemedText>
+              <ThemedText type="smallStrong">{CATEGORY_META[c].label}</ThemedText>
+            </Card>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="caption" themeColor="textSecondary">
+          RECENT REQUESTS
+        </ThemedText>
+        {recent.length === 0 && (
+          <ThemedText type="small" themeColor="textSecondary">
+            {token
+              ? 'Your requests will appear here.'
+              : 'Log in to create and track your requests.'}
+          </ThemedText>
+        )}
+        {recent.map((r) => (
+          <RequestRow
+            key={r.id}
+            request={r}
+            onPress={() => router.push(`/request/${r.id}`)}
+          />
+        ))}
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Brand.bg,
-  },
-  scroll: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingBottom: BottomTabInset + Spacing.four,
-  },
-  content: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.five,
-    gap: Spacing.five,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-  },
-  header: {
-    gap: Spacing.one,
-    flex: 1,
-  },
   bell: {
     position: 'relative',
-    padding: Spacing.one,
+    padding: Spacing.xxs,
   },
   bellIcon: {
     fontSize: 22,
@@ -190,11 +144,11 @@ const styles = StyleSheet.create({
     right: -4,
     minWidth: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: Radius.full,
     backgroundColor: Brand.danger,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: Spacing.xxs,
   },
   bellBadgeText: {
     fontSize: 11,
@@ -207,15 +161,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.md,
+    padding: Spacing.xl,
   },
   ctaText: {
     flex: 1,
-    gap: Spacing.one,
-  },
-  ctaTitle: {
-    fontSize: 24,
-    lineHeight: 32,
+    gap: Spacing.xxs,
   },
   ctaSub: {
     color: 'rgba(244, 245, 251, 0.8)',
@@ -224,35 +175,23 @@ const styles = StyleSheet.create({
     color: Brand.text,
   },
   section: {
-    gap: Spacing.three,
-  },
-  sectionTitle: {
-    letterSpacing: 1,
-    fontSize: 12,
+    gap: Spacing.sm,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.three,
+    gap: Spacing.sm,
   },
   categoryCard: {
     flexBasis: '30%',
     flexGrow: 1,
     alignItems: 'center',
-    gap: Spacing.one,
-    paddingVertical: Spacing.three,
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
   },
   categoryEmoji: {
     fontSize: 24,
     lineHeight: 32,
-  },
-  recentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-  },
-  recentText: {
-    gap: 2,
   },
 });

@@ -1,13 +1,15 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Brand, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { EmptyState } from '@/components/ui/empty-state';
+import { listStyles, Screen } from '@/components/ui/screen';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import {
   CATEGORY_META,
@@ -49,52 +51,50 @@ export default function PaymentScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen scroll={false}>
       <FlatList
         data={items ?? []}
         keyExtractor={(item) => String(item.id)}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
+        style={listStyles.list}
+        contentContainerStyle={listStyles.content}
         refreshing={refreshing}
         onRefresh={() => void onRefresh()}
         ListHeaderComponent={
           <View style={styles.header}>
-            <ThemedText type="subtitle">Payments</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              Review quotes and complete payments
-            </ThemedText>
+            <ScreenHeader
+              title="Payments"
+              subtitle="Review quotes and complete payments"
+            />
           </View>
         }
         ListEmptyComponent={
           !token ? (
-            <View style={styles.empty}>
-              <ThemedText type="default" themeColor="textSecondary">
-                Log in to review quotes and payments.
-              </ThemedText>
-              <Button label="Log in" onPress={() => router.push('/login')} />
-            </View>
+            <EmptyState
+              emoji="🔐"
+              message="Log in to review quotes and payments."
+              action={{ label: 'Log in', onPress: () => router.push('/login') }}
+            />
           ) : items === null ? (
-            <ActivityIndicator color={Brand.purple} style={styles.empty} />
+            <ActivityIndicator color={Brand.purple} style={styles.loading} />
           ) : (
-            <View style={styles.empty}>
-              <ThemedText type="default" themeColor="textSecondary">
-                Nothing to pay yet — quotes will appear here.
-              </ThemedText>
-            </View>
+            <EmptyState
+              emoji="💳"
+              message="Nothing to pay yet — quotes will appear here."
+            />
           )
         }
         renderItem={({ item }) => (
           <Card style={styles.row} onPress={() => router.push(`/request/${item.id}`)}>
             <View style={styles.rowTop}>
               <View style={styles.rowText}>
-                <ThemedText type="default">
-                  #{item.id} · {CATEGORY_META[item.category].label}
+                <ThemedText type="bodyStrong">
+                  {CATEGORY_META[item.category].label}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {formatDate(item.quote!.createdAt)}
+                  #{item.id} · {formatDate(item.quote!.createdAt)}
                 </ThemedText>
               </View>
-              <ThemedText type="subtitle" style={styles.amount}>
+              <ThemedText type="heading" style={styles.amount}>
                 {formatAmount(item.quote!.amount, item.quote!.currency)}
               </ThemedText>
             </View>
@@ -108,57 +108,37 @@ export default function PaymentScreen() {
           </Card>
         )}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Brand.bg,
-    alignItems: 'center',
-  },
-  list: {
-    width: '100%',
-  },
-  listContent: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    padding: Spacing.four,
-    paddingTop: Spacing.five,
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.four,
-  },
   header: {
-    gap: Spacing.one,
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.md,
   },
-  empty: {
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.six,
+  loading: {
+    paddingVertical: Spacing.xxxl,
   },
   row: {
-    gap: Spacing.three,
+    gap: Spacing.md,
   },
   rowTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: Spacing.three,
+    gap: Spacing.md,
   },
   rowText: {
+    flex: 1,
     gap: 2,
   },
   amount: {
-    fontSize: 22,
-    lineHeight: 30,
+    fontVariant: ['tabular-nums'],
   },
   rowBottom: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.three,
+    gap: Spacing.md,
   },
 });

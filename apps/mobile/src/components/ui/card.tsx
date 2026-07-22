@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Brand.border,
     borderRadius: Radius.lg,
-    padding: Spacing.four,
+    padding: Spacing.lg,
   },
   pressed: {
     backgroundColor: Brand.surfaceAlt,

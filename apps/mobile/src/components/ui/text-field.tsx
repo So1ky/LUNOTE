@@ -14,7 +14,7 @@ export function TextField({ label, style, onFocus, onBlur, ...rest }: TextFieldP
   return (
     <View style={styles.wrapper}>
       {label ? (
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="smallStrong" themeColor="textSecondary">
           {label}
         </ThemedText>
       ) : null}
@@ -37,14 +37,14 @@ export function TextField({ label, style, onFocus, onBlur, ...rest }: TextFieldP
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: Spacing.one + 2,
+    gap: Spacing.xs,
   },
   input: {
     backgroundColor: Brand.surface,
     borderWidth: 1,
     borderColor: Brand.border,
     borderRadius: Radius.md,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.md,
     minHeight: 48,
     fontSize: 16,
     color: Brand.text,

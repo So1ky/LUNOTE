@@ -1,21 +1,21 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   Linking,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Brand, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Screen } from '@/components/ui/screen';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { Brand, Radius, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -28,7 +28,6 @@ import {
 } from '@/lib/quote-requests';
 
 export default function RequestDetailScreen() {
-  const router = useRouter();
   const { token } = useAuth();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
@@ -67,178 +66,149 @@ export default function RequestDetailScreen() {
     request?.status === 'REVIEWING' || request?.status === 'QUOTED';
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Pressable onPress={() => router.back()} hitSlop={12}>
-              <ThemedText type="subtitle">‹</ThemedText>
-            </Pressable>
-            <ThemedText type="subtitle">Request #{params.id}</ThemedText>
-          </View>
+    <Screen>
+      <ScreenHeader back title={`Request #${params.id}`} />
 
-          {!request && !error && <ActivityIndicator color={Brand.purple} />}
+      {!request && !error && <ActivityIndicator color={Brand.purple} />}
 
-          {error && (
-            <ThemedText type="small" style={styles.error}>
-              {error}
+      {error && (
+        <ThemedText type="small" style={styles.error}>
+          {error}
+        </ThemedText>
+      )}
+
+      {request && (
+        <View style={styles.body}>
+          <Card style={styles.summary}>
+            <View style={styles.summaryTop}>
+              <ThemedText type="bodyStrong">
+                {CATEGORY_META[request.category].emoji}{' '}
+                {CATEGORY_META[request.category].label}
+              </ThemedText>
+              <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />
+            </View>
+            <ThemedText type="small" themeColor="textSecondary">
+              Requested {formatDate(request.createdAt)}
+              {request.desiredAmount
+                ? ` · Budget ${formatAmount(request.desiredAmount, request.currency)}`
+                : ''}
             </ThemedText>
+            <ThemedText type="body" style={styles.description}>
+              {request.description}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Contact: {request.contactMethod}
+            </ThemedText>
+
+            {request.attachments && request.attachments.length > 0 && (
+              <View style={styles.attachments}>
+                {request.attachments.map((a) =>
+                  a.mimeType.startsWith('image/') ? (
+                    <Pressable
+                      key={a.id}
+                      onPress={() => void Linking.openURL(a.downloadUrl)}>
+                      <Image
+                        source={{ uri: a.downloadUrl }}
+                        style={styles.attachImage}
+                      />
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      key={a.id}
+                      style={styles.attachFile}
+                      onPress={() => void Linking.openURL(a.downloadUrl)}>
+                      <ThemedText type="small">📄 {a.fileName}</ThemedText>
+                    </Pressable>
+                  ),
+                )}
+              </View>
+            )}
+          </Card>
+
+          {request.quote ? (
+            <Card style={styles.quoteCard}>
+              <ThemedText type="caption" themeColor="textSecondary">
+                YOUR QUOTE
+              </ThemedText>
+              <ThemedText type="display" style={styles.amount}>
+                {formatAmount(request.quote.amount, request.quote.currency)}
+              </ThemedText>
+              <ThemedText type="body" themeColor="textSecondary">
+                {request.quote.explanation}
+              </ThemedText>
+              {request.status === 'QUOTED' && (
+                // TODO: PortOne 결제 연동 (A1 마지막 단계)
+                <Button label="Proceed to payment" size="lg" disabled />
+              )}
+            </Card>
+          ) : (
+            request.status === 'REVIEWING' && (
+              <Card>
+                <ThemedText type="small" themeColor="textSecondary">
+                  We are reviewing your request. A quote will arrive within 24
+                  hours.
+                </ThemedText>
+              </Card>
+            )
           )}
 
-          {request && (
-            <>
-              <Card style={styles.summary}>
-                <View style={styles.summaryTop}>
-                  <ThemedText type="default">
-                    {CATEGORY_META[request.category].emoji}{' '}
-                    {CATEGORY_META[request.category].label}
-                  </ThemedText>
-                  <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />
-                </View>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Requested {formatDate(request.createdAt)}
-                  {request.desiredAmount
-                    ? ` · Budget ${formatAmount(request.desiredAmount, request.currency)}`
-                    : ''}
-                </ThemedText>
-                <ThemedText type="default" style={styles.description}>
-                  {request.description}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Contact: {request.contactMethod}
-                </ThemedText>
-
-                {request.attachments && request.attachments.length > 0 && (
-                  <View style={styles.attachments}>
-                    {request.attachments.map((a) =>
-                      a.mimeType.startsWith('image/') ? (
-                        <Pressable
-                          key={a.id}
-                          onPress={() => void Linking.openURL(a.downloadUrl)}>
-                          <Image
-                            source={{ uri: a.downloadUrl }}
-                            style={styles.attachImage}
-                          />
-                        </Pressable>
-                      ) : (
-                        <Pressable
-                          key={a.id}
-                          style={styles.attachFile}
-                          onPress={() => void Linking.openURL(a.downloadUrl)}>
-                          <ThemedText type="small">📄 {a.fileName}</ThemedText>
-                        </Pressable>
-                      ),
-                    )}
-                  </View>
-                )}
-              </Card>
-
-              {request.quote ? (
-                <Card style={styles.quoteCard}>
-                  <ThemedText type="smallBold" themeColor="textSecondary">
-                    YOUR QUOTE
-                  </ThemedText>
-                  <ThemedText type="title" style={styles.amount}>
-                    {formatAmount(request.quote.amount, request.quote.currency)}
-                  </ThemedText>
-                  <ThemedText type="default" themeColor="textSecondary">
-                    {request.quote.explanation}
-                  </ThemedText>
-                  {request.status === 'QUOTED' && (
-                    // TODO: PortOne 결제 연동 (A1 마지막 단계)
-                    <Button label="Proceed to payment" size="lg" disabled />
-                  )}
-                </Card>
-              ) : (
-                request.status === 'REVIEWING' && (
-                  <Card>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      We are reviewing your request. A quote will arrive within
-                      24 hours.
-                    </ThemedText>
-                  </Card>
-                )
-              )}
-
-              {cancellable && (
-                <Button
-                  label="Cancel request"
-                  variant="danger"
-                  loading={cancelling}
-                  onPress={() => void onCancel()}
-                />
-              )}
-            </>
+          {cancellable && (
+            <Button
+              label="Cancel request"
+              variant="danger"
+              loading={cancelling}
+              onPress={() => void onCancel()}
+            />
           )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Brand.bg,
-  },
-  scroll: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.four,
-  },
-  content: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
+  body: {
+    gap: Spacing.md,
   },
   error: {
     color: Brand.danger,
   },
   summary: {
-    gap: Spacing.two,
+    gap: Spacing.xs,
   },
   summaryTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.three,
+    gap: Spacing.md,
   },
   description: {
-    marginTop: Spacing.one,
+    marginTop: Spacing.xxs,
   },
   quoteCard: {
-    gap: Spacing.two,
+    gap: Spacing.xs,
     borderColor: Brand.purple,
   },
   attachments: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
-    marginTop: Spacing.one,
+    gap: Spacing.xs,
+    marginTop: Spacing.xxs,
   },
   attachImage: {
     width: 84,
     height: 84,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     backgroundColor: Brand.surfaceAlt,
   },
   attachFile: {
     backgroundColor: Brand.surfaceAlt,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
     justifyContent: 'center',
   },
   amount: {
-    fontSize: 40,
-    lineHeight: 48,
+    fontVariant: ['tabular-nums'],
   },
 });

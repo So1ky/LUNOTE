@@ -1,19 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
-import { Brand, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
@@ -44,109 +37,74 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.content}>
-            <View style={styles.hero}>
-              <ThemedText type="subtitle">Create account</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                Start your life in Korea with LUNOTE
-              </ThemedText>
-            </View>
+    <Screen keyboard center narrow>
+      <View style={styles.hero}>
+        <ThemedText type="title">Create account</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Start your life in Korea with LUNOTE
+        </ThemedText>
+      </View>
 
-            <View style={styles.form}>
-              <TextField
-                label="Name (optional)"
-                placeholder="Your name"
-                value={name}
-                onChangeText={setName}
-              />
-              <TextField
-                label="Email"
-                placeholder="you@example.com"
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-              <TextField
-                label="Password"
-                placeholder="At least 8 characters"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
+      <View style={styles.form}>
+        <TextField
+          label="Name (optional)"
+          placeholder="Your name"
+          value={name}
+          onChangeText={setName}
+        />
+        <TextField
+          label="Email"
+          placeholder="you@example.com"
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextField
+          label="Password"
+          placeholder="At least 8 characters"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-              {error && (
-                <ThemedText type="small" style={styles.error}>
-                  {error}
-                </ThemedText>
-              )}
+        {error && (
+          <ThemedText type="small" style={styles.error}>
+            {error}
+          </ThemedText>
+        )}
 
-              <Button
-                label="Create account"
-                size="lg"
-                loading={submitting}
-                disabled={!email.trim() || !password}
-                onPress={() => void onSignup()}
-              />
-            </View>
+        <Button
+          label="Create account"
+          size="lg"
+          loading={submitting}
+          disabled={!email.trim() || !password}
+          onPress={() => void onSignup()}
+        />
+      </View>
 
-            <Pressable style={styles.footer} onPress={() => router.back()}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Already have an account?{' '}
-                <ThemedText type="smallBold" style={{ color: Brand.purple }}>
-                  Log in
-                </ThemedText>
-              </ThemedText>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <Pressable style={styles.footer} onPress={() => router.back()}>
+        <ThemedText type="small" themeColor="textSecondary">
+          Already have an account? <ThemedText type="link">Log in</ThemedText>
+        </ThemedText>
+      </Pressable>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Brand.bg,
-  },
-  flex: {
-    flex: 1,
-  },
-  scroll: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.six,
-  },
-  content: {
-    width: '100%',
-    maxWidth: MaxContentWidth / 2,
-    paddingHorizontal: Spacing.five,
-    gap: Spacing.four,
-  },
   hero: {
     alignItems: 'center',
-    gap: Spacing.one,
-    marginBottom: Spacing.two,
+    gap: Spacing.xxs,
   },
   form: {
-    gap: Spacing.three,
+    gap: Spacing.md,
   },
   error: {
     color: Brand.danger,
   },
   footer: {
     alignItems: 'center',
-    marginTop: Spacing.two,
   },
 });

@@ -1,17 +1,32 @@
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-import { Brand } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+import { Brand, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+
+/** 토큰 복원이 순식간에 끝나도 브랜드 스플래시가 인지될 최소 노출 시간 */
+const MIN_SPLASH_MS = 900;
 
 export default function Index() {
   const { loading, token, profile } = useAuth();
+  const [minElapsed, setMinElapsed] = useState(false);
 
-  // SecureStore에서 토큰을 복원하는 동안 스플래시 역할
-  if (loading) {
+  useEffect(() => {
+    const timer = setTimeout(() => setMinElapsed(true), MIN_SPLASH_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 스플래시 — 와이어프레임 첫 프레임(네이비 + LUNOTE 워드마크).
+  // SecureStore 토큰 복원(loading)과 최소 노출 시간이 모두 끝나야 넘어간다.
+  if (loading || !minElapsed) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator color={Brand.purple} />
+        <ThemedText type="display">LUNOTE</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Life in Korea, made easy
+        </ThemedText>
       </View>
     );
   }
@@ -29,5 +44,6 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.bg,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.xs,
   },
 });
