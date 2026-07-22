@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -26,6 +27,19 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // API 문서는 개발 환경에서만 노출한다 (프로덕션에서 엔드포인트 구조를 공개하지 않기 위해)
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('LUNOTE API')
+      .setDescription('한국 거주 외국인 대상 컨시어지 플랫폼 API')
+      .setVersion('1.0')
+      .addBearerAuth() // 우측 상단 Authorize 버튼에 JWT를 넣으면 이후 요청에 자동 첨부된다
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+  }
+
   await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();
