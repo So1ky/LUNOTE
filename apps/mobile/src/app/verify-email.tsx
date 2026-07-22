@@ -18,7 +18,7 @@ import { useAuth } from '@/lib/auth-context';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
-  const { token, profile, refreshProfile } = useAuth();
+  const { token, profile, refreshProfile, signOut } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -111,10 +111,13 @@ export default function VerifyEmailScreen() {
               onPress={() => void onResend()}
             />
 
+            {/* 인증 완료 전에는 앱 진입 불가 (강제 잠금) — 탈출구는 로그아웃뿐 */}
             <Button
-              label="I'll do this later"
+              label="Log out"
               variant="ghost"
-              onPress={() => router.replace('/home')}
+              onPress={() => {
+                void signOut().then(() => router.replace('/login'));
+              }}
             />
           </View>
         </ScrollView>
