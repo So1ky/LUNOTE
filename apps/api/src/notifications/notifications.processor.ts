@@ -12,9 +12,9 @@ import {
 } from './notifications.service';
 
 /**
- * 알림 워커 — 잡 하나당 두 채널을 처리한다:
- * 1) 인앱 알림함(notifications 테이블) 생성 — 앱에서 GET /notifications로 조회
- * 2) 이메일 발송 (로컬: Mailpit, 프로덕션: SES)
+ * 알림 워커.
+ * - 관리자(신규 문의): 인앱 알림함 + 이메일 (앱을 안 보고 있어도 접수를 놓치지 않도록)
+ * - 사용자(견적 도착): 인앱 알림함만 — 앱 벨 배지로 노출
  */
 @Processor(NOTIFICATIONS_QUEUE)
 export class NotificationsProcessor extends WorkerHost {
@@ -69,11 +69,14 @@ export class NotificationsProcessor extends WorkerHost {
     }
   }
 
-  /** 견적 발송 → 문의 소유자에게 인앱 + 이메일 */
+  /**
+   * 견적 발송 → 문의 소유자에게 인앱 알림만 (사용자 결정: 이메일 미발송).
+   * 앱 벨 배지로 노출되고, OS 푸시는 Apple Developer 가입 후 이 위에 추가한다.
+   */
   private async onQuoteSent(data: QuoteSentJob) {
     const owner = await this.prisma.user.findUnique({
       where: { id: data.ownerId },
-      select: { id: true, email: true },
+      select: { id: true },
     });
     if (!owner) return;
 
@@ -88,11 +91,5 @@ export class NotificationsProcessor extends WorkerHost {
         requestId: data.requestId,
       },
     });
-
-    await this.mail.send(
-      owner.email,
-      `[LUNOTE] Your quote for request #${data.requestId} is ready`,
-      `Good news — your quote is ready!\n\nRequest: #${data.requestId}\nQuote: ${amountText}\n\nOpen the LUNOTE app to review the details and proceed to payment.`,
-    );
   }
 }
