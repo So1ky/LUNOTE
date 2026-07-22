@@ -119,7 +119,7 @@ describe('Notifications (e2e)', () => {
     expect(mail).not.toBeNull();
   });
 
-  it('견적 발송 → 사용자 인앱 알림 + 이메일 수신', async () => {
+  it('견적 발송 → 사용자에게는 인앱 알림만 (이메일 미발송)', async () => {
     await request(app.getHttpServer())
       .post(`/admin/quote-requests/${requestId}/quote`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -141,14 +141,19 @@ describe('Notifications (e2e)', () => {
     });
     expect(inApp).not.toBeNull();
 
-    const mail = await waitFor(async () => {
-      const res = await fetch(
-        `${MAILPIT_API}/search?query=${encodeURIComponent(userEmail)}`,
-      );
-      const data = (await res.json()) as { messages: { Subject: string }[] };
-      return data.messages.find((m) => m.Subject.includes('quote')) ?? null;
-    });
-    expect(mail).not.toBeNull();
+    // 이 사용자를 "수신자"로 하는 메일이 없어야 한다.
+    // (Mailpit 검색은 본문도 매칭한다 — 관리자 메일 본문에 사용자 이메일이 들어가므로
+    //  검색 결과 개수가 아니라 To 주소로 판별해야 한다)
+    const res = await fetch(
+      `${MAILPIT_API}/search?query=${encodeURIComponent(userEmail)}`,
+    );
+    const data = (await res.json()) as {
+      messages: { To: { Address: string }[] | null }[];
+    };
+    const sentToUser = data.messages.filter((m) =>
+      (m.To ?? []).some((t) => t.Address === userEmail),
+    );
+    expect(sentToUser).toHaveLength(0);
   });
 
   it('읽음 처리 → unreadCount 감소, 타인 알림은 404', async () => {
