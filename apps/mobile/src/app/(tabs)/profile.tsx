@@ -51,12 +51,7 @@ export default function ProfileScreen() {
       value: languageLabel(profile?.language ?? null),
       href: '/language',
     },
-    {
-      key: 'notifications',
-      label: 'Notifications',
-      value: profile?.quoteEmailEnabled ? 'On' : 'Off',
-      href: '/notification-settings',
-    },
+    { key: 'notifications', label: 'Notifications', href: '/notification-settings' },
     { key: 'support', label: 'Support', href: '/support' },
   ];
 

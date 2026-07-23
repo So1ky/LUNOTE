@@ -37,17 +37,15 @@ describe('Profile settings (e2e)', () => {
     await app.close();
   });
 
-  it('/auth/me가 프로필 필드(언어/알림 설정/아바타)를 포함한다', async () => {
+  it('/auth/me가 프로필 필드(언어/아바타)를 포함한다', async () => {
     const res = await request(app.getHttpServer())
       .get('/auth/me')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
     const body = res.body as {
-      quoteEmailEnabled: boolean;
       language: string | null;
       avatarUrl: string | null;
     };
-    expect(body.quoteEmailEnabled).toBe(true); // 기본값
     expect(body.language).toBeNull();
     expect(body.avatarUrl).toBeNull();
   });
@@ -56,18 +54,16 @@ describe('Profile settings (e2e)', () => {
     const res = await request(app.getHttpServer())
       .patch('/users/me')
       .set('Authorization', `Bearer ${token}`)
-      .send({ firstName: 'After', lastName: 'Name', language: 'ja', quoteEmailEnabled: false })
+      .send({ firstName: 'After', lastName: 'Name', language: 'ja' })
       .expect(200);
     const body = res.body as {
       firstName: string;
       lastName: string;
       language: string;
-      quoteEmailEnabled: boolean;
     };
     expect(body.firstName).toBe('After');
     expect(body.lastName).toBe('Name');
     expect(body.language).toBe('ja');
-    expect(body.quoteEmailEnabled).toBe(false);
   });
 
   it('지원하지 않는 언어는 400', () => {

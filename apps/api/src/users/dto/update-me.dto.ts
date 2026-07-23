@@ -1,6 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsBoolean,
   IsIn,
   IsOptional,
   IsString,
@@ -39,9 +38,4 @@ export class UpdateMeDto {
   // 경로 형식만 1차 검증 — 소유권(내 프리픽스인지)은 서비스에서 확인
   @Matches(/^uploads\//)
   avatarS3Key?: string;
-
-  @ApiPropertyOptional({ description: '견적 도착 이메일 수신 여부' })
-  @IsOptional()
-  @IsBoolean()
-  quoteEmailEnabled?: boolean;
 }

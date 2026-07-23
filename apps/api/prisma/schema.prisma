@@ -63,8 +63,6 @@ model User {
 
   // 프로필 사진 — 파일은 S3, DB에는 키만 (attachments와 동일 패턴)
   avatarS3Key String?
-  // 견적 도착 시 이메일 수신 여부 (인앱 알림은 설정과 무관하게 항상 생성)
-  quoteEmailEnabled Boolean @default(true)
 
   // 이메일 인증 — 코드는 sha256 해시로만 저장 (원문 미저장)
   emailVerifiedAt           DateTime?

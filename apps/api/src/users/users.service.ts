@@ -13,7 +13,6 @@ const PROFILE_SELECT = {
   emailVerifiedAt: true,
   language: true,
   avatarS3Key: true,
-  quoteEmailEnabled: true,
 } as const;
 
 @Injectable()
@@ -44,7 +43,6 @@ export class UsersService {
         lastName: dto.lastName?.trim() || undefined,
         language: dto.language,
         avatarS3Key: dto.avatarS3Key,
-        quoteEmailEnabled: dto.quoteEmailEnabled,
       },
       select: PROFILE_SELECT,
     });

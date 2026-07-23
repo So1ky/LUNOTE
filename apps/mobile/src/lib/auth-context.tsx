@@ -18,7 +18,6 @@ export type Profile = {
   role: 'CUSTOMER' | 'ADMIN';
   emailVerifiedAt: string | null;
   language: string | null;
-  quoteEmailEnabled: boolean;
   avatarUrl: string | null;
 };
 
@@ -52,7 +51,6 @@ export type UpdateProfilePatch = {
   lastName?: string;
   language?: string;
   avatarS3Key?: string;
-  quoteEmailEnabled?: boolean;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
