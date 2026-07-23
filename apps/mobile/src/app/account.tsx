@@ -10,11 +10,13 @@ import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
 export default function AccountScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { profile, updateProfile } = useAuth();
 
   const [firstName, setFirstName] = useState(profile?.firstName ?? '');
@@ -37,9 +39,9 @@ export default function AccountScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
       });
-      setNameMessage('Saved.');
+      setNameMessage(t('account.saved'));
     } catch (e) {
-      setNameError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setNameError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setNameSaving(false);
       setConfirmingName(false);
@@ -48,18 +50,22 @@ export default function AccountScreen() {
 
   return (
     <Screen keyboard>
-      <ScreenHeader back title="Account details" />
+      <ScreenHeader back title={t('account.title')} />
 
       <View style={styles.section}>
         <ThemedText type="caption" themeColor="textSecondary">
-          PROFILE
+          {t('account.profileSection')}
         </ThemedText>
-        <TextField label="Email" value={profile?.email ?? ''} editable={false} />
+        <TextField
+          label={t('account.email')}
+          value={profile?.email ?? ''}
+          editable={false}
+        />
         {/* 실명 — 견적·결제 시 관리자가 고객을 식별하는 기준 */}
         <View style={styles.nameRow}>
           <View style={styles.nameField}>
             <TextField
-              label="First name"
+              label={t('account.firstName')}
               placeholder="Mina"
               autoComplete="given-name"
               value={firstName}
@@ -68,7 +74,7 @@ export default function AccountScreen() {
           </View>
           <View style={styles.nameField}>
             <TextField
-              label="Last name"
+              label={t('account.lastName')}
               placeholder="Kim"
               autoComplete="family-name"
               value={lastName}
@@ -77,8 +83,7 @@ export default function AccountScreen() {
           </View>
         </View>
         <ThemedText type="small" themeColor="textSecondary">
-          Use your real name — it’s how our team identifies you for quotes and
-          payments.
+          {t('account.realNameNote')}
         </ThemedText>
         {nameError && (
           <ThemedText type="small" style={styles.error}>
@@ -91,7 +96,7 @@ export default function AccountScreen() {
           </ThemedText>
         )}
         <Button
-          label="Save name"
+          label={t('account.saveName')}
           loading={nameSaving}
           disabled={!firstName.trim() || !lastName.trim() || !nameChanged}
           onPress={() => setConfirmingName(true)}
@@ -100,14 +105,14 @@ export default function AccountScreen() {
 
       <View style={styles.section}>
         <ThemedText type="caption" themeColor="textSecondary">
-          SECURITY
+          {t('account.securitySection')}
         </ThemedText>
         <Card style={styles.linkCard}>
           <Pressable
             accessibilityRole="button"
             style={({ pressed }) => [styles.linkRow, pressed && styles.linkPressed]}
             onPress={() => router.push('/change-password')}>
-            <ThemedText type="body">Change password</ThemedText>
+            <ThemedText type="body">{t('account.changePassword')}</ThemedText>
             <ThemedText type="body" themeColor="textSecondary">
               ›
             </ThemedText>
@@ -117,10 +122,12 @@ export default function AccountScreen() {
 
       <ConfirmDialog
         visible={confirmingName}
-        title="Update your name?"
-        message={`Your name will change to "${firstName.trim()} ${lastName.trim()}". Our team uses it to identify you.`}
-        confirmLabel="Save"
-        dismissLabel="Go back"
+        title={t('account.confirmTitle')}
+        message={t('account.confirmMessage', {
+          name: `${firstName.trim()} ${lastName.trim()}`,
+        })}
+        confirmLabel={t('account.save')}
+        dismissLabel={t('account.goBack')}
         loading={nameSaving}
         onConfirm={() => void onSaveName()}
         onDismiss={() => setConfirmingName(false)}

@@ -10,9 +10,9 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { listStyles, Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 import {
-  CATEGORY_META,
   formatAmount,
   formatDate,
   listQuoteRequests,
@@ -24,6 +24,7 @@ const PAYMENT_STATUSES = new Set(['QUOTED', 'PAID', 'IN_PROGRESS', 'COMPLETED', 
 
 export default function PaymentScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { token } = useAuth();
   const [items, setItems] = useState<QuoteRequest[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,8 +63,8 @@ export default function PaymentScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             <ScreenHeader
-              title="Payments"
-              subtitle="Review quotes and complete payments"
+              title={t('payment.title')}
+              subtitle={t('payment.subtitle')}
             />
           </View>
         }
@@ -71,15 +72,15 @@ export default function PaymentScreen() {
           !token ? (
             <EmptyState
               emoji="🔐"
-              message="Log in to review quotes and payments."
-              action={{ label: 'Log in', onPress: () => router.push('/login') }}
+              message={t('payment.emptyGuest')}
+              action={{ label: t('payment.login'), onPress: () => router.push('/login') }}
             />
           ) : items === null ? (
             <ActivityIndicator color={Brand.purple} style={styles.loading} />
           ) : (
             <EmptyState
               emoji="💳"
-              message="Nothing to pay yet — quotes will appear here."
+              message={t('payment.emptyNone')}
             />
           )
         }
@@ -88,7 +89,7 @@ export default function PaymentScreen() {
             <View style={styles.rowTop}>
               <View style={styles.rowText}>
                 <ThemedText type="bodyStrong">
-                  {CATEGORY_META[item.category].label}
+                  {t(`categories.${item.category}`)}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   #{item.id} · {formatDate(item.quote!.createdAt)}
@@ -102,7 +103,7 @@ export default function PaymentScreen() {
               <Badge tone={STATUS_TONE[item.status] ?? 'completed'} />
               {item.status === 'QUOTED' && (
                 // TODO: PortOne 결제 연동 — 현재는 상세 화면으로 이동
-                <Button label="Pay now" onPress={() => router.push(`/request/${item.id}`)} />
+                <Button label={t('payment.payNow')} onPress={() => router.push(`/request/${item.id}`)} />
               )}
             </View>
           </Card>

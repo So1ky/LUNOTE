@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,7 +27,7 @@ export default function LoginScreen() {
       await signIn(email.trim(), password);
       router.replace('/home');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setSubmitting(false);
     }
@@ -36,13 +38,13 @@ export default function LoginScreen() {
       <View style={styles.hero}>
         <ThemedText type="display">LUNOTE</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Life in Korea, made easy
+          {t('brand.tagline')}
         </ThemedText>
       </View>
 
       <View style={styles.form}>
         <TextField
-          label="Email"
+          label={t('login.emailLabel')}
           placeholder="you@example.com"
           autoCapitalize="none"
           autoComplete="email"
@@ -51,7 +53,7 @@ export default function LoginScreen() {
           onChangeText={setEmail}
         />
         <TextField
-          label="Password"
+          label={t('login.passwordLabel')}
           placeholder="••••••••"
           secureTextEntry
           value={password}
@@ -69,12 +71,12 @@ export default function LoginScreen() {
           hitSlop={8}
           onPress={() => router.push('/forgot-password')}>
           <ThemedText type="small" themeColor="textSecondary">
-            Forgot password?
+            {t('login.forgotPassword')}
           </ThemedText>
         </Pressable>
 
         <Button
-          label="Log in"
+          label={t('login.submit')}
           size="lg"
           loading={submitting}
           disabled={!email.trim() || !password}
@@ -85,27 +87,27 @@ export default function LoginScreen() {
       <View style={styles.dividerRow}>
         <View style={styles.divider} />
         <ThemedText type="small" themeColor="textSecondary">
-          or continue with
+          {t('login.orContinueWith')}
         </ThemedText>
         <View style={styles.divider} />
       </View>
 
       <View style={styles.form}>
         {/* TODO: Google OAuth (B2 후반), Apple 로그인 (Apple Developer 가입 후) */}
-        <Button label="Continue with Google" variant="outline" disabled />
-        <Button label="Continue with Apple" variant="outline" disabled />
+        <Button label={t('login.continueGoogle')} variant="outline" disabled />
+        <Button label={t('login.continueApple')} variant="outline" disabled />
       </View>
 
       <View style={styles.footer}>
         <Pressable onPress={() => router.replace('/home')} hitSlop={8}>
           <ThemedText type="small" themeColor="textSecondary">
-            ← Continue browsing as guest
+            {t('login.continueGuest')}
           </ThemedText>
         </Pressable>
         <ThemedText type="small" themeColor="textSecondary">
-          New to LUNOTE?{' '}
+          {t('login.newToLunote')}
           <Link href="/signup">
-            <ThemedText type="link">Create account</ThemedText>
+            <ThemedText type="link">{t('login.createAccount')}</ThemedText>
           </Link>
         </ThemedText>
       </View>

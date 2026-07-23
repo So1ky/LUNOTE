@@ -7,13 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing, Type } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { api, ApiError } from '@/lib/api';
-import { isValidPassword, PASSWORD_POLICY_MESSAGE } from '@/lib/password';
+import { isValidPassword } from '@/lib/password';
 
 type Step = 'request' | 'reset' | 'done';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>('request');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -33,7 +35,7 @@ export default function ForgotPasswordScreen() {
       });
       setStep('reset');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setSubmitting(false);
     }
@@ -47,16 +49,16 @@ export default function ForgotPasswordScreen() {
         method: 'POST',
         body: { email: email.trim() },
       });
-      setInfo('If the email exists, a new code has been sent.');
+      setInfo(t('forgotPassword.codeResent'));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     }
   };
 
   const onReset = async () => {
     setError(null);
     if (!isValidPassword(newPassword)) {
-      setError(PASSWORD_POLICY_MESSAGE);
+      setError(t('password.policy'));
       return;
     }
     setSubmitting(true);
@@ -67,7 +69,7 @@ export default function ForgotPasswordScreen() {
       });
       setStep('done');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setSubmitting(false);
     }
@@ -78,12 +80,16 @@ export default function ForgotPasswordScreen() {
       <Screen center narrow>
         <View style={styles.hero}>
           <ThemedText style={styles.emoji}>✅</ThemedText>
-          <ThemedText type="title">Password updated</ThemedText>
+          <ThemedText type="title">{t('forgotPassword.doneTitle')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-            Log in with your new password.
+            {t('forgotPassword.doneSubtitle')}
           </ThemedText>
         </View>
-        <Button label="Back to log in" size="lg" onPress={() => router.replace('/login')} />
+        <Button
+          label={t('forgotPassword.doneButton')}
+          size="lg"
+          onPress={() => router.replace('/login')}
+        />
       </Screen>
     );
   }
@@ -92,18 +98,18 @@ export default function ForgotPasswordScreen() {
     <Screen keyboard center narrow>
       <View style={styles.hero}>
         <ThemedText style={styles.emoji}>🔑</ThemedText>
-        <ThemedText type="title">Reset password</ThemedText>
+        <ThemedText type="title">{t('forgotPassword.resetTitle')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
           {step === 'request'
-            ? 'Enter your account email and we’ll send a 6-digit code.'
-            : `Enter the code sent to\n${email.trim()}`}
+            ? t('forgotPassword.requestSubtitle')
+            : `${t('forgotPassword.resetSubtitle')}\n${email.trim()}`}
         </ThemedText>
       </View>
 
       {step === 'request' ? (
         <View style={styles.form}>
           <TextField
-            label="Email"
+            label={t('forgotPassword.email')}
             placeholder="you@example.com"
             autoCapitalize="none"
             autoComplete="email"
@@ -119,7 +125,7 @@ export default function ForgotPasswordScreen() {
           )}
 
           <Button
-            label="Send reset code"
+            label={t('forgotPassword.sendCode')}
             size="lg"
             loading={submitting}
             disabled={!email.trim()}
@@ -137,8 +143,8 @@ export default function ForgotPasswordScreen() {
             style={styles.codeInput}
           />
           <TextField
-            label="New password"
-            placeholder="At least 8 characters"
+            label={t('forgotPassword.newPassword')}
+            placeholder={t('forgotPassword.newPasswordPlaceholder')}
             secureTextEntry
             value={newPassword}
             onChangeText={setNewPassword}
@@ -156,19 +162,23 @@ export default function ForgotPasswordScreen() {
           )}
 
           <Button
-            label="Set new password"
+            label={t('forgotPassword.setNewPassword')}
             size="lg"
             loading={submitting}
             disabled={code.trim().length !== 6 || !newPassword}
             onPress={() => void onReset()}
           />
-          <Button label="Resend code" variant="ghost" onPress={() => void onResend()} />
+          <Button
+            label={t('forgotPassword.resendCode')}
+            variant="ghost"
+            onPress={() => void onResend()}
+          />
         </View>
       )}
 
       <Pressable style={styles.footer} onPress={() => router.back()} hitSlop={8}>
         <ThemedText type="small" themeColor="textSecondary">
-          ← Back to log in
+          {t('forgotPassword.backToLogin')}
         </ThemedText>
       </Pressable>
     </Screen>

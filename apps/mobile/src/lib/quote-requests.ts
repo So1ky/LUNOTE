@@ -76,14 +76,15 @@ export function cancelQuoteRequest(token: string, id: number) {
   });
 }
 
-export const CATEGORY_META: Record<Category, { emoji: string; label: string }> =
+/** 카테고리 라벨은 i18n(categories.<Category>)에서 온다 — 여기는 이모지만 */
+export const CATEGORY_META: Record<Category, { emoji: string }> =
   {
-    HOUSING: { emoji: '🏠', label: 'Housing' },
-    VISA: { emoji: '🛂', label: 'Visa' },
-    HOSPITAL: { emoji: '🏥', label: 'Hospital' },
-    BANK: { emoji: '🏦', label: 'Bank' },
-    TELECOM: { emoji: '📱', label: 'Telecom' },
-    OTHER: { emoji: '✨', label: 'Other' },
+    HOUSING: { emoji: '🏠' },
+    VISA: { emoji: '🛂' },
+    HOSPITAL: { emoji: '🏥' },
+    BANK: { emoji: '🏦' },
+    TELECOM: { emoji: '📱' },
+    OTHER: { emoji: '✨' },
   };
 
 export function formatDate(iso: string) {

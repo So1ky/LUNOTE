@@ -6,10 +6,12 @@ import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 import { LANGUAGES } from '@/lib/languages';
 
 export default function LanguageScreen() {
+  const { t } = useTranslation();
   const { profile, updateProfile } = useAuth();
   const [saving, setSaving] = useState<string | null>(null);
   const selected = profile?.language ?? 'en';
@@ -28,8 +30,8 @@ export default function LanguageScreen() {
     <Screen>
       <ScreenHeader
         back
-        title="Language"
-        subtitle="Choose your preferred language"
+        title={t('language.title')}
+        subtitle={t('language.subtitle')}
       />
 
       <Card style={styles.listCard}>
@@ -60,8 +62,7 @@ export default function LanguageScreen() {
       </Card>
 
       <ThemedText type="small" themeColor="textSecondary">
-        Full translations are on the way — your choice is saved and will apply
-        automatically once available.
+        {t('language.note')}
       </ThemedText>
     </Screen>
   );

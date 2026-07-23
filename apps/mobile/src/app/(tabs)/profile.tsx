@@ -10,12 +10,14 @@ import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { uploadAttachment } from '@/lib/attachments';
 import { displayName, useAuth } from '@/lib/auth-context';
 import { languageLabel } from '@/lib/languages';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { token, profile, signOut, updateProfile } = useAuth();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -25,13 +27,17 @@ export default function ProfileScreen() {
     return (
       <Screen center narrow tabInset>
         <View style={styles.guest}>
-          <ThemedText type="title">Welcome to LUNOTE</ThemedText>
+          <ThemedText type="title">{t('profile.welcomeTitle')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.guestText}>
-            Log in to manage your requests, quotes and payments.
+            {t('profile.welcomeSubtitle')}
           </ThemedText>
-          <Button label="Log in" size="lg" onPress={() => router.push('/login')} />
           <Button
-            label="Create account"
+            label={t('profile.login')}
+            size="lg"
+            onPress={() => router.push('/login')}
+          />
+          <Button
+            label={t('profile.createAccount')}
             variant="outline"
             onPress={() => router.push('/signup')}
           />
@@ -44,15 +50,19 @@ export default function ProfileScreen() {
   const initial = shownName.charAt(0).toUpperCase();
 
   const menu: { key: string; label: string; value?: string; href: Href }[] = [
-    { key: 'account', label: 'Account details', href: '/account' },
+    { key: 'account', label: t('profile.accountDetails'), href: '/account' },
     {
       key: 'language',
-      label: 'Language',
+      label: t('profile.language'),
       value: languageLabel(profile?.language ?? null),
       href: '/language',
     },
-    { key: 'notifications', label: 'Notifications', href: '/notification-settings' },
-    { key: 'support', label: 'Support', href: '/support' },
+    {
+      key: 'notifications',
+      label: t('profile.notifications'),
+      href: '/notification-settings',
+    },
+    { key: 'support', label: t('profile.support'), href: '/support' },
   ];
 
   const onChangeAvatar = async () => {
@@ -92,7 +102,7 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Change profile photo"
+          accessibilityLabel={t('profile.changePhoto')}
           onPress={() => void onChangeAvatar()}
           style={styles.avatarWrap}>
           {profile?.avatarUrl ? (
@@ -143,17 +153,17 @@ export default function ProfileScreen() {
       </Card>
 
       <Button
-        label="Log out"
+        label={t('profile.logOut')}
         variant="danger"
         onPress={() => setConfirmingLogout(true)}
       />
 
       <ConfirmDialog
         visible={confirmingLogout}
-        title="Log out of LUNOTE?"
-        message="You can log back in anytime with your email and password."
-        confirmLabel="Log out"
-        dismissLabel="Stay"
+        title={t('profile.logoutTitle')}
+        message={t('profile.logoutMessage')}
+        confirmLabel={t('profile.logOut')}
+        dismissLabel={t('profile.logoutStay')}
         destructive
         loading={loggingOut}
         onConfirm={() => void onLogout()}
