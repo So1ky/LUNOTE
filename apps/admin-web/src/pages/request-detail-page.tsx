@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import { ConfirmDialog } from '../components/confirm-dialog';
 import { StatusBadge } from '../components/status-badge';
 import { api, ApiError } from '../lib/api';
 import {
@@ -23,6 +24,7 @@ export function RequestDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   /** 직전 제출 결과 메시지 — 제출 시점의 모드로 결정한다 (성공 후 상태가 바뀌므로) */
   const [sentMessage, setSentMessage] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -61,7 +63,8 @@ export function RequestDetailPage() {
   const canCreate = request.status === 'REVIEWING' && !request.quote;
   const canUpdate = request.status === 'QUOTED' && !!request.quote;
 
-  const onSubmit = async (e: FormEvent) => {
+  // 폼 제출은 확인 모달만 연다 — 실제 발송은 confirm에서
+  const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setSentMessage(null);
@@ -71,6 +74,10 @@ export function RequestDetailPage() {
       setFormError('Amount must be a positive number');
       return;
     }
+    setConfirming(true);
+  };
+
+  const onConfirmSend = async () => {
     const creating = canCreate;
     setSubmitting(true);
     try {
@@ -78,7 +85,7 @@ export function RequestDetailPage() {
         `/admin/quote-requests/${request.id}/quote`,
         {
           method: creating ? 'POST' : 'PATCH',
-          body: { amount: parsed, explanation: explanation.trim() },
+          body: { amount: Number(amount), explanation: explanation.trim() },
         },
       );
       setRequest(updated);
@@ -91,6 +98,7 @@ export function RequestDetailPage() {
       );
     } finally {
       setSubmitting(false);
+      setConfirming(false);
     }
   };
 
@@ -258,6 +266,36 @@ export function RequestDetailPage() {
                     ? 'Send quote'
                     : 'Update quote'}
               </button>
+
+              <ConfirmDialog
+                open={confirming}
+                title={canCreate ? 'Send this quote?' : 'Update this quote?'}
+                message={
+                  canCreate ? (
+                    <>
+                      <strong style={{ color: 'var(--text)' }}>
+                        {formatAmount(Number(amount) || 0, 'USD')}
+                      </strong>{' '}
+                      will be quoted to{' '}
+                      {request.user.name || request.user.email} and they will be
+                      notified immediately.
+                    </>
+                  ) : (
+                    <>
+                      The quote will change to{' '}
+                      <strong style={{ color: 'var(--text)' }}>
+                        {formatAmount(Number(amount) || 0, 'USD')}
+                      </strong>
+                      . The customer sees the new amount right away.
+                    </>
+                  )
+                }
+                confirmLabel={canCreate ? 'Send quote' : 'Update quote'}
+                dismissLabel="Go back"
+                loading={submitting}
+                onConfirm={() => void onConfirmSend()}
+                onDismiss={() => setConfirming(false)}
+              />
             </form>
           ) : (
             <p className="muted" style={{ margin: 0, fontSize: 14 }}>
