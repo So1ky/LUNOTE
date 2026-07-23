@@ -17,6 +17,7 @@
 | 분류 | 선택 | 비고 |
 |---|---|---|
 | 모바일 앱 | React Native (Expo SDK 57) | iOS/Android 동시 출시. Expo Go 불가 — 개발 빌드 사용 |
+| 관리자 웹 | **Vite + React SPA** (`apps/admin-web`) | 내부 운영 도구. SSR 불필요 → 정적 빌드(S3/CloudFront 또는 nginx 컨테이너)로 배포 단순화. 기존 관리자 API(JWT + RolesGuard)만 소비, 백엔드 변경 없음 |
 | 백엔드 | **NestJS (TypeScript)** | 프론트와 언어 통일, 1인 운영 속도 최우선 |
 | ORM | **Prisma** | 타입 안전 쿼리 + 마이그레이션 관리 |
 | DB | AWS RDS PostgreSQL, Single-AZ + PITR(5분) | 파일은 S3 (presigned URL) |
