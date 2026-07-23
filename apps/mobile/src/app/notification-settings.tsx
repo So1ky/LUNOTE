@@ -44,11 +44,6 @@ export default function NotificationSettingsScreen() {
           <Switch value={false} disabled />
         </View>
       </Card>
-
-      <ThemedText type="small" themeColor="textSecondary">
-        For questions about your quote, our team contacts you directly through
-        the contact method you left on the request.
-      </ThemedText>
     </Screen>
   );
 }
