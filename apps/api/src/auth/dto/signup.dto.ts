@@ -1,27 +1,26 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsEmail,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsEmail, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { PASSWORD_PATTERN, PASSWORD_POLICY_MESSAGE } from '../password.policy';
 
 export class SignupDto {
   @ApiProperty({ example: 'you@example.com' })
   @IsEmail()
   email: string;
 
-  // 최소 8자 — 상세 정책(대소문자/특수문자)은 UX 해치지 않는 선에서 추후 조정
-  @ApiProperty({ example: 'mypassword1', minLength: 8, maxLength: 72 })
-  @IsString()
-  @MinLength(8)
-  @MaxLength(72)
+  @ApiProperty({ example: 'my-password1!', minLength: 8, maxLength: 72 })
+  @Matches(PASSWORD_PATTERN, { message: PASSWORD_POLICY_MESSAGE })
   password: string;
 
-  @ApiPropertyOptional({ example: 'Taerim' })
+  // 실명 — 관리자 식별용. 가입 시엔 선택, 이후 Account details에서 입력 가능
+  @ApiPropertyOptional({ example: 'Mina' })
   @IsOptional()
   @IsString()
   @MaxLength(50)
-  name?: string;
+  firstName?: string;
+
+  @ApiPropertyOptional({ example: 'Kim' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  lastName?: string;
 }

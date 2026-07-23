@@ -1,27 +1,25 @@
-import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, Spacing } from '@/constants/theme';
-import { useAuth } from '@/lib/auth-context';
-
-const MENU = [
-  { key: 'account', label: 'Account details' },
-  { key: 'language', label: 'Language', value: 'English' },
-  { key: 'notifications', label: 'Notifications' },
-  { key: 'support', label: 'Support' },
-];
+import { uploadAttachment } from '@/lib/attachments';
+import { displayName, useAuth } from '@/lib/auth-context';
+import { languageLabel } from '@/lib/languages';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { token, profile, signOut } = useAuth();
+  const { token, profile, signOut, updateProfile } = useAuth();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   if (!token) {
     return (
@@ -42,8 +40,46 @@ export default function ProfileScreen() {
     );
   }
 
-  const displayName = profile?.name || profile?.email.split('@')[0] || 'Guest';
-  const initial = displayName.charAt(0).toUpperCase();
+  const shownName = displayName(profile);
+  const initial = shownName.charAt(0).toUpperCase();
+
+  const menu: { key: string; label: string; value?: string; href: Href }[] = [
+    { key: 'account', label: 'Account details', href: '/account' },
+    {
+      key: 'language',
+      label: 'Language',
+      value: languageLabel(profile?.language ?? null),
+      href: '/language',
+    },
+    { key: 'notifications', label: 'Notifications', href: '/notification-settings' },
+    { key: 'support', label: 'Support', href: '/support' },
+  ];
+
+  const onChangeAvatar = async () => {
+    if (!token) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled) return;
+
+    setUploadingAvatar(true);
+    try {
+      const asset = result.assets[0];
+      const uploaded = await uploadAttachment(token, {
+        uri: asset.uri,
+        fileName: asset.fileName ?? 'avatar.jpg',
+        mimeType: asset.mimeType ?? 'image/jpeg',
+      });
+      await updateProfile({ avatarS3Key: uploaded.s3Key });
+    } catch {
+      // 업로드 실패는 치명적이지 않다 — 기존 아바타 유지
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const onLogout = async () => {
     setLoggingOut(true);
@@ -54,11 +90,28 @@ export default function ProfileScreen() {
   return (
     <Screen tabInset>
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <ThemedText type="heading">{initial}</ThemedText>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Change profile photo"
+          onPress={() => void onChangeAvatar()}
+          style={styles.avatarWrap}>
+          {profile?.avatarUrl ? (
+            <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <ThemedText type="heading">{initial}</ThemedText>
+            </View>
+          )}
+          <View style={styles.avatarBadge}>
+            {uploadingAvatar ? (
+              <ActivityIndicator size="small" color={Brand.text} />
+            ) : (
+              <AppIcon name="camera" size={12} color={Brand.text} />
+            )}
+          </View>
+        </Pressable>
         <View style={styles.headerText}>
-          <ThemedText type="bodyStrong">{displayName}</ThemedText>
+          <ThemedText type="bodyStrong">{shownName}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {profile?.email ?? ''}
           </ThemedText>
@@ -66,10 +119,13 @@ export default function ProfileScreen() {
       </View>
 
       <Card style={styles.menuCard}>
-        {MENU.map((item, i) => (
+        {menu.map((item, i) => (
           <View key={item.key}>
             {i > 0 && <View style={styles.menuDivider} />}
-            <View style={styles.menuRow}>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.menuRow, pressed && styles.menuRowPressed]}
+              onPress={() => router.push(item.href)}>
               <ThemedText type="body">{item.label}</ThemedText>
               <View style={styles.menuRight}>
                 {item.value && (
@@ -81,7 +137,7 @@ export default function ProfileScreen() {
                   ›
                 </ThemedText>
               </View>
-            </View>
+            </Pressable>
           </View>
         ))}
       </Card>
@@ -119,6 +175,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
   },
+  avatarWrap: {
+    position: 'relative',
+  },
   avatar: {
     width: 56,
     height: 56,
@@ -128,6 +187,30 @@ const styles = StyleSheet.create({
     borderColor: Brand.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: Radius.full,
+    backgroundColor: Brand.surfaceAlt,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: Radius.full,
+    backgroundColor: Brand.purple,
+    borderWidth: 2,
+    borderColor: Brand.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarBadgeFallback: {
+    fontSize: 12,
+    lineHeight: 14,
+    fontWeight: '700',
   },
   headerText: {
     gap: 2,
@@ -145,6 +228,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: Spacing.md,
+  },
+  menuRowPressed: {
+    opacity: 0.6,
   },
   menuRight: {
     flexDirection: 'row',

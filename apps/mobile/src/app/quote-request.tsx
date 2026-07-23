@@ -303,6 +303,9 @@ export default function QuoteRequestScreen() {
               onChangeText={setContactValue}
             />
           )}
+          <ThemedText type="small" themeColor="textSecondary">
+            Our team will reach out through this method to discuss your quote.
+          </ThemedText>
         </View>
 
         {error && (

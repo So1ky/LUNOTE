@@ -13,10 +13,19 @@ import { tokenStorage } from './token-storage';
 export type Profile = {
   id: string;
   email: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   role: 'CUSTOMER' | 'ADMIN';
   emailVerifiedAt: string | null;
+  language: string | null;
+  avatarUrl: string | null;
 };
+
+/** 표시 이름 — 실명이 없으면 이메일 앞부분 */
+export const displayName = (profile: Profile | null) =>
+  [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') ||
+  profile?.email.split('@')[0] ||
+  'Guest';
 
 type AuthState = {
   /** SecureStore에서 토큰 복원이 끝나기 전에는 true */
@@ -24,10 +33,24 @@ type AuthState = {
   token: string | null;
   profile: Profile | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name?: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    firstName?: string,
+    lastName?: string,
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   /** 인증 상태 변경(이메일 인증 등) 후 프로필 갱신 */
   refreshProfile: () => Promise<void>;
+  /** 프로필 수정 (이름/언어/아바타/알림 설정) — 서버 응답으로 상태 갱신 */
+  updateProfile: (patch: UpdateProfilePatch) => Promise<void>;
+};
+
+export type UpdateProfilePatch = {
+  firstName?: string;
+  lastName?: string;
+  language?: string;
+  avatarS3Key?: string;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -74,10 +97,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string, name?: string) => {
+    async (
+      email: string,
+      password: string,
+      firstName?: string,
+      lastName?: string,
+    ) => {
       const { accessToken } = await api<{ accessToken: string }>(
         '/auth/signup',
-        { method: 'POST', body: { email, password, name } },
+        { method: 'POST', body: { email, password, firstName, lastName } },
       );
       await applyToken(accessToken);
     },
@@ -89,6 +117,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(await api<Profile>('/auth/me', { token }));
   }, [token]);
 
+  const updateProfile = useCallback(
+    async (patch: UpdateProfilePatch) => {
+      if (!token) return;
+      setProfile(
+        await api<Profile>('/users/me', { method: 'PATCH', body: patch, token }),
+      );
+    },
+    [token],
+  );
+
   const signOut = useCallback(async () => {
     await tokenStorage.delete();
     setToken(null);
@@ -96,8 +134,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ loading, token, profile, signIn, signUp, signOut, refreshProfile }),
-    [loading, token, profile, signIn, signUp, signOut, refreshProfile],
+    () => ({
+      loading,
+      token,
+      profile,
+      signIn,
+      signUp,
+      signOut,
+      refreshProfile,
+      updateProfile,
+    }),
+    [loading, token, profile, signIn, signUp, signOut, refreshProfile, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

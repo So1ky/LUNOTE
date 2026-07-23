@@ -8,6 +8,7 @@ import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing, Type } from '@/constants/theme';
 import { api, ApiError } from '@/lib/api';
+import { isValidPassword, PASSWORD_POLICY_MESSAGE } from '@/lib/password';
 
 type Step = 'request' | 'reset' | 'done';
 
@@ -54,8 +55,8 @@ export default function ForgotPasswordScreen() {
 
   const onReset = async () => {
     setError(null);
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (!isValidPassword(newPassword)) {
+      setError(PASSWORD_POLICY_MESSAGE);
       return;
     }
     setSubmitting(true);

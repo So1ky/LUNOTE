@@ -50,7 +50,8 @@ export class AuthService {
         email: dto.email,
         passwordHash,
         provider: AuthProvider.EMAIL,
-        name: dto.name,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
         verificationCodeHash: hashCode(code),
         verificationCodeExpiresAt: new Date(Date.now() + CODE_TTL_MS),
       },
@@ -201,6 +202,33 @@ export class AuthService {
       },
     });
     return { reset: true };
+  }
+
+  /** 비밀번호 변경 — 현재 비밀번호를 확인한 뒤에만 */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { passwordHash: true },
+    });
+    // 소셜 가입 계정은 변경할 비밀번호가 없다
+    if (!user.passwordHash) {
+      throw new BadRequestException('This account has no password');
+    }
+    const valid = await argonVerify(user.passwordHash, currentPassword);
+    if (!valid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const passwordHash = (await argonHash(newPassword)) as string;
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+    return { changed: true };
   }
 
   private generateCode() {

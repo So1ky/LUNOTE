@@ -6,6 +6,7 @@ import { StatusBadge } from '../components/status-badge';
 import { api, ApiError } from '../lib/api';
 import {
   CATEGORY_META,
+  customerName,
   formatAmount,
   formatDate,
   type AdminQuoteRequestDetail,
@@ -146,7 +147,7 @@ export function RequestDetailPage() {
                 fontSize: 14,
               }}>
               <dt className="muted">Name</dt>
-              <dd style={{ margin: 0 }}>{request.user.name || '—'}</dd>
+              <dd style={{ margin: 0 }}>{[request.user.firstName, request.user.lastName].filter(Boolean).join(' ') || '—'}</dd>
               <dt className="muted">Email</dt>
               <dd style={{ margin: 0 }}>{request.user.email}</dd>
               <dt className="muted">Contact</dt>
@@ -277,7 +278,7 @@ export function RequestDetailPage() {
                         {formatAmount(Number(amount) || 0, 'USD')}
                       </strong>{' '}
                       will be quoted to{' '}
-                      {request.user.name || request.user.email} and they will be
+                      {customerName(request.user)} and they will be
                       notified immediately.
                     </>
                   ) : (

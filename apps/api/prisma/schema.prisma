@@ -54,10 +54,15 @@ model User {
   passwordHash String? // EMAIL 가입자만. 소셜 로그인은 null
   provider     AuthProvider
   providerId   String? // 소셜 로그인 계정 식별자
-  name         String?
+  // 실명 — 관리자가 고객을 식별하는 기준 (국제 사용자라 given/family 분리)
+  firstName    String?
+  lastName     String?
   nationality  String? // ISO 3166-1 alpha-2
   language     String? // BCP 47 (예: en, ko, vi)
   role         UserRole     @default(CUSTOMER)
+
+  // 프로필 사진 — 파일은 S3, DB에는 키만 (attachments와 동일 패턴)
+  avatarS3Key String?
 
   // 이메일 인증 — 코드는 sha256 해시로만 저장 (원문 미저장)
   emailVerifiedAt           DateTime?

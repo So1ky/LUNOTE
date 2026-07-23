@@ -2,6 +2,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { AppIcon } from '@/components/ui/app-icon';
+
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { RequestRow } from '@/components/ui/request-row';
@@ -37,7 +39,7 @@ export default function HomeScreen() {
     }, [token]),
   );
 
-  const firstName = profile?.name?.split(' ')[0];
+  const firstName = profile?.firstName;
 
   // 게스트가 실사용 진입점을 누르면 로그인으로 유도
   const goRequest = (category?: string) => {
@@ -60,12 +62,16 @@ export default function HomeScreen() {
         right={
           token ? (
             <Pressable
-              style={styles.bell}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Notifications"
-              onPress={() => router.push('/notifications')}>
-              <ThemedText style={styles.bellIcon}>🔔</ThemedText>
+              onPress={() => router.push('/notifications')}
+              style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}>
+              <AppIcon
+                name={unreadCount > 0 ? 'bellBadge' : 'bell'}
+                size={20}
+                color={Brand.textSecondary}
+              />
               {unreadCount > 0 && (
                 <View style={styles.bellBadge}>
                   <ThemedText style={styles.bellBadgeText}>
@@ -130,13 +136,20 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  // 헤더 우측 벨 — 뒤로가기 버튼(ScreenHeader)과 같은 원형 서피스 규격
   bell: {
     position: 'relative',
-    padding: Spacing.xxs,
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  bellIcon: {
-    fontSize: 22,
-    lineHeight: 28,
+  bellPressed: {
+    backgroundColor: Brand.surfaceAlt,
   },
   bellBadge: {
     position: 'absolute',

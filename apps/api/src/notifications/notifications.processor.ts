@@ -70,8 +70,10 @@ export class NotificationsProcessor extends WorkerHost {
   }
 
   /**
-   * 견적 발송 → 문의 소유자에게 인앱 알림만 (사용자 결정: 이메일 미발송).
-   * 앱 벨 배지로 노출되고, OS 푸시는 Apple Developer 가입 후 이 위에 추가한다.
+   * 견적 발송 → 인앱 알림만 생성한다.
+   * 자동 발송 채널은 인앱(+추후 OS 푸시)으로 일원화 — 문의의 연락수단(email/phone/WhatsApp)은
+   * 관리자가 직접 연락하는 채널이지 자동 알림 채널이 아니다 (제품 결정, 2026-07).
+   * OS 푸시는 Apple Developer 가입 후 이 위에 추가한다.
    */
   private async onQuoteSent(data: QuoteSentJob) {
     const owner = await this.prisma.user.findUnique({

@@ -39,10 +39,15 @@ export const STATUS_META: Record<RequestStatus, { label: string; color: string }
 export type AdminUser = {
   id: string;
   email: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   nationality: string | null;
   language: string | null;
 };
+
+/** 고객 표시 이름 — 실명(성+이름)이 없으면 이메일 */
+export const customerName = (u: AdminUser) =>
+  [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
 
 export type Quote = {
   id: string;

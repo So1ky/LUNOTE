@@ -13,8 +13,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { UsersService } from '../users/users.service';
 import type { AuthUser } from './auth-user';
 import { AuthService } from './auth.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { CurrentUser } from './current-user.decorator';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -26,7 +28,10 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly users: UsersService,
+  ) {}
 
   // 가입 폭주 방지: IP당 1시간 10회
   @Post('signup')
@@ -56,10 +61,21 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '내 정보 조회 (JWT 필요)' })
+  @ApiOperation({ summary: '내 정보 조회 (JWT 필요) — 아바타 URL 등 프로필 포함' })
   @ApiResponse({ status: 401, description: '토큰 없음/무효' })
   me(@CurrentUser() user: AuthUser) {
-    return user;
+    return this.users.getMe(user.id);
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @ApiOperation({ summary: '비밀번호 변경 — 현재 비밀번호 확인 후' })
+  @ApiResponse({ status: 400, description: '현재 비밀번호 불일치' })
+  changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
+    return this.auth.changePassword(user.id, dto.currentPassword, dto.newPassword);
   }
 
   @Post('verify-email')
