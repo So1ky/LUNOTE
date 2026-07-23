@@ -1,9 +1,11 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
@@ -18,6 +20,8 @@ const MENU = [
 export default function ProfileScreen() {
   const router = useRouter();
   const { token, profile, signOut } = useAuth();
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   if (!token) {
     return (
@@ -42,6 +46,7 @@ export default function ProfileScreen() {
   const initial = displayName.charAt(0).toUpperCase();
 
   const onLogout = async () => {
+    setLoggingOut(true);
     await signOut();
     router.replace('/login');
   };
@@ -81,7 +86,23 @@ export default function ProfileScreen() {
         ))}
       </Card>
 
-      <Button label="Log out" variant="danger" onPress={() => void onLogout()} />
+      <Button
+        label="Log out"
+        variant="danger"
+        onPress={() => setConfirmingLogout(true)}
+      />
+
+      <ConfirmDialog
+        visible={confirmingLogout}
+        title="Log out of LUNOTE?"
+        message="You can log back in anytime with your email and password."
+        confirmLabel="Log out"
+        dismissLabel="Stay"
+        destructive
+        loading={loggingOut}
+        onConfirm={() => void onLogout()}
+        onDismiss={() => setConfirmingLogout(false)}
+      />
     </Screen>
   );
 }
