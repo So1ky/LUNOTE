@@ -2,16 +2,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
-import { SymbolView } from 'expo-symbols';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { uploadAttachment } from '@/lib/attachments';
-import { useAuth } from '@/lib/auth-context';
+import { displayName, useAuth } from '@/lib/auth-context';
 import { languageLabel } from '@/lib/languages';
 
 export default function ProfileScreen() {
@@ -40,8 +40,8 @@ export default function ProfileScreen() {
     );
   }
 
-  const displayName = profile?.name || profile?.email.split('@')[0] || 'Guest';
-  const initial = displayName.charAt(0).toUpperCase();
+  const shownName = displayName(profile);
+  const initial = shownName.charAt(0).toUpperCase();
 
   const menu: { key: string; label: string; value?: string; href: Href }[] = [
     { key: 'account', label: 'Account details', href: '/account' },
@@ -111,17 +111,12 @@ export default function ProfileScreen() {
             {uploadingAvatar ? (
               <ActivityIndicator size="small" color={Brand.text} />
             ) : (
-              <SymbolView
-                name="camera.fill"
-                size={12}
-                tintColor={Brand.text}
-                fallback={<ThemedText style={styles.avatarBadgeFallback}>+</ThemedText>}
-              />
+              <AppIcon name="camera" size={12} color={Brand.text} />
             )}
           </View>
         </Pressable>
         <View style={styles.headerText}>
-          <ThemedText type="bodyStrong">{displayName}</ThemedText>
+          <ThemedText type="bodyStrong">{shownName}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {profile?.email ?? ''}
           </ThemedText>

@@ -1,7 +1,8 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+
+import { AppIcon } from '@/components/ui/app-icon';
 
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
@@ -38,7 +39,7 @@ export default function HomeScreen() {
     }, [token]),
   );
 
-  const firstName = profile?.name?.split(' ')[0];
+  const firstName = profile?.firstName;
 
   // 게스트가 실사용 진입점을 누르면 로그인으로 유도
   const goRequest = (category?: string) => {
@@ -66,11 +67,10 @@ export default function HomeScreen() {
               accessibilityLabel="Notifications"
               onPress={() => router.push('/notifications')}
               style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}>
-              <SymbolView
-                name={unreadCount > 0 ? 'bell.badge' : 'bell'}
+              <AppIcon
+                name={unreadCount > 0 ? 'bellBadge' : 'bell'}
                 size={20}
-                tintColor={Brand.textSecondary}
-                fallback={<ThemedText style={styles.bellFallback}>🔔</ThemedText>}
+                color={Brand.textSecondary}
               />
               {unreadCount > 0 && (
                 <View style={styles.bellBadge}>
@@ -150,10 +150,6 @@ const styles = StyleSheet.create({
   },
   bellPressed: {
     backgroundColor: Brand.surfaceAlt,
-  },
-  bellFallback: {
-    fontSize: 16,
-    lineHeight: 20,
   },
   bellBadge: {
     position: 'absolute',

@@ -13,7 +13,8 @@ import { tokenStorage } from './token-storage';
 export type Profile = {
   id: string;
   email: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   role: 'CUSTOMER' | 'ADMIN';
   emailVerifiedAt: string | null;
   language: string | null;
@@ -21,13 +22,24 @@ export type Profile = {
   avatarUrl: string | null;
 };
 
+/** 표시 이름 — 실명이 없으면 이메일 앞부분 */
+export const displayName = (profile: Profile | null) =>
+  [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') ||
+  profile?.email.split('@')[0] ||
+  'Guest';
+
 type AuthState = {
   /** SecureStore에서 토큰 복원이 끝나기 전에는 true */
   loading: boolean;
   token: string | null;
   profile: Profile | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name?: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    firstName?: string,
+    lastName?: string,
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   /** 인증 상태 변경(이메일 인증 등) 후 프로필 갱신 */
   refreshProfile: () => Promise<void>;
@@ -36,7 +48,8 @@ type AuthState = {
 };
 
 export type UpdateProfilePatch = {
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   language?: string;
   avatarS3Key?: string;
   quoteEmailEnabled?: boolean;
@@ -86,10 +99,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string, name?: string) => {
+    async (
+      email: string,
+      password: string,
+      firstName?: string,
+      lastName?: string,
+    ) => {
       const { accessToken } = await api<{ accessToken: string }>(
         '/auth/signup',
-        { method: 'POST', body: { email, password, name } },
+        { method: 'POST', body: { email, password, firstName, lastName } },
       );
       await applyToken(accessToken);
     },

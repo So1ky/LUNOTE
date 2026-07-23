@@ -24,7 +24,8 @@ const ADMIN_REQUEST_SELECT = {
     select: {
       id: true,
       email: true,
-      name: true,
+      firstName: true,
+      lastName: true,
       nationality: true,
       language: true,
     },

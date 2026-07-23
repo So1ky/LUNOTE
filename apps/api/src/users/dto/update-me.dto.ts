@@ -12,11 +12,17 @@ import {
 export const SUPPORTED_LANGUAGES = ['ko', 'en', 'ja', 'zh', 'es', 'de'] as const;
 
 export class UpdateMeDto {
-  @ApiPropertyOptional({ example: 'Mina Kim', maxLength: 50 })
+  @ApiPropertyOptional({ example: 'Mina', maxLength: 50 })
   @IsOptional()
   @IsString()
   @MaxLength(50)
-  name?: string;
+  firstName?: string;
+
+  @ApiPropertyOptional({ example: 'Kim', maxLength: 50 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  lastName?: string;
 
   @ApiPropertyOptional({ enum: SUPPORTED_LANGUAGES, example: 'ko' })
   @IsOptional()

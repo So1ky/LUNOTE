@@ -28,7 +28,7 @@ describe('Profile settings (e2e)', () => {
 
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password, name: 'Before Name' })
+      .send({ email, password, firstName: 'Before', lastName: 'Name' })
       .expect(201);
     token = (res.body as { accessToken: string }).accessToken;
   });
@@ -56,14 +56,16 @@ describe('Profile settings (e2e)', () => {
     const res = await request(app.getHttpServer())
       .patch('/users/me')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'After Name', language: 'ja', quoteEmailEnabled: false })
+      .send({ firstName: 'After', lastName: 'Name', language: 'ja', quoteEmailEnabled: false })
       .expect(200);
     const body = res.body as {
-      name: string;
+      firstName: string;
+      lastName: string;
       language: string;
       quoteEmailEnabled: boolean;
     };
-    expect(body.name).toBe('After Name');
+    expect(body.firstName).toBe('After');
+    expect(body.lastName).toBe('Name');
     expect(body.language).toBe('ja');
     expect(body.quoteEmailEnabled).toBe(false);
   });

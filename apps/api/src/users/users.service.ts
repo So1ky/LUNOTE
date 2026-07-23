@@ -7,7 +7,8 @@ import { UpdateMeDto } from './dto/update-me.dto';
 const PROFILE_SELECT = {
   id: true,
   email: true,
-  name: true,
+  firstName: true,
+  lastName: true,
   role: true,
   emailVerifiedAt: true,
   language: true,
@@ -39,7 +40,8 @@ export class UsersService {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        name: dto.name?.trim() || undefined,
+        firstName: dto.firstName?.trim() || undefined,
+        lastName: dto.lastName?.trim() || undefined,
         language: dto.language,
         avatarS3Key: dto.avatarS3Key,
         quoteEmailEnabled: dto.quoteEmailEnabled,

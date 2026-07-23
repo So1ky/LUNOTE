@@ -4,7 +4,8 @@ import { UserRole } from '@prisma/client';
 export interface AuthUser {
   id: string;
   email: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   role: UserRole;
   emailVerifiedAt: Date | null;
 }

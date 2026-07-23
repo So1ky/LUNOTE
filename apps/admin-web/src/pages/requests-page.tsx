@@ -5,6 +5,7 @@ import { StatusBadge } from '../components/status-badge';
 import { api, ApiError } from '../lib/api';
 import {
   CATEGORY_META,
+  customerName,
   formatAmount,
   formatDate,
   type AdminQuoteRequest,
@@ -100,7 +101,7 @@ export function RequestsPage() {
                     {CATEGORY_META[r.category].emoji}{' '}
                     {CATEGORY_META[r.category].label}
                   </td>
-                  <td>{r.user.name || r.user.email}</td>
+                  <td>{customerName(r.user)}</td>
                   <td
                     className="muted"
                     style={{

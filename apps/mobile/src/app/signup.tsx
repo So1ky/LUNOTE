@@ -9,11 +9,13 @@ import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { isValidPassword, PASSWORD_POLICY_MESSAGE } from '@/lib/password';
 
 export default function SignupScreen() {
   const router = useRouter();
   const { signUp } = useAuth();
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -21,13 +23,18 @@ export default function SignupScreen() {
 
   const onSignup = async () => {
     setError(null);
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (!isValidPassword(password)) {
+      setError(PASSWORD_POLICY_MESSAGE);
       return;
     }
     setSubmitting(true);
     try {
-      await signUp(email.trim(), password, name.trim() || undefined);
+      await signUp(
+        email.trim(),
+        password,
+        firstName.trim() || undefined,
+        lastName.trim() || undefined,
+      );
       router.replace('/verify-email'); // 가입 성공 = 자동 로그인 → 인증 코드 입력으로
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Something went wrong');
@@ -46,12 +53,27 @@ export default function SignupScreen() {
       </View>
 
       <View style={styles.form}>
-        <TextField
-          label="Name (optional)"
-          placeholder="Your name"
-          value={name}
-          onChangeText={setName}
-        />
+        {/* 실명 — 견적·결제 시 관리자가 고객을 식별하는 기준 */}
+        <View style={styles.nameRow}>
+          <View style={styles.nameField}>
+            <TextField
+              label="First name"
+              placeholder="Mina"
+              autoComplete="given-name"
+              value={firstName}
+              onChangeText={setFirstName}
+            />
+          </View>
+          <View style={styles.nameField}>
+            <TextField
+              label="Last name"
+              placeholder="Kim"
+              autoComplete="family-name"
+              value={lastName}
+              onChangeText={setLastName}
+            />
+          </View>
+        </View>
         <TextField
           label="Email"
           placeholder="you@example.com"
@@ -63,7 +85,7 @@ export default function SignupScreen() {
         />
         <TextField
           label="Password"
-          placeholder="At least 8 characters"
+          placeholder="8+ chars with a number & symbol"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -100,6 +122,13 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: Spacing.md,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  nameField: {
+    flex: 1,
   },
   error: {
     color: Brand.danger,
