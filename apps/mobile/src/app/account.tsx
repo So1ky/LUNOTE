@@ -1,19 +1,21 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing } from '@/constants/theme';
-import { api, ApiError } from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { isValidPassword, PASSWORD_POLICY_MESSAGE } from '@/lib/password';
 
 export default function AccountScreen() {
-  const { token, profile, updateProfile } = useAuth();
+  const router = useRouter();
+  const { profile, updateProfile } = useAuth();
 
   const [firstName, setFirstName] = useState(profile?.firstName ?? '');
   const [lastName, setLastName] = useState(profile?.lastName ?? '');
@@ -21,13 +23,6 @@ export default function AccountScreen() {
   const [nameMessage, setNameMessage] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [confirmingName, setConfirmingName] = useState(false);
-
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [pwSaving, setPwSaving] = useState(false);
-  const [pwMessage, setPwMessage] = useState<string | null>(null);
-  const [pwError, setPwError] = useState<string | null>(null);
-  const [confirmingPw, setConfirmingPw] = useState(false);
 
   const nameChanged =
     firstName.trim() !== (profile?.firstName ?? '') ||
@@ -48,35 +43,6 @@ export default function AccountScreen() {
     } finally {
       setNameSaving(false);
       setConfirmingName(false);
-    }
-  };
-
-  const onRequestPasswordChange = () => {
-    setPwError(null);
-    setPwMessage(null);
-    if (!isValidPassword(newPassword)) {
-      setPwError(PASSWORD_POLICY_MESSAGE);
-      return;
-    }
-    setConfirmingPw(true);
-  };
-
-  const onChangePassword = async () => {
-    setPwSaving(true);
-    try {
-      await api('/auth/change-password', {
-        method: 'POST',
-        body: { currentPassword, newPassword },
-        token: token ?? undefined,
-      });
-      setPwMessage('Password changed.');
-      setCurrentPassword('');
-      setNewPassword('');
-    } catch (e) {
-      setPwError(e instanceof ApiError ? e.message : 'Something went wrong');
-    } finally {
-      setPwSaving(false);
-      setConfirmingPw(false);
     }
   };
 
@@ -134,39 +100,19 @@ export default function AccountScreen() {
 
       <View style={styles.section}>
         <ThemedText type="caption" themeColor="textSecondary">
-          CHANGE PASSWORD
+          SECURITY
         </ThemedText>
-        <TextField
-          label="Current password"
-          placeholder="••••••••"
-          secureTextEntry
-          value={currentPassword}
-          onChangeText={setCurrentPassword}
-        />
-        <TextField
-          label="New password"
-          placeholder="8+ chars with a number & symbol"
-          secureTextEntry
-          value={newPassword}
-          onChangeText={setNewPassword}
-        />
-        {pwError && (
-          <ThemedText type="small" style={styles.error}>
-            {pwError}
-          </ThemedText>
-        )}
-        {pwMessage && (
-          <ThemedText type="small" style={styles.success}>
-            {pwMessage}
-          </ThemedText>
-        )}
-        <Button
-          label="Change password"
-          variant="outline"
-          loading={pwSaving}
-          disabled={!currentPassword || !newPassword}
-          onPress={onRequestPasswordChange}
-        />
+        <Card style={styles.linkCard}>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.linkRow, pressed && styles.linkPressed]}
+            onPress={() => router.push('/change-password')}>
+            <ThemedText type="body">Change password</ThemedText>
+            <ThemedText type="body" themeColor="textSecondary">
+              ›
+            </ThemedText>
+          </Pressable>
+        </Card>
       </View>
 
       <ConfirmDialog
@@ -178,18 +124,6 @@ export default function AccountScreen() {
         loading={nameSaving}
         onConfirm={() => void onSaveName()}
         onDismiss={() => setConfirmingName(false)}
-      />
-
-      <ConfirmDialog
-        visible={confirmingPw}
-        title="Change your password?"
-        message="You'll use the new password from your next login."
-        confirmLabel="Change password"
-        dismissLabel="Go back"
-        destructive
-        loading={pwSaving}
-        onConfirm={() => void onChangePassword()}
-        onDismiss={() => setConfirmingPw(false)}
       />
     </Screen>
   );
@@ -205,6 +139,19 @@ const styles = StyleSheet.create({
   },
   nameField: {
     flex: 1,
+  },
+  linkCard: {
+    paddingVertical: Spacing.xxs,
+    paddingHorizontal: Spacing.lg,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+  },
+  linkPressed: {
+    opacity: 0.6,
   },
   error: {
     color: Brand.danger,
