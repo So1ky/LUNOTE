@@ -13,6 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Radius, Spacing } from '@/constants/theme';
@@ -35,6 +36,7 @@ export default function RequestDetailScreen() {
   const [request, setRequest] = useState<QuoteRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || Number.isNaN(id)) return;
@@ -55,7 +57,9 @@ export default function RequestDetailScreen() {
     setError(null);
     try {
       setRequest(await cancelQuoteRequest(token, id));
+      setConfirmingCancel(false);
     } catch (e) {
+      setConfirmingCancel(false);
       setError(e instanceof ApiError ? e.message : 'Something went wrong');
     } finally {
       setCancelling(false);
@@ -156,10 +160,25 @@ export default function RequestDetailScreen() {
             <Button
               label="Cancel request"
               variant="danger"
-              loading={cancelling}
-              onPress={() => void onCancel()}
+              onPress={() => setConfirmingCancel(true)}
             />
           )}
+
+          <ConfirmDialog
+            visible={confirmingCancel}
+            title="Cancel this request?"
+            message={
+              request.quote
+                ? 'Your quote will be discarded and this cannot be undone.'
+                : 'This cannot be undone — you would need to submit a new request.'
+            }
+            confirmLabel="Yes, cancel"
+            dismissLabel="Keep it"
+            destructive
+            loading={cancelling}
+            onConfirm={() => void onCancel()}
+            onDismiss={() => setConfirmingCancel(false)}
+          />
         </View>
       )}
     </Screen>
