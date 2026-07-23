@@ -16,6 +16,9 @@ export type Profile = {
   name: string | null;
   role: 'CUSTOMER' | 'ADMIN';
   emailVerifiedAt: string | null;
+  language: string | null;
+  quoteEmailEnabled: boolean;
+  avatarUrl: string | null;
 };
 
 type AuthState = {
@@ -28,6 +31,15 @@ type AuthState = {
   signOut: () => Promise<void>;
   /** 인증 상태 변경(이메일 인증 등) 후 프로필 갱신 */
   refreshProfile: () => Promise<void>;
+  /** 프로필 수정 (이름/언어/아바타/알림 설정) — 서버 응답으로 상태 갱신 */
+  updateProfile: (patch: UpdateProfilePatch) => Promise<void>;
+};
+
+export type UpdateProfilePatch = {
+  name?: string;
+  language?: string;
+  avatarS3Key?: string;
+  quoteEmailEnabled?: boolean;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -89,6 +101,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(await api<Profile>('/auth/me', { token }));
   }, [token]);
 
+  const updateProfile = useCallback(
+    async (patch: UpdateProfilePatch) => {
+      if (!token) return;
+      setProfile(
+        await api<Profile>('/users/me', { method: 'PATCH', body: patch, token }),
+      );
+    },
+    [token],
+  );
+
   const signOut = useCallback(async () => {
     await tokenStorage.delete();
     setToken(null);
@@ -96,8 +118,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ loading, token, profile, signIn, signUp, signOut, refreshProfile }),
-    [loading, token, profile, signIn, signUp, signOut, refreshProfile],
+    () => ({
+      loading,
+      token,
+      profile,
+      signIn,
+      signUp,
+      signOut,
+      refreshProfile,
+      updateProfile,
+    }),
+    [loading, token, profile, signIn, signUp, signOut, refreshProfile, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

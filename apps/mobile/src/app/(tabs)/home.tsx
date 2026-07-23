@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { SymbolView } from 'expo-symbols';
 
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
@@ -60,12 +61,17 @@ export default function HomeScreen() {
         right={
           token ? (
             <Pressable
-              style={styles.bell}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Notifications"
-              onPress={() => router.push('/notifications')}>
-              <ThemedText style={styles.bellIcon}>🔔</ThemedText>
+              onPress={() => router.push('/notifications')}
+              style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}>
+              <SymbolView
+                name={unreadCount > 0 ? 'bell.badge' : 'bell'}
+                size={20}
+                tintColor={Brand.textSecondary}
+                fallback={<ThemedText style={styles.bellFallback}>🔔</ThemedText>}
+              />
               {unreadCount > 0 && (
                 <View style={styles.bellBadge}>
                   <ThemedText style={styles.bellBadgeText}>
@@ -130,13 +136,24 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  // 헤더 우측 벨 — 뒤로가기 버튼(ScreenHeader)과 같은 원형 서피스 규격
   bell: {
     position: 'relative',
-    padding: Spacing.xxs,
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  bellIcon: {
-    fontSize: 22,
-    lineHeight: 28,
+  bellPressed: {
+    backgroundColor: Brand.surfaceAlt,
+  },
+  bellFallback: {
+    fontSize: 16,
+    lineHeight: 20,
   },
   bellBadge: {
     position: 'absolute',

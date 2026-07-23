@@ -70,13 +70,13 @@ export class NotificationsProcessor extends WorkerHost {
   }
 
   /**
-   * 견적 발송 → 문의 소유자에게 인앱 알림만 (사용자 결정: 이메일 미발송).
-   * 앱 벨 배지로 노출되고, OS 푸시는 Apple Developer 가입 후 이 위에 추가한다.
+   * 견적 발송 → 인앱 알림은 항상 생성하고, 이메일은 사용자 설정(quoteEmailEnabled)을 따른다.
+   * OS 푸시는 Apple Developer 가입 후 이 위에 추가한다.
    */
   private async onQuoteSent(data: QuoteSentJob) {
     const owner = await this.prisma.user.findUnique({
       where: { id: data.ownerId },
-      select: { id: true },
+      select: { id: true, email: true, quoteEmailEnabled: true },
     });
     if (!owner) return;
 
@@ -91,5 +91,13 @@ export class NotificationsProcessor extends WorkerHost {
         requestId: data.requestId,
       },
     });
+
+    if (owner.quoteEmailEnabled) {
+      await this.mail.send(
+        owner.email,
+        `[LUNOTE] Your quote is ready — ${amountText}`,
+        `Good news! Your quote for request #${data.requestId} is ready.\n\nQuoted amount: ${amountText}\n\nOpen the LUNOTE app to review the details and proceed to payment.\n\nYou can turn these emails off in Profile → Notifications.`,
+      );
+    }
   }
 }

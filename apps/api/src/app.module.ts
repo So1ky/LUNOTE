@@ -8,6 +8,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 const redisUrl = new URL(process.env.REDIS_URL ?? 'redis://localhost:6379');
 import { AdminModule } from './admin/admin.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { StorageModule } from './storage/storage.module';
 import { HealthController } from './health/health.controller';
@@ -29,6 +30,7 @@ import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
     PrismaModule,
     StorageModule,
     AuthModule,
+    UsersModule,
     QuoteRequestsModule,
     AdminModule,
     AttachmentsModule,
