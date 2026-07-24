@@ -98,7 +98,8 @@ export class NotificationsService {
   /** 헬스체크용 — Redis 응답 여부 (500ms 타임아웃, 실패해도 예외를 던지지 않는다) */
   async isQueueUp(): Promise<boolean> {
     try {
-      const client = await this.queue.client;
+      // BullMQ의 IRedisClient 타입에 ping이 빠져 있으나 ioredis/node-redis 둘 다 지원한다
+      const client = (await this.queue.client) as { ping(): Promise<string> };
       await Promise.race([
         client.ping(),
         new Promise((_, reject) =>

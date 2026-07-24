@@ -28,7 +28,11 @@ export class AttachmentsController {
   async presign(@CurrentUser() user: AuthUser, @Body() dto: PresignDto) {
     // 키에 userId 프리픽스 — 문의 생성 시 소유권 검증의 근거가 된다
     const s3Key = `uploads/${user.id}/${randomUUID()}/${dto.fileName}`;
-    const uploadUrl = await this.storage.presignUpload(s3Key, dto.mimeType);
+    const uploadUrl = await this.storage.presignUpload(
+      s3Key,
+      dto.mimeType,
+      dto.sizeBytes,
+    );
     return { s3Key, uploadUrl };
   }
 }

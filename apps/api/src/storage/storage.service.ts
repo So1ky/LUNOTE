@@ -36,13 +36,16 @@ export class StorageService {
   }
 
   /** 업로드용 presigned URL — 클라이언트가 이 URL로 직접 PUT (파일이 API 서버를 거치지 않음) */
-  presignUpload(key: string, mimeType: string) {
+  presignUpload(key: string, mimeType: string, sizeBytes: number) {
     return getSignedUrl(
       this.client,
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
         ContentType: mimeType,
+        // Content-Length를 서명에 포함 — presign 시 신고한 크기와 다른 업로드는
+        // 스토리지가 서명 불일치로 거부한다 (DTO의 10MB 제한이 실제로 강제됨)
+        ContentLength: sizeBytes,
       }),
       { expiresIn: this.uploadTtlSec },
     );
