@@ -19,6 +19,8 @@ const DEV_DEFAULTS: Record<string, string> = {
 /** 정책 기본값 — 환경 무관 튜닝 가능값 (프로덕션에서 env로 덮어쓸 수 있다) */
 const POLICY_DEFAULTS: Record<string, string> = {
   PORT: '3000', // 컨테이너 관례 기본값 — HOST와 달리 prod에서도 기본 허용
+  LOG_LEVEL: 'info',
+  // SENTRY_DSN은 선택값 — 미설정이면 Sentry 전체가 no-op (기본값 없음)
   MAIL_FROM: 'LUNOTE <noreply@lunote.app>',
   SMTP_PORT: '587',
   JWT_EXPIRES: '30m', // 액세스는 짧게 — 갱신은 refresh token으로 (ARCHITECTURE §11)
