@@ -20,6 +20,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { CurrentUser } from './current-user.decorator';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SignupDto } from './dto/signup.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -56,6 +57,24 @@ export class AuthController {
   @ApiResponse({ status: 429, description: '요청 한도 초과' })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
+  }
+
+  // 30분마다 정상 갱신이 발생하므로 로그인보다 완만하게 제한
+  @Post('refresh')
+  @HttpCode(200)
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  @ApiOperation({ summary: '토큰 갱신 — refresh token 회전 (재사용 탐지 시 전 세션 폐기)' })
+  @ApiResponse({ status: 200, description: '새 accessToken + refreshToken 쌍' })
+  @ApiResponse({ status: 401, description: '무효/만료/재사용된 refresh token' })
+  refresh(@Body() dto: RefreshDto) {
+    return this.auth.refresh(dto.refreshToken);
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  @ApiOperation({ summary: '로그아웃 — 제시한 refresh token 폐기 (멱등)' })
+  logout(@Body() dto: RefreshDto) {
+    return this.auth.logout(dto.refreshToken);
   }
 
   @Get('me')

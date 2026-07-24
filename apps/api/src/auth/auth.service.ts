@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AuthProvider } from '@prisma/client';
 import { hash as argonHash, verify as argonVerify } from 'argon2';
-import { createHash, randomInt } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { MailService } from '../notifications/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
@@ -28,6 +28,7 @@ export class AuthService {
   private readonly CODE_TTL_MS: number;
   private readonly MAX_VERIFY_ATTEMPTS: number;
   private readonly RESEND_COOLDOWN_MS: number;
+  private readonly REFRESH_TTL_MS: number;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -42,6 +43,8 @@ export class AuthService {
     );
     this.RESEND_COOLDOWN_MS =
       Number(config.getOrThrow('AUTH_RESEND_COOLDOWN_SEC')) * 1000;
+    this.REFRESH_TTL_MS =
+      Number(config.getOrThrow('REFRESH_TTL_DAYS')) * 24 * 60 * 60 * 1000;
   }
 
   async signup(dto: SignupDto) {
@@ -70,7 +73,7 @@ export class AuthService {
 
     await this.sendVerificationMail(user.email, code);
 
-    return this.issueToken(user.id, user.role);
+    return this.issueTokens(user.id, user.role);
   }
 
   /** 인증 코드 검증 — 성공 시 emailVerifiedAt 기록 */
@@ -212,6 +215,8 @@ export class AuthService {
         passwordResetAttempts: 0,
       },
     });
+    // 비밀번호가 바뀌면 모든 기기의 세션 무효화 — 탈취범이 세션으로 버티는 것 차단
+    await this.revokeAllRefreshTokens(user.id);
     return { reset: true };
   }
 
@@ -239,6 +244,8 @@ export class AuthService {
       where: { id: userId },
       data: { passwordHash },
     });
+    // 비밀번호가 바뀌면 모든 기기의 세션 무효화 (현재 기기는 재로그인 대신 새 로그인 플로우로)
+    await this.revokeAllRefreshTokens(userId);
     return { changed: true };
   }
 
@@ -268,11 +275,72 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.issueToken(user.id, user.role);
+    return this.issueTokens(user.id, user.role);
   }
 
-  private issueToken(userId: string, role: string) {
+  /**
+   * 액세스(30m JWT) + 리프레시(불투명 랜덤, 30d) 쌍 발급.
+   * 리프레시 원문은 응답으로만 나가고 DB에는 sha256 해시만 저장한다.
+   */
+  private async issueTokens(userId: string, role: string) {
     const payload: JwtPayload = { sub: userId, role };
-    return { accessToken: this.jwt.sign(payload) };
+    const refreshToken = randomBytes(48).toString('hex');
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash: hashCode(refreshToken),
+        expiresAt: new Date(Date.now() + this.REFRESH_TTL_MS),
+      },
+    });
+    return { accessToken: this.jwt.sign(payload), refreshToken };
+  }
+
+  /**
+   * 리프레시 회전: 유효한 리프레시 토큰 → 새 쌍 발급 + 기존 토큰 폐기.
+   * 이미 폐기된 토큰이 다시 오면 탈취 신호로 보고 해당 사용자의 모든 세션을 폐기한다.
+   */
+  async refresh(refreshToken: string) {
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: hashCode(refreshToken) },
+      include: { user: { select: { id: true, role: true } } },
+    });
+    if (!stored) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    if (stored.revokedAt) {
+      // 회전된 토큰의 재사용 = 원본 또는 사본 중 하나는 탈취범 — 전 세션 무효화
+      await this.revokeAllRefreshTokens(stored.userId);
+      throw new UnauthorizedException('Session revoked — please log in again');
+    }
+    if (stored.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    const next = await this.issueTokens(stored.user.id, stored.user.role);
+    await this.prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: {
+        revokedAt: new Date(),
+        replacedBy: hashCode(next.refreshToken).slice(0, 16), // 추적용 축약 해시
+      },
+    });
+    return next;
+  }
+
+  /** 로그아웃 — 제시된 리프레시 토큰 폐기 (없거나 이미 폐기됐어도 성공: 멱등) */
+  async logout(refreshToken: string) {
+    await this.prisma.refreshToken.updateMany({
+      where: { tokenHash: hashCode(refreshToken), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  /** 비밀번호 변경/재설정 시 호출 — 모든 기기의 세션을 무효화한다 */
+  private async revokeAllRefreshTokens(userId: string) {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 }

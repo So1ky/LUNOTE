@@ -21,7 +21,8 @@ const POLICY_DEFAULTS: Record<string, string> = {
   PORT: '3000', // 컨테이너 관례 기본값 — HOST와 달리 prod에서도 기본 허용
   MAIL_FROM: 'LUNOTE <noreply@lunote.app>',
   SMTP_PORT: '587',
-  JWT_EXPIRES: '1d', // TODO(#운영준비 PR-4): refresh token 도입 시 30m으로 단축
+  JWT_EXPIRES: '30m', // 액세스는 짧게 — 갱신은 refresh token으로 (ARCHITECTURE §11)
+  REFRESH_TTL_DAYS: '30',
   AUTH_CODE_TTL_MIN: '15',
   QUOTE_VALIDITY_DAYS: '7', // 견적 유효기간 (제품 결정 2026-07-24)
   AUTH_CODE_MAX_ATTEMPTS: '5',
