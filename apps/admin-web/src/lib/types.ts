@@ -54,6 +54,7 @@ export type Quote = {
   amount: string;
   currency: string;
   explanation: string;
+  expiresAt: string; // 발행 + 7일 — 만료 시 결제 불가
   createdAt: string;
   updatedAt: string;
 };

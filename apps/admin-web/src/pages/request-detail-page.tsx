@@ -60,9 +60,8 @@ export function RequestDetailPage() {
   if (!request) return <div className="muted">Loading…</div>;
 
   const category = CATEGORY_META[request.category];
-  // 견적 발송은 REVIEWING, 수정은 QUOTED에서만 (서버 상태 머신과 동일)
+  // 견적은 발행 후 불변 — REVIEWING에서 한 번만 발송 가능 (제품 결정 2026-07-24)
   const canCreate = request.status === 'REVIEWING' && !request.quote;
-  const canUpdate = request.status === 'QUOTED' && !!request.quote;
 
   // 폼 제출은 확인 모달만 연다 — 실제 발송은 confirm에서
   const onSubmit = (e: FormEvent) => {
@@ -79,20 +78,17 @@ export function RequestDetailPage() {
   };
 
   const onConfirmSend = async () => {
-    const creating = canCreate;
     setSubmitting(true);
     try {
       const updated = await api<AdminQuoteRequestDetail>(
         `/admin/quote-requests/${request.id}/quote`,
         {
-          method: creating ? 'POST' : 'PATCH',
+          method: 'POST',
           body: { amount: Number(amount), explanation: explanation.trim() },
         },
       );
       setRequest(updated);
-      setSentMessage(
-        creating ? 'Quote sent — customer notified.' : 'Quote updated.',
-      );
+      setSentMessage('Quote sent — customer notified.');
     } catch (err) {
       setFormError(
         err instanceof ApiError ? err.message : 'Something went wrong',
@@ -217,12 +213,16 @@ export function RequestDetailPage() {
                 {formatAmount(request.quote.amount, request.quote.currency)}
               </div>
               <div className="muted" style={{ fontSize: 13 }}>
-                Sent {formatDate(request.quote.createdAt)}
+                Sent {formatDate(request.quote.createdAt)} · Valid until{' '}
+                {formatDate(request.quote.expiresAt)}
               </div>
+              <p style={{ marginTop: 12, marginBottom: 0, fontSize: 14 }}>
+                {request.quote.explanation}
+              </p>
             </div>
           )}
 
-          {canCreate || canUpdate ? (
+          {canCreate ? (
             <form
               onSubmit={(e) => void onSubmit(e)}
               style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -261,37 +261,25 @@ export function RequestDetailPage() {
               <button
                 type="submit"
                 disabled={submitting || !amount || explanation.trim().length < 5}>
-                {submitting
-                  ? 'Sending…'
-                  : canCreate
-                    ? 'Send quote'
-                    : 'Update quote'}
+                {submitting ? 'Sending…' : 'Send quote'}
               </button>
 
               <ConfirmDialog
                 open={confirming}
-                title={canCreate ? 'Send this quote?' : 'Update this quote?'}
+                title="Send this quote?"
                 message={
-                  canCreate ? (
-                    <>
-                      <strong style={{ color: 'var(--text)' }}>
-                        {formatAmount(Number(amount) || 0, 'USD')}
-                      </strong>{' '}
-                      will be quoted to{' '}
-                      {customerName(request.user)} and they will be
-                      notified immediately.
-                    </>
-                  ) : (
-                    <>
-                      The quote will change to{' '}
-                      <strong style={{ color: 'var(--text)' }}>
-                        {formatAmount(Number(amount) || 0, 'USD')}
-                      </strong>
-                      . The customer sees the new amount right away.
-                    </>
-                  )
+                  <>
+                    <strong style={{ color: 'var(--text)' }}>
+                      {formatAmount(Number(amount) || 0, 'USD')}
+                    </strong>{' '}
+                    will be quoted to {customerName(request.user)} and they
+                    will be notified immediately.{' '}
+                    <strong style={{ color: 'var(--text)' }}>
+                      Quotes cannot be changed after sending.
+                    </strong>
+                  </>
                 }
-                confirmLabel={canCreate ? 'Send quote' : 'Update quote'}
+                confirmLabel="Send quote"
                 dismissLabel="Go back"
                 loading={submitting}
                 onConfirm={() => void onConfirmSend()}
@@ -301,7 +289,7 @@ export function RequestDetailPage() {
           ) : (
             <p className="muted" style={{ margin: 0, fontSize: 14 }}>
               {request.quote
-                ? `Quote is locked in ${request.status} status.`
+                ? 'Quotes are immutable once sent. To change the price, the customer cancels and submits a new request.'
                 : `No quote can be sent in ${request.status} status.`}
             </p>
           )}
