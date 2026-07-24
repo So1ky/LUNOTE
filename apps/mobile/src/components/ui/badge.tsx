@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 
 /** 주문 상태 머신(docs/ARCHITECTURE.md §7)의 사용자 노출 상태 */
 export type BadgeTone =
@@ -13,14 +14,15 @@ export type BadgeTone =
   | 'cancelled'
   | 'refunded';
 
-const TONES: Record<BadgeTone, { label: string; color: string }> = {
-  reviewing: { label: 'Reviewing', color: Brand.warning },
-  quoted: { label: 'Quote ready', color: Brand.purple },
-  paid: { label: 'Paid', color: Brand.success },
-  inProgress: { label: 'In progress', color: Brand.info },
-  completed: { label: 'Completed', color: Brand.textMuted },
-  cancelled: { label: 'Cancelled', color: Brand.danger },
-  refunded: { label: 'Refunded', color: Brand.textMuted },
+/** 톤별 색 — 라벨은 i18n(status.<tone>)에서 온다 */
+const TONE_COLOR: Record<BadgeTone, string> = {
+  reviewing: Brand.warning,
+  quoted: Brand.purple,
+  paid: Brand.success,
+  inProgress: Brand.info,
+  completed: Brand.textMuted,
+  cancelled: Brand.danger,
+  refunded: Brand.textMuted,
 };
 
 /** 서버 RequestStatus → 배지 톤 */
@@ -35,12 +37,13 @@ export const STATUS_TONE: Record<string, BadgeTone> = {
 };
 
 export function Badge({ tone }: { tone: BadgeTone }) {
-  const { label, color } = TONES[tone];
+  const { t } = useTranslation();
+  const color = TONE_COLOR[tone];
   return (
     <View style={[styles.badge, { borderColor: color }]}>
       <View style={[styles.dot, { backgroundColor: color }]} />
       <ThemedText type="caption" style={{ color, letterSpacing: 0 }}>
-        {label}
+        {t(`status.${tone}`)}
       </ThemedText>
     </View>
   );

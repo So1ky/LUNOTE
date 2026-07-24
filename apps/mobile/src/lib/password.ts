@@ -2,8 +2,7 @@
 export const PASSWORD_PATTERN =
   /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s])\S{8,72}$/;
 
-export const PASSWORD_POLICY_MESSAGE =
-  'Password must be 8+ characters and include a letter, a number, and a special character';
+/** 사용자 노출 정책 문구는 i18n(password.policy)에서 온다 */
 
 export const isValidPassword = (password: string) =>
   PASSWORD_PATTERN.test(password);

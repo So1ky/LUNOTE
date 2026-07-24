@@ -37,6 +37,11 @@ design/          # Figma에서 export한 와이어프레임 PNG
   PortOne 결제와 Apple 로그인은 네이티브 모듈이라 Expo Go에서 동작하지 않는다.
 - API 개발 서버는 기본 **127.0.0.1 바인딩** (같은 와이파이 기기로부터 차단).
   실기기 폰 테스트 시에만 `HOST=0.0.0.0 npm run start:dev`로 임시 개방한다.
+- **새 네이티브 모듈(`expo-*`, 네이티브 코드 포함 라이브러리)을 설치하면 JS 리로드로는
+  안 되고 개발 빌드를 재빌드(`npm run ios`)해야 한다.** 옛 바이너리엔 그 네이티브
+  모듈이 링크돼 있지 않아, `requireNativeModule('X')`을 import 시점에 실행하는
+  모듈(예: expo-localization)은 정적 import만으로도 throw → 화면이 통째로 죽는다.
+  당장 재빌드가 곤란하면 해당 모듈을 지연 `require` + try/catch로 감싸 폴백시킨다.
 
 ## 최초 셋업 (clone 직후 1회)
 

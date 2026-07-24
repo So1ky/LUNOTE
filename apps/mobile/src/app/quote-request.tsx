@@ -12,6 +12,7 @@ import { ScreenHeader } from '@/components/ui/screen-header';
 import { SelectField } from '@/components/ui/select-field';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
 import { uploadAttachment, type AttachmentInput } from '@/lib/attachments';
 import { useAuth } from '@/lib/auth-context';
@@ -27,31 +28,28 @@ const CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 
 type ContactChannel = 'email' | 'phone' | 'whatsapp';
 
+// 라벨은 i18n(contactChannels.<key>)에서 온다 — 여기는 이모지·입력 힌트만
 const CONTACT_CHANNELS: {
   key: ContactChannel;
   emoji: string;
-  label: string;
   placeholder: string;
   keyboardType: 'email-address' | 'phone-pad';
 }[] = [
   {
     key: 'email',
     emoji: '📧',
-    label: 'Email',
     placeholder: 'you@example.com',
     keyboardType: 'email-address',
   },
   {
     key: 'phone',
     emoji: '📞',
-    label: 'Phone',
     placeholder: '+82 10-1234-5678',
     keyboardType: 'phone-pad',
   },
   {
     key: 'whatsapp',
     emoji: '💬',
-    label: 'WhatsApp',
     placeholder: '+1 555 123 4567',
     keyboardType: 'phone-pad',
   },
@@ -59,6 +57,7 @@ const CONTACT_CHANNELS: {
 
 export default function QuoteRequestScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { token } = useAuth();
   const params = useLocalSearchParams<{ category?: string }>();
 
@@ -108,7 +107,7 @@ export default function QuoteRequestScreen() {
         setAttachments((prev) => [...prev, { ...uploaded, uri: asset.uri }]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed');
+      setError(e instanceof Error ? e.message : t('common.uploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -136,7 +135,7 @@ export default function QuoteRequestScreen() {
         setAttachments((prev) => [...prev, { ...uploaded, uri: asset.uri }]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed');
+      setError(e instanceof Error ? e.message : t('common.uploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -151,7 +150,7 @@ export default function QuoteRequestScreen() {
 
     const desiredAmount = amount.trim() ? Number(amount) : undefined;
     if (desiredAmount !== undefined && (Number.isNaN(desiredAmount) || desiredAmount <= 0)) {
-      setError('Desired budget must be a positive number');
+      setError(t('quoteRequest.budgetError'));
       return;
     }
 
@@ -174,7 +173,7 @@ export default function QuoteRequestScreen() {
         router.push('/verify-email');
         return;
       }
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setSubmitting(false);
     }
@@ -188,12 +187,12 @@ export default function QuoteRequestScreen() {
 
   return (
     <Screen keyboard>
-      <ScreenHeader back title="Request a Quote" />
+      <ScreenHeader back title={t('quoteRequest.title')} />
 
       <View style={styles.form}>
         <View style={styles.section}>
           <ThemedText type="smallStrong" themeColor="textSecondary">
-            Category
+            {t('quoteRequest.category')}
           </ThemedText>
           <View style={styles.grid}>
             {CATEGORIES.map((c) => (
@@ -207,23 +206,23 @@ export default function QuoteRequestScreen() {
                 <ThemedText style={styles.categoryEmoji}>
                   {CATEGORY_META[c].emoji}
                 </ThemedText>
-                <ThemedText type="smallStrong">{CATEGORY_META[c].label}</ThemedText>
+                <ThemedText type="smallStrong">{t(`categories.${c}`)}</ThemedText>
               </Card>
             ))}
           </View>
         </View>
 
         <TextField
-          label="Desired budget (optional, USD)"
-          placeholder="400"
+          label={t('quoteRequest.budget')}
+          placeholder={t('quoteRequest.budgetPlaceholder')}
           keyboardType="numeric"
           value={amount}
           onChangeText={setAmount}
         />
 
         <TextField
-          label="What do you need? (at least 10 characters)"
-          placeholder="Describe your situation — the more detail, the better the quote."
+          label={t('quoteRequest.description')}
+          placeholder={t('quoteRequest.descriptionPlaceholder')}
           multiline
           numberOfLines={5}
           style={styles.textArea}
@@ -233,7 +232,7 @@ export default function QuoteRequestScreen() {
 
         <View style={styles.section}>
           <ThemedText type="smallStrong" themeColor="textSecondary">
-            Attachments (optional, up to {MAX_ATTACHMENTS} — photos or PDF)
+            {t('quoteRequest.attachments', { max: MAX_ATTACHMENTS })}
           </ThemedText>
           <View style={styles.attachmentRow}>
             {attachments.map((a) =>
@@ -267,7 +266,7 @@ export default function QuoteRequestScreen() {
                     {uploading ? '…' : '🖼️'}
                   </ThemedText>
                   <ThemedText type="caption" themeColor="textSecondary">
-                    PHOTO
+                    {t('quoteRequest.photo')}
                   </ThemedText>
                 </Card>
                 <Card style={styles.addThumb} onPress={() => void onAddFiles()}>
@@ -275,7 +274,7 @@ export default function QuoteRequestScreen() {
                     {uploading ? '…' : '📄'}
                   </ThemedText>
                   <ThemedText type="caption" themeColor="textSecondary">
-                    PDF
+                    {t('quoteRequest.pdf')}
                   </ThemedText>
                 </Card>
               </>
@@ -285,12 +284,12 @@ export default function QuoteRequestScreen() {
 
         <View style={styles.section}>
           <SelectField
-            label="How should we contact you?"
-            placeholder="Choose a contact method"
+            label={t('quoteRequest.contactLabel')}
+            placeholder={t('quoteRequest.contactPlaceholder')}
             value={channel}
             options={CONTACT_CHANNELS.map((c) => ({
               value: c.key,
-              label: `${c.emoji}  ${c.label}`,
+              label: `${c.emoji}  ${t(`contactChannels.${c.key}`)}`,
             }))}
             onChange={setChannel}
           />
@@ -304,7 +303,7 @@ export default function QuoteRequestScreen() {
             />
           )}
           <ThemedText type="small" themeColor="textSecondary">
-            Our team will reach out through this method to discuss your quote.
+            {t('quoteRequest.contactNote')}
           </ThemedText>
         </View>
 
@@ -315,7 +314,7 @@ export default function QuoteRequestScreen() {
         )}
 
         <Button
-          label="Send a Request"
+          label={t('quoteRequest.submit')}
           size="lg"
           loading={submitting}
           disabled={!canSubmit}
@@ -323,7 +322,7 @@ export default function QuoteRequestScreen() {
         />
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-          We will review your request and send a quote within 24 hours.
+          {t('quoteRequest.reviewNote')}
         </ThemedText>
       </View>
     </Screen>

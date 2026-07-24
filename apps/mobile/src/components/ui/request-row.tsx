@@ -4,6 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { CATEGORY_META, formatDate, type QuoteRequest } from '@/lib/quote-requests';
 
 type RequestRowProps = {
@@ -13,6 +14,7 @@ type RequestRowProps = {
 
 /** 요청 목록 한 행 — 홈 최근 요청과 Quote 탭 목록이 공유한다 */
 export function RequestRow({ request, onPress }: RequestRowProps) {
+  const { t, locale } = useTranslation();
   const meta = CATEGORY_META[request.category];
 
   return (
@@ -22,10 +24,10 @@ export function RequestRow({ request, onPress }: RequestRowProps) {
       </View>
       <View style={styles.text}>
         <ThemedText type="bodyStrong" numberOfLines={1}>
-          {meta.label}
+          {t(`categories.${request.category}`)}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          #{request.id} · {formatDate(request.createdAt)}
+          #{request.id} · {formatDate(request.createdAt, locale)}
         </ThemedText>
       </View>
       <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />

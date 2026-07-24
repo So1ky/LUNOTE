@@ -17,6 +17,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -29,6 +30,7 @@ import {
 } from '@/lib/quote-requests';
 
 export default function RequestDetailScreen() {
+  const { t, locale } = useTranslation();
   const { token } = useAuth();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
@@ -43,7 +45,7 @@ export default function RequestDetailScreen() {
     try {
       setRequest(await getQuoteRequest(token, id));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     }
   }, [token, id]);
 
@@ -60,7 +62,7 @@ export default function RequestDetailScreen() {
       setConfirmingCancel(false);
     } catch (e) {
       setConfirmingCancel(false);
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setCancelling(false);
     }
@@ -71,7 +73,7 @@ export default function RequestDetailScreen() {
 
   return (
     <Screen>
-      <ScreenHeader back title={`Request #${params.id}`} />
+      <ScreenHeader back title={t('requestDetail.title', { id: params.id })} />
 
       {!request && !error && <ActivityIndicator color={Brand.purple} />}
 
@@ -87,21 +89,29 @@ export default function RequestDetailScreen() {
             <View style={styles.summaryTop}>
               <ThemedText type="bodyStrong">
                 {CATEGORY_META[request.category].emoji}{' '}
-                {CATEGORY_META[request.category].label}
+                {t(`categories.${request.category}`)}
               </ThemedText>
               <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />
             </View>
             <ThemedText type="small" themeColor="textSecondary">
-              Requested {formatDate(request.createdAt)}
+              {t('requestDetail.requested', {
+                date: formatDate(request.createdAt, locale),
+              })}
               {request.desiredAmount
-                ? ` · Budget ${formatAmount(request.desiredAmount, request.currency)}`
+                ? t('requestDetail.budgetSuffix', {
+                    amount: formatAmount(
+                      request.desiredAmount,
+                      request.currency,
+                      locale,
+                    ),
+                  })
                 : ''}
             </ThemedText>
             <ThemedText type="body" style={styles.description}>
               {request.description}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Contact: {request.contactMethod}
+              {t('requestDetail.contact', { method: request.contactMethod })}
             </ThemedText>
 
             {request.attachments && request.attachments.length > 0 && (
@@ -132,25 +142,24 @@ export default function RequestDetailScreen() {
           {request.quote ? (
             <Card style={styles.quoteCard}>
               <ThemedText type="caption" themeColor="textSecondary">
-                YOUR QUOTE
+                {t('requestDetail.yourQuote')}
               </ThemedText>
               <ThemedText type="display" style={styles.amount}>
-                {formatAmount(request.quote.amount, request.quote.currency)}
+                {formatAmount(request.quote.amount, request.quote.currency, locale)}
               </ThemedText>
               <ThemedText type="body" themeColor="textSecondary">
                 {request.quote.explanation}
               </ThemedText>
               {request.status === 'QUOTED' && (
                 // TODO: PortOne 결제 연동 (A1 마지막 단계)
-                <Button label="Proceed to payment" size="lg" disabled />
+                <Button label={t('requestDetail.proceedPayment')} size="lg" disabled />
               )}
             </Card>
           ) : (
             request.status === 'REVIEWING' && (
               <Card>
                 <ThemedText type="small" themeColor="textSecondary">
-                  We are reviewing your request. A quote will arrive within 24
-                  hours.
+                  {t('requestDetail.reviewing')}
                 </ThemedText>
               </Card>
             )
@@ -158,7 +167,7 @@ export default function RequestDetailScreen() {
 
           {cancellable && (
             <Button
-              label="Cancel request"
+              label={t('requestDetail.cancel')}
               variant="danger"
               onPress={() => setConfirmingCancel(true)}
             />
@@ -166,14 +175,14 @@ export default function RequestDetailScreen() {
 
           <ConfirmDialog
             visible={confirmingCancel}
-            title="Cancel this request?"
+            title={t('requestDetail.cancelTitle')}
             message={
               request.quote
-                ? 'Your quote will be discarded and this cannot be undone.'
-                : 'This cannot be undone — you would need to submit a new request.'
+                ? t('requestDetail.cancelMessageQuoted')
+                : t('requestDetail.cancelMessagePlain')
             }
-            confirmLabel="Yes, cancel"
-            dismissLabel="Keep it"
+            confirmLabel={t('requestDetail.cancelConfirm')}
+            dismissLabel={t('requestDetail.cancelKeep')}
             destructive
             loading={cancelling}
             onConfirm={() => void onCancel()}

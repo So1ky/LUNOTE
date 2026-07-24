@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { isValidPassword, PASSWORD_POLICY_MESSAGE } from '@/lib/password';
+import { isValidPassword } from '@/lib/password';
 
 export default function SignupScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { signUp } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -24,7 +26,7 @@ export default function SignupScreen() {
   const onSignup = async () => {
     setError(null);
     if (!isValidPassword(password)) {
-      setError(PASSWORD_POLICY_MESSAGE);
+      setError(t('password.policy'));
       return;
     }
     setSubmitting(true);
@@ -37,7 +39,7 @@ export default function SignupScreen() {
       );
       router.replace('/verify-email'); // 가입 성공 = 자동 로그인 → 인증 코드 입력으로
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setSubmitting(false);
     }
@@ -46,9 +48,9 @@ export default function SignupScreen() {
   return (
     <Screen keyboard center narrow>
       <View style={styles.hero}>
-        <ThemedText type="title">Create account</ThemedText>
+        <ThemedText type="title">{t('signup.title')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Start your life in Korea with LUNOTE
+          {t('signup.subtitle')}
         </ThemedText>
       </View>
 
@@ -57,7 +59,7 @@ export default function SignupScreen() {
         <View style={styles.nameRow}>
           <View style={styles.nameField}>
             <TextField
-              label="First name"
+              label={t('signup.firstName')}
               placeholder="Mina"
               autoComplete="given-name"
               value={firstName}
@@ -66,7 +68,7 @@ export default function SignupScreen() {
           </View>
           <View style={styles.nameField}>
             <TextField
-              label="Last name"
+              label={t('signup.lastName')}
               placeholder="Kim"
               autoComplete="family-name"
               value={lastName}
@@ -75,7 +77,7 @@ export default function SignupScreen() {
           </View>
         </View>
         <TextField
-          label="Email"
+          label={t('signup.email')}
           placeholder="you@example.com"
           autoCapitalize="none"
           autoComplete="email"
@@ -84,8 +86,8 @@ export default function SignupScreen() {
           onChangeText={setEmail}
         />
         <TextField
-          label="Password"
-          placeholder="8+ chars with a number & symbol"
+          label={t('signup.password')}
+          placeholder={t('password.placeholder')}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -98,7 +100,7 @@ export default function SignupScreen() {
         )}
 
         <Button
-          label="Create account"
+          label={t('signup.submit')}
           size="lg"
           loading={submitting}
           disabled={!email.trim() || !password}
@@ -108,7 +110,8 @@ export default function SignupScreen() {
 
       <Pressable style={styles.footer} onPress={() => router.back()}>
         <ThemedText type="small" themeColor="textSecondary">
-          Already have an account? <ThemedText type="link">Log in</ThemedText>
+          {t('signup.alreadyHaveAccount')}
+          <ThemedText type="link">{t('signup.logIn')}</ThemedText>
         </ThemedText>
       </Pressable>
     </Screen>

@@ -9,12 +9,14 @@ import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { isValidPassword, PASSWORD_POLICY_MESSAGE } from '@/lib/password';
+import { isValidPassword } from '@/lib/password';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { token } = useAuth();
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -28,11 +30,11 @@ export default function ChangePasswordScreen() {
   const onRequestChange = () => {
     setError(null);
     if (!isValidPassword(newPassword)) {
-      setError(PASSWORD_POLICY_MESSAGE);
+      setError(t('password.policy'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match');
+      setError(t('changePassword.mismatch'));
       return;
     }
     setConfirming(true);
@@ -48,7 +50,7 @@ export default function ChangePasswordScreen() {
       });
       setDone(true);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setSaving(false);
       setConfirming(false);
@@ -60,38 +62,38 @@ export default function ChangePasswordScreen() {
       <Screen center narrow>
         <View style={styles.hero}>
           <ThemedText style={styles.emoji}>🔒</ThemedText>
-          <ThemedText type="title">Password changed</ThemedText>
+          <ThemedText type="title">{t('changePassword.doneTitle')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-            Use your new password the next time you log in.
+            {t('changePassword.doneSubtitle')}
           </ThemedText>
         </View>
-        <Button label="Done" size="lg" onPress={() => router.back()} />
+        <Button label={t('changePassword.done')} size="lg" onPress={() => router.back()} />
       </Screen>
     );
   }
 
   return (
     <Screen keyboard>
-      <ScreenHeader back title="Change password" />
+      <ScreenHeader back title={t('changePassword.title')} />
 
       <View style={styles.form}>
         <TextField
-          label="Current password"
+          label={t('changePassword.current')}
           placeholder="••••••••"
           secureTextEntry
           value={currentPassword}
           onChangeText={setCurrentPassword}
         />
         <TextField
-          label="New password"
-          placeholder="8+ chars with a number & symbol"
+          label={t('changePassword.newLabel')}
+          placeholder={t('password.placeholder')}
           secureTextEntry
           value={newPassword}
           onChangeText={setNewPassword}
         />
         <TextField
-          label="Confirm new password"
-          placeholder="Re-enter new password"
+          label={t('changePassword.confirm')}
+          placeholder={t('changePassword.confirmPlaceholder')}
           secureTextEntry
           value={confirmPassword}
           onChangeText={setConfirmPassword}
@@ -104,7 +106,7 @@ export default function ChangePasswordScreen() {
         )}
 
         <Button
-          label="Change password"
+          label={t('changePassword.submit')}
           size="lg"
           loading={saving}
           disabled={!currentPassword || !newPassword || !confirmPassword}
@@ -114,10 +116,10 @@ export default function ChangePasswordScreen() {
 
       <ConfirmDialog
         visible={confirming}
-        title="Change your password?"
-        message="You'll use the new password from your next login."
-        confirmLabel="Change password"
-        dismissLabel="Go back"
+        title={t('changePassword.confirmTitle')}
+        message={t('changePassword.confirmMessage')}
+        confirmLabel={t('changePassword.submit')}
+        dismissLabel={t('changePassword.goBack')}
         destructive
         loading={saving}
         onConfirm={() => void onChangePassword()}

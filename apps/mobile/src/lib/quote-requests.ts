@@ -76,26 +76,32 @@ export function cancelQuoteRequest(token: string, id: number) {
   });
 }
 
-export const CATEGORY_META: Record<Category, { emoji: string; label: string }> =
+/** 카테고리 라벨은 i18n(categories.<Category>)에서 온다 — 여기는 이모지만 */
+export const CATEGORY_META: Record<Category, { emoji: string }> =
   {
-    HOUSING: { emoji: '🏠', label: 'Housing' },
-    VISA: { emoji: '🛂', label: 'Visa' },
-    HOSPITAL: { emoji: '🏥', label: 'Hospital' },
-    BANK: { emoji: '🏦', label: 'Bank' },
-    TELECOM: { emoji: '📱', label: 'Telecom' },
-    OTHER: { emoji: '✨', label: 'Other' },
+    HOUSING: { emoji: '🏠' },
+    VISA: { emoji: '🛂' },
+    HOSPITAL: { emoji: '🏥' },
+    BANK: { emoji: '🏦' },
+    TELECOM: { emoji: '📱' },
+    OTHER: { emoji: '✨' },
   };
 
-export function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
+/** locale는 활성 언어(useTranslation().locale) — 미지정 시 en 폴백 */
+export function formatDate(iso: string, locale = 'en') {
+  return new Date(iso).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
 }
 
-export function formatAmount(amount: string | null, currency: string) {
+export function formatAmount(
+  amount: string | null,
+  currency: string,
+  locale = 'en',
+) {
   if (amount === null) return null;
   const symbol = currency === 'USD' ? '$' : `${currency} `;
-  return `${symbol}${Number(amount).toLocaleString()}`;
+  return `${symbol}${Number(amount).toLocaleString(locale)}`;
 }

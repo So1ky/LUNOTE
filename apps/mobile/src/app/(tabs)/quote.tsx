@@ -8,12 +8,14 @@ import { RequestRow } from '@/components/ui/request-row';
 import { listStyles, Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { listQuoteRequests, type QuoteRequest } from '@/lib/quote-requests';
 
 export default function QuoteScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { token } = useAuth();
   const [requests, setRequests] = useState<QuoteRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,7 @@ export default function QuoteScreen() {
       setError(null);
       setRequests(await listQuoteRequests(token));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     }
   }, [token]);
 
@@ -54,8 +56,8 @@ export default function QuoteScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             <ScreenHeader
-              title="My Requests"
-              subtitle="Track the status of your requests"
+              title={t('quoteList.title')}
+              subtitle={t('quoteList.subtitle')}
             />
             {error && (
               <ThemedText type="small" style={styles.error}>
@@ -68,17 +70,17 @@ export default function QuoteScreen() {
           !token ? (
             <EmptyState
               emoji="🔐"
-              message="Log in to create and track your requests."
-              action={{ label: 'Log in', onPress: () => router.push('/login') }}
+              message={t('quoteList.emptyGuest')}
+              action={{ label: t('quoteList.login'), onPress: () => router.push('/login') }}
             />
           ) : requests === null ? (
             <ActivityIndicator color={Brand.purple} style={styles.loading} />
           ) : (
             <EmptyState
               emoji="📋"
-              message="No requests yet — tell us what you need."
+              message={t('quoteList.emptyNone')}
               action={{
-                label: 'Request a Quote',
+                label: t('quoteList.requestQuote'),
                 onPress: () => router.push('/quote-request'),
               }}
             />

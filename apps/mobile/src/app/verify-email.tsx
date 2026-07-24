@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing, Type } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { token, profile, refreshProfile, signOut } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export default function VerifyEmailScreen() {
       await refreshProfile();
       router.replace('/home');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setSubmitting(false);
     }
@@ -43,9 +45,9 @@ export default function VerifyEmailScreen() {
     setInfo(null);
     try {
       await api('/auth/resend-verification', { method: 'POST', token });
-      setInfo('A new code has been sent to your email.');
+      setInfo(t('verifyEmail.codeSent'));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     }
   };
 
@@ -53,10 +55,10 @@ export default function VerifyEmailScreen() {
     <Screen keyboard center narrow>
       <View style={styles.hero}>
         <ThemedText style={styles.emoji}>📬</ThemedText>
-        <ThemedText type="title">Check your email</ThemedText>
+        <ThemedText type="title">{t('verifyEmail.title')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-          We sent a 6-digit code to{'\n'}
-          {profile?.email ?? 'your email'}
+          {t('verifyEmail.subtitle')}{'\n'}
+          {profile?.email ?? t('verifyEmail.yourEmail')}
         </ThemedText>
       </View>
 
@@ -81,7 +83,7 @@ export default function VerifyEmailScreen() {
       )}
 
       <Button
-        label="Verify"
+        label={t('verifyEmail.verify')}
         size="lg"
         loading={submitting}
         disabled={code.trim().length !== 6}
@@ -89,11 +91,15 @@ export default function VerifyEmailScreen() {
       />
 
       <View style={styles.secondary}>
-        <Button label="Resend code" variant="ghost" onPress={() => void onResend()} />
+        <Button
+          label={t('verifyEmail.resendCode')}
+          variant="ghost"
+          onPress={() => void onResend()}
+        />
 
         {/* 인증 완료 전에는 앱 진입 불가 (강제 잠금) — 탈출구는 로그아웃뿐 */}
         <Button
-          label="Log out"
+          label={t('verifyEmail.logOut')}
           variant="ghost"
           onPress={() => {
             void signOut().then(() => router.replace('/login'));

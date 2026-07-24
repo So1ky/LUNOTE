@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { listStyles, Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 import {
   listNotifications,
@@ -25,6 +26,7 @@ import { formatDate } from '@/lib/quote-requests';
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const { token } = useAuth();
   const [items, setItems] = useState<AppNotification[] | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -71,10 +73,12 @@ export default function NotificationsScreen() {
         contentContainerStyle={listStyles.content}
         ListHeaderComponent={
           <View style={styles.header}>
-            <ScreenHeader back title="Notifications" />
+            <ScreenHeader back title={t('notifications.title')} />
             {unreadCount > 0 && (
               <Pressable onPress={() => void onReadAll()} style={styles.readAll}>
-                <ThemedText type="link">Mark all as read ({unreadCount})</ThemedText>
+                <ThemedText type="link">
+                  {t('notifications.markAllRead', { count: unreadCount })}
+                </ThemedText>
               </Pressable>
             )}
           </View>
@@ -83,7 +87,7 @@ export default function NotificationsScreen() {
           items === null ? (
             <ActivityIndicator color={Brand.purple} style={styles.loading} />
           ) : (
-            <EmptyState emoji="🔕" message="No notifications yet." />
+            <EmptyState emoji="🔕" message={t('notifications.empty')} />
           )
         }
         renderItem={({ item }) => (
@@ -99,7 +103,7 @@ export default function NotificationsScreen() {
                 {item.body}
               </ThemedText>
               <ThemedText type="caption" themeColor="textSecondary" style={styles.date}>
-                {formatDate(item.createdAt)}
+                {formatDate(item.createdAt, locale)}
               </ThemedText>
             </View>
             {!item.readAt && <View style={styles.dot} />}

@@ -12,8 +12,10 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 
 export default function AppTabs() {
+  const { t } = useTranslation();
   return (
     <Tabs>
       {/* 웹 탭바는 상단 고정이라 화면 내용이 가려지지 않게 위 여백을 준다 */}
@@ -21,16 +23,16 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/home" asChild>
-            <TabButton>Home</TabButton>
+            <TabButton>{t('tabs.home')}</TabButton>
           </TabTrigger>
           <TabTrigger name="quote" href="/quote" asChild>
-            <TabButton>Quote</TabButton>
+            <TabButton>{t('tabs.quote')}</TabButton>
           </TabTrigger>
           <TabTrigger name="payment" href="/payment" asChild>
-            <TabButton>Payment</TabButton>
+            <TabButton>{t('tabs.payment')}</TabButton>
           </TabTrigger>
           <TabTrigger name="profile" href="/profile" asChild>
-            <TabButton>Profile</TabButton>
+            <TabButton>{t('tabs.profile')}</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>

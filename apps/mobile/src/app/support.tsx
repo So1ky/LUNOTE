@@ -8,39 +8,29 @@ import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 
 const SUPPORT_EMAIL = 'support@lunote.app';
 
-const FAQ: { q: string; a: string }[] = [
-  {
-    q: 'How fast will I get my quote?',
-    a: 'We review every request and send a quote within 24 hours. You will get a notification (and an email, if enabled) the moment it arrives.',
-  },
-  {
-    q: 'Can I cancel a request?',
-    a: 'Yes — open the request and tap "Cancel request" any time before payment. After payment, contact support and we will help you.',
-  },
-  {
-    q: 'How do I pay?',
-    a: 'Once your quote is ready, you can pay in the app with international cards. Payment support is being finalized and will be available soon.',
-  },
-  {
-    q: 'What languages do you support?',
-    a: 'Our concierge team can assist you in English and Korean. App translations for more languages are on the way.',
-  },
-];
-
 export default function SupportScreen() {
+  const { t } = useTranslation();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const version = Constants.expoConfig?.version ?? '1.0.0';
 
+  const FAQ: { q: string; a: string }[] = [
+    { q: t('support.faq1q'), a: t('support.faq1a') },
+    { q: t('support.faq2q'), a: t('support.faq2a') },
+    { q: t('support.faq3q'), a: t('support.faq3a') },
+    { q: t('support.faq4q'), a: t('support.faq4a') },
+  ];
+
   return (
     <Screen>
-      <ScreenHeader back title="Support" subtitle="We're here to help" />
+      <ScreenHeader back title={t('support.title')} subtitle={t('support.subtitle')} />
 
       <View style={styles.section}>
         <ThemedText type="caption" themeColor="textSecondary">
-          FAQ
+          {t('support.faqLabel')}
         </ThemedText>
         <Card style={styles.faqCard}>
           {FAQ.map((item, i) => (
@@ -72,15 +62,14 @@ export default function SupportScreen() {
 
       <View style={styles.section}>
         <ThemedText type="caption" themeColor="textSecondary">
-          CONTACT
+          {t('support.contactLabel')}
         </ThemedText>
         <Card style={styles.contactCard}>
           <ThemedText type="small" themeColor="textSecondary">
-            Can’t find your answer? Email us and we’ll get back to you within one
-            business day.
+            {t('support.contactNote')}
           </ThemedText>
           <Button
-            label="Email support"
+            label={t('support.emailSupport')}
             onPress={() =>
               void Linking.openURL(
                 `mailto:${SUPPORT_EMAIL}?subject=LUNOTE support request`,
@@ -94,7 +83,7 @@ export default function SupportScreen() {
       </View>
 
       <ThemedText type="caption" themeColor="textSecondary" style={styles.version}>
-        LUNOTE v{version}
+        {t('support.version', { version })}
       </ThemedText>
     </Screen>
   );

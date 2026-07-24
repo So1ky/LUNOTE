@@ -4,12 +4,14 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 
 /** 토큰 복원이 순식간에 끝나도 브랜드 스플래시가 인지될 최소 노출 시간 */
 const MIN_SPLASH_MS = 900;
 
 export default function Index() {
+  const { t } = useTranslation();
   const { loading, token, profile } = useAuth();
   const [minElapsed, setMinElapsed] = useState(false);
 
@@ -25,7 +27,7 @@ export default function Index() {
       <View style={styles.container}>
         <ThemedText type="display">LUNOTE</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Life in Korea, made easy
+          {t('brand.tagline')}
         </ThemedText>
       </View>
     );

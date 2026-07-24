@@ -10,6 +10,7 @@ import { RequestRow } from '@/components/ui/request-row';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 import { listNotifications } from '@/lib/notifications';
 import {
@@ -23,6 +24,7 @@ const CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { token, profile } = useAuth();
   const [recent, setRecent] = useState<QuoteRequest[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -57,14 +59,18 @@ export default function HomeScreen() {
   return (
     <Screen tabInset>
       <ScreenHeader
-        title={`Hello${firstName ? ` ${firstName}` : ''} 👋`}
-        subtitle="How can we help you settle in Korea?"
+        title={
+          firstName
+            ? t('home.greetingNamed', { name: firstName })
+            : t('home.greeting')
+        }
+        subtitle={t('home.subtitle')}
         right={
           token ? (
             <Pressable
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Notifications"
+              accessibilityLabel={t('home.notifications')}
               onPress={() => router.push('/notifications')}
               style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}>
               <AppIcon
@@ -86,9 +92,9 @@ export default function HomeScreen() {
 
       <Card style={styles.cta} onPress={() => goRequest()}>
         <View style={styles.ctaText}>
-          <ThemedText type="heading">Request a Quote</ThemedText>
+          <ThemedText type="heading">{t('home.requestQuote')}</ThemedText>
           <ThemedText type="small" style={styles.ctaSub}>
-            Tell us what you need — we’ll handle the rest
+            {t('home.requestQuoteSub')}
           </ThemedText>
         </View>
         <ThemedText type="heading" style={styles.ctaArrow}>
@@ -98,7 +104,7 @@ export default function HomeScreen() {
 
       <View style={styles.section}>
         <ThemedText type="caption" themeColor="textSecondary">
-          CATEGORIES
+          {t('home.categoriesLabel')}
         </ThemedText>
         <View style={styles.grid}>
           {CATEGORIES.map((c) => (
@@ -106,7 +112,7 @@ export default function HomeScreen() {
               <ThemedText style={styles.categoryEmoji}>
                 {CATEGORY_META[c].emoji}
               </ThemedText>
-              <ThemedText type="smallStrong">{CATEGORY_META[c].label}</ThemedText>
+              <ThemedText type="smallStrong">{t(`categories.${c}`)}</ThemedText>
             </Card>
           ))}
         </View>
@@ -114,13 +120,11 @@ export default function HomeScreen() {
 
       <View style={styles.section}>
         <ThemedText type="caption" themeColor="textSecondary">
-          RECENT REQUESTS
+          {t('home.recentLabel')}
         </ThemedText>
         {recent.length === 0 && (
           <ThemedText type="small" themeColor="textSecondary">
-            {token
-              ? 'Your requests will appear here.'
-              : 'Log in to create and track your requests.'}
+            {token ? t('home.recentEmptyAuthed') : t('home.recentEmptyGuest')}
           </ThemedText>
         )}
         {recent.map((r) => (
