@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, JwtSignOptions } from '@nestjs/jwt';
 import { UsersModule } from '../users/users.module';
 import { PassportModule } from '@nestjs/passport';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -17,9 +17,13 @@ import { JwtStrategy } from './jwt.strategy';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('JWT_SECRET'),
-        // 모바일 앱 특성상 갱신 전까지 유지되는 짧지 않은 만료.
-        // TODO: refresh token 도입 시 15m 수준으로 단축
-        signOptions: { expiresIn: '1d' },
+        // 기본 1d (env.validation.ts) — PR-4에서 refresh token 도입과 함께 30m으로 단축
+        signOptions: {
+          // env 문자열은 ms 포맷('30m','1d')이어야 한다 — 검증은 기동 시 서명 실패로 드러남
+          expiresIn: config.getOrThrow<string>(
+            'JWT_EXPIRES',
+          ) as JwtSignOptions['expiresIn'],
+        },
       }),
     }),
   ],
