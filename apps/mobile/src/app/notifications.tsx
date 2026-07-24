@@ -26,7 +26,7 @@ import { formatDate } from '@/lib/quote-requests';
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { token } = useAuth();
   const [items, setItems] = useState<AppNotification[] | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -103,7 +103,7 @@ export default function NotificationsScreen() {
                 {item.body}
               </ThemedText>
               <ThemedText type="caption" themeColor="textSecondary" style={styles.date}>
-                {formatDate(item.createdAt)}
+                {formatDate(item.createdAt, locale)}
               </ThemedText>
             </View>
             {!item.readAt && <View style={styles.dot} />}

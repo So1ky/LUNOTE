@@ -52,7 +52,7 @@ const zh: Resources = {
   home: {
     greeting: '你好 👋',
     greetingNamed: '你好 {{name}} 👋',
-    subtitle: '有什么可以帮您在韩国安顿下来？',
+    subtitle: '我们能如何帮您在韩国安顿下来？',
     notifications: '通知',
     requestQuote: '申请报价',
     requestQuoteSub: '告诉我们您的需求，剩下的交给我们',
@@ -123,7 +123,7 @@ const zh: Resources = {
     mismatch: '两次输入的新密码不一致',
     submit: '修改密码',
     confirmTitle: '确认修改密码？',
-    confirmMessage: '下次登录起将使用新密码。',
+    confirmMessage: '新密码将从您下次登录时开始生效。',
     goBack: '返回',
     doneTitle: '密码已修改',
     doneSubtitle: '下次登录时请使用新密码。',
@@ -226,7 +226,7 @@ const zh: Resources = {
     firstName: '名',
     lastName: '姓',
     realNameNote:
-      '请填写真实姓名，我们的团队将凭此为您办理报价和支付。',
+      '请填写真实姓名，方便我们的团队在报价和支付时确认您的身份。',
     saved: '已保存。',
     saveName: '保存姓名',
     securitySection: '安全',

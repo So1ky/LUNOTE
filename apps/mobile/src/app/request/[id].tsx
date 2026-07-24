@@ -30,7 +30,7 @@ import {
 } from '@/lib/quote-requests';
 
 export default function RequestDetailScreen() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { token } = useAuth();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
@@ -94,10 +94,16 @@ export default function RequestDetailScreen() {
               <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />
             </View>
             <ThemedText type="small" themeColor="textSecondary">
-              {t('requestDetail.requested', { date: formatDate(request.createdAt) })}
+              {t('requestDetail.requested', {
+                date: formatDate(request.createdAt, locale),
+              })}
               {request.desiredAmount
                 ? t('requestDetail.budgetSuffix', {
-                    amount: formatAmount(request.desiredAmount, request.currency),
+                    amount: formatAmount(
+                      request.desiredAmount,
+                      request.currency,
+                      locale,
+                    ),
                   })
                 : ''}
             </ThemedText>
@@ -139,7 +145,7 @@ export default function RequestDetailScreen() {
                 {t('requestDetail.yourQuote')}
               </ThemedText>
               <ThemedText type="display" style={styles.amount}>
-                {formatAmount(request.quote.amount, request.quote.currency)}
+                {formatAmount(request.quote.amount, request.quote.currency, locale)}
               </ThemedText>
               <ThemedText type="body" themeColor="textSecondary">
                 {request.quote.explanation}

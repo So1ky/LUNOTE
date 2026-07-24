@@ -87,16 +87,21 @@ export const CATEGORY_META: Record<Category, { emoji: string }> =
     OTHER: { emoji: '✨' },
   };
 
-export function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
+/** locale는 활성 언어(useTranslation().locale) — 미지정 시 en 폴백 */
+export function formatDate(iso: string, locale = 'en') {
+  return new Date(iso).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
 }
 
-export function formatAmount(amount: string | null, currency: string) {
+export function formatAmount(
+  amount: string | null,
+  currency: string,
+  locale = 'en',
+) {
   if (amount === null) return null;
   const symbol = currency === 'USD' ? '$' : `${currency} `;
-  return `${symbol}${Number(amount).toLocaleString()}`;
+  return `${symbol}${Number(amount).toLocaleString(locale)}`;
 }

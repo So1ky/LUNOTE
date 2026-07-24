@@ -52,7 +52,7 @@ const de: Resources = {
   home: {
     greeting: 'Hallo 👋',
     greetingNamed: 'Hallo {{name}} 👋',
-    subtitle: 'Wie können wir Ihnen beim Ankommen in Korea helfen?',
+    subtitle: 'Wie können wir Ihnen beim Einleben in Korea helfen?',
     notifications: 'Benachrichtigungen',
     requestQuote: 'Angebot anfragen',
     requestQuoteSub: 'Sagen Sie uns, was Sie brauchen — den Rest übernehmen wir',
@@ -153,7 +153,7 @@ const de: Resources = {
     contactLabel: 'Wie sollen wir Sie kontaktieren?',
     contactPlaceholder: 'Kontaktmethode wählen',
     contactNote:
-      'Unser Team meldet sich über diesen Weg, um Ihr Angebot zu besprechen.',
+      'Unser Team meldet sich auf diesem Weg, um Ihr Angebot zu besprechen.',
     submit: 'Anfrage senden',
     reviewNote: 'Wir prüfen Ihre Anfrage und senden innerhalb von 24 Stunden ein Angebot.',
     budgetError: 'Das Wunschbudget muss eine positive Zahl sein',
@@ -174,7 +174,7 @@ const de: Resources = {
     budgetSuffix: ' · Budget {{amount}}',
     contact: 'Kontakt: {{method}}',
     yourQuote: 'IHR ANGEBOT',
-    proceedPayment: 'Zur Zahlung',
+    proceedPayment: 'Weiter zur Zahlung',
     reviewing:
       'Wir prüfen Ihre Anfrage. Ein Angebot trifft innerhalb von 24 Stunden ein.',
     cancel: 'Anfrage stornieren',

@@ -14,7 +14,7 @@ type RequestRowProps = {
 
 /** 요청 목록 한 행 — 홈 최근 요청과 Quote 탭 목록이 공유한다 */
 export function RequestRow({ request, onPress }: RequestRowProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const meta = CATEGORY_META[request.category];
 
   return (
@@ -27,7 +27,7 @@ export function RequestRow({ request, onPress }: RequestRowProps) {
           {t(`categories.${request.category}`)}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          #{request.id} · {formatDate(request.createdAt)}
+          #{request.id} · {formatDate(request.createdAt, locale)}
         </ThemedText>
       </View>
       <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />

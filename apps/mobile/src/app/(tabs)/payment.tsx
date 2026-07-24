@@ -24,7 +24,7 @@ const PAYMENT_STATUSES = new Set(['QUOTED', 'PAID', 'IN_PROGRESS', 'COMPLETED', 
 
 export default function PaymentScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { token } = useAuth();
   const [items, setItems] = useState<QuoteRequest[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,11 +92,11 @@ export default function PaymentScreen() {
                   {t(`categories.${item.category}`)}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  #{item.id} · {formatDate(item.quote!.createdAt)}
+                  #{item.id} · {formatDate(item.quote!.createdAt, locale)}
                 </ThemedText>
               </View>
               <ThemedText type="heading" style={styles.amount}>
-                {formatAmount(item.quote!.amount, item.quote!.currency)}
+                {formatAmount(item.quote!.amount, item.quote!.currency, locale)}
               </ThemedText>
             </View>
             <View style={styles.rowBottom}>

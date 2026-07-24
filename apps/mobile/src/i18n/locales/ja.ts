@@ -67,7 +67,7 @@ const ja: Resources = {
     passwordLabel: 'パスワード',
     forgotPassword: 'パスワードをお忘れですか？',
     submit: 'ログイン',
-    orContinueWith: 'または次で続ける',
+    orContinueWith: 'または以下の方法で続ける',
     continueGoogle: 'Googleで続ける',
     continueApple: 'Appleで続ける',
     continueGuest: '← ゲストのまま閲覧を続ける',
@@ -100,7 +100,7 @@ const ja: Resources = {
   forgotPassword: {
     resetTitle: 'パスワードの再設定',
     requestSubtitle: 'アカウントのメールを入力すると、6桁のコードをお送りします。',
-    resetSubtitle: 'コードの送信先',
+    resetSubtitle: '以下宛てにコードを送信しました',
     email: 'メール',
     sendCode: '再設定コードを送信',
     newPassword: '新しいパスワード',
@@ -153,7 +153,7 @@ const ja: Resources = {
     contactLabel: 'ご連絡方法を選んでください',
     contactPlaceholder: '連絡方法を選択',
     contactNote:
-      'この方法でチームがご連絡し、見積もりについてご相談します。',
+      'いただいた連絡方法で、見積もりについてチームよりご連絡します。',
     submit: '依頼を送信',
     reviewNote: 'ご依頼を確認し、24時間以内に見積もりをお送りします。',
     budgetError: 'ご希望の予算は正の数で入力してください',

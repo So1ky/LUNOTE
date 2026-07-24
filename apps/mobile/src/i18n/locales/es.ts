@@ -254,7 +254,7 @@ const es: Resources = {
     faq2a: 'Sí: abre la solicitud y pulsa "Cancelar solicitud" en cualquier momento antes del pago. Después del pago, contacta con soporte y te ayudaremos.',
     faq3q: '¿Cómo pago?',
     faq3a: 'Cuando tu presupuesto esté listo, puedes pagar en la app con tarjetas internacionales. El sistema de pago se está ultimando y estará disponible pronto.',
-    faq4q: '¿Qué idiomas admiten?',
+    faq4q: '¿En qué idiomas ofrecen soporte?',
     faq4a: 'La app está disponible en seis idiomas y nuestro equipo de conserjería puede atenderte en inglés y coreano.',
     contactLabel: 'CONTACTO',
     contactNote:
