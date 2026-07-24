@@ -165,6 +165,7 @@ model Attachment {
   sizeBytes Int
   createdAt DateTime     @default(now())
 
+  @@index([requestId]) // 상세 조회 시 requestId로 첨부를 모은다
   @@map("attachments")
 }
 
