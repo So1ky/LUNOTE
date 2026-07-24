@@ -4,17 +4,12 @@ import { UserRole } from '@prisma/client';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from './mail.service';
-import {
-  NOTIFICATIONS_QUEUE,
-  NotificationJob,
-  QuoteSentJob,
-  RequestCreatedJob,
-} from './notifications.service';
+import { NOTIFICATIONS_QUEUE, NotificationJob } from './notifications.service';
 
 /**
- * 알림 워커.
- * - 관리자(신규 문의): 인앱 알림함 + 이메일 (앱을 안 보고 있어도 접수를 놓치지 않도록)
- * - 사용자(견적 도착): 인앱 알림함만 — 앱 벨 배지로 노출
+ * 알림 워커 — 외부 부수효과(이메일)만 담당한다.
+ * 인앱 알림 행은 유발 트랜잭션에서 이미 생성됨 (DB-first, ARCHITECTURE §7).
+ * 이메일 실패는 BullMQ 재시도 3회 후 최종 실패 허용.
  */
 @Processor(NOTIFICATIONS_QUEUE)
 export class NotificationsProcessor extends WorkerHost {
@@ -29,37 +24,25 @@ export class NotificationsProcessor extends WorkerHost {
 
   async process(job: Job<NotificationJob>): Promise<void> {
     switch (job.data.type) {
-      case 'REQUEST_CREATED':
-        return this.onRequestCreated(job.data);
-      case 'QUOTE_SENT':
-        return this.onQuoteSent(job.data);
+      case 'ADMIN_NEW_REQUEST_EMAIL':
+        return this.sendAdminEmails(job.data);
     }
   }
 
-  /** 신규 문의 → 모든 관리자에게 인앱 + 이메일 */
-  private async onRequestCreated(data: RequestCreatedJob) {
+  /** 신규 문의 → 모든 관리자에게 이메일 (앱을 안 보고 있어도 접수를 놓치지 않도록) */
+  private async sendAdminEmails(data: {
+    requestId: number;
+    category: string;
+    userEmail: string;
+  }) {
     const admins = await this.prisma.user.findMany({
       where: { role: UserRole.ADMIN },
-      select: { id: true, email: true },
+      select: { email: true },
     });
     if (admins.length === 0) {
-      this.logger.warn('관리자 계정이 없어 접수 알림을 보낼 수 없습니다');
+      this.logger.warn('관리자 계정이 없어 접수 이메일을 보낼 수 없습니다');
       return;
     }
-
-    const title = `New request #${data.requestId}`;
-    const body = `${data.category} · ${data.userEmail}`;
-
-    await this.prisma.notification.createMany({
-      data: admins.map((a) => ({
-        userId: a.id,
-        type: data.type,
-        title,
-        body,
-        requestId: data.requestId,
-      })),
-    });
-
     for (const admin of admins) {
       await this.mail.send(
         admin.email,
@@ -67,31 +50,5 @@ export class NotificationsProcessor extends WorkerHost {
         `새 문의가 접수되었습니다.\n\n문의 번호: #${data.requestId}\n카테고리: ${data.category}\n사용자: ${data.userEmail}\n\n앱 또는 관리자 API에서 확인 후 24시간 내에 견적을 발송하세요.`,
       );
     }
-  }
-
-  /**
-   * 견적 발송 → 인앱 알림만 생성한다.
-   * 자동 발송 채널은 인앱(+추후 OS 푸시)으로 일원화 — 문의의 연락수단(email/phone/WhatsApp)은
-   * 관리자가 직접 연락하는 채널이지 자동 알림 채널이 아니다 (제품 결정, 2026-07).
-   * OS 푸시는 Apple Developer 가입 후 이 위에 추가한다.
-   */
-  private async onQuoteSent(data: QuoteSentJob) {
-    const owner = await this.prisma.user.findUnique({
-      where: { id: data.ownerId },
-      select: { id: true },
-    });
-    if (!owner) return;
-
-    const amountText = `${data.currency === 'USD' ? '$' : `${data.currency} `}${Number(data.amount).toLocaleString()}`;
-
-    await this.prisma.notification.create({
-      data: {
-        userId: owner.id,
-        type: data.type,
-        title: 'Your quote is ready',
-        body: `Request #${data.requestId} · ${amountText}`,
-        requestId: data.requestId,
-      },
-    });
   }
 }

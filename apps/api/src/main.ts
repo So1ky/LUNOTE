@@ -11,6 +11,9 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const isProd = config.get('NODE_ENV') === 'production';
 
+  // SIGTERM(K8s 롤링 배포) 시 onModuleDestroy 훅 실행 — Prisma 연결 해제, BullMQ 워커 drain
+  app.enableShutdownHooks();
+
   // HTTPS 강제 전환 지시는 프로덕션에서만 켠다.
   // - hsts: 로컬에 보내면 브라우저가 이후 모든 localhost 요청을 https로 바꿔버려
   //   다른 포트/프로젝트까지 최대 1년간 접속 불가가 된다.

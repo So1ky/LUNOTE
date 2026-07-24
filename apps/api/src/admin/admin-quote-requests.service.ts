@@ -147,15 +147,13 @@ export class AdminQuoteRequestsService {
           },
         },
       });
-    });
-
-    // 사용자에게 견적 도착 알림 (인앱 + 이메일)
-    await this.notifications.enqueue({
-      type: 'QUOTE_SENT',
-      requestId,
-      ownerId: request.user.id,
-      amount: String(dto.amount),
-      currency: dto.currency ?? 'USD',
+      // 사용자 인앱 알림도 같은 트랜잭션 — 발행됐는데 알림이 없는 상태가 불가능 (DB-first)
+      await this.notifications.notifyUserQuoteSent(tx, {
+        requestId,
+        ownerId: request.user.id,
+        amount: String(dto.amount),
+        currency: dto.currency ?? 'USD',
+      });
     });
 
     return this.findOne(requestId);
