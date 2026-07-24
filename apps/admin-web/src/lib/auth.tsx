@@ -37,12 +37,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { accessToken } = await api<{ accessToken: string }>('/auth/login', {
-      method: 'POST',
-      body: { email, password },
-      anonymous: true,
-    });
-    tokenStore.set(accessToken);
+    const pair = await api<{ accessToken: string; refreshToken: string }>(
+      '/auth/login',
+      {
+        method: 'POST',
+        body: { email, password },
+        anonymous: true,
+      },
+    );
+    tokenStore.setPair(pair.accessToken, pair.refreshToken);
     const me = await api<Profile>('/auth/me');
     // 일반 사용자 계정 차단 — 대시보드는 ADMIN 전용
     if (me.role !== 'ADMIN') {

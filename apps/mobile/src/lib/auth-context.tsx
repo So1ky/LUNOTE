@@ -7,8 +7,10 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { api } from './api';
+import { api, setAuthEventHandlers } from './api';
 import { tokenStorage } from './token-storage';
+
+type TokenPair = { accessToken: string; refreshToken: string };
 
 export type Profile = {
   id: string;
@@ -60,40 +62,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
 
-  // 앱 시작 시 저장된 토큰 복원 → 유효성 확인
+  // 액세스 만료 시 api()가 자동 갱신한다 — 새 토큰을 상태에 반영하고,
+  // 갱신 불가(세션 폐기/만료)면 로컬 세션을 정리해 로그인 화면으로 보낸다
+  useEffect(() => {
+    setAuthEventHandlers({
+      onTokensRefreshed: (accessToken) => setToken(accessToken),
+      onSessionExpired: () => {
+        void tokenStorage.clear();
+        setToken(null);
+        setProfile(null);
+      },
+    });
+  }, []);
+
+  // 앱 시작 시 저장된 토큰 복원 → 유효성 확인 (만료면 api()가 자동 갱신 시도)
   useEffect(() => {
     void (async () => {
       try {
         const stored = await tokenStorage.get();
         if (stored) {
           const me = await api<Profile>('/auth/me', { token: stored });
-          setToken(stored);
+          // 자동 갱신이 일어났으면 onTokensRefreshed가 최신 토큰을 이미 반영했다
+          setToken((current) => current ?? stored);
           setProfile(me);
         }
       } catch {
-        await tokenStorage.delete(); // 만료/무효 토큰 폐기
+        await tokenStorage.clear(); // 만료/무효 토큰 폐기
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  const applyToken = useCallback(async (accessToken: string) => {
-    await tokenStorage.set(accessToken);
-    const me = await api<Profile>('/auth/me', { token: accessToken });
-    setToken(accessToken);
+  const applyTokens = useCallback(async (pair: TokenPair) => {
+    await tokenStorage.setPair(pair.accessToken, pair.refreshToken);
+    const me = await api<Profile>('/auth/me', { token: pair.accessToken });
+    setToken(pair.accessToken);
     setProfile(me);
   }, []);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      const { accessToken } = await api<{ accessToken: string }>(
-        '/auth/login',
-        { method: 'POST', body: { email, password } },
-      );
-      await applyToken(accessToken);
+      const pair = await api<TokenPair>('/auth/login', {
+        method: 'POST',
+        body: { email, password },
+      });
+      await applyTokens(pair);
     },
-    [applyToken],
+    [applyTokens],
   );
 
   const signUp = useCallback(
@@ -103,13 +119,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       firstName?: string,
       lastName?: string,
     ) => {
-      const { accessToken } = await api<{ accessToken: string }>(
-        '/auth/signup',
-        { method: 'POST', body: { email, password, firstName, lastName } },
-      );
-      await applyToken(accessToken);
+      const pair = await api<TokenPair>('/auth/signup', {
+        method: 'POST',
+        body: { email, password, firstName, lastName },
+      });
+      await applyTokens(pair);
     },
-    [applyToken],
+    [applyTokens],
   );
 
   const refreshProfile = useCallback(async () => {
@@ -128,7 +144,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    await tokenStorage.delete();
+    // 서버의 리프레시 세션 폐기 — 실패해도 로컬 로그아웃은 진행 (fire-and-forget)
+    const refreshToken = await tokenStorage.getRefresh();
+    if (refreshToken) {
+      void api('/auth/logout', {
+        method: 'POST',
+        body: { refreshToken },
+      }).catch(() => {});
+    }
+    await tokenStorage.clear();
     setToken(null);
     setProfile(null);
   }, []);

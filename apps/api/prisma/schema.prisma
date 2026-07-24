@@ -81,9 +81,25 @@ model User {
   requests      QuoteRequest[]
   notifications Notification[]
   auditLogs     AdminAuditLog[]
+  refreshTokens RefreshToken[]
 
   @@unique([provider, providerId])
   @@map("users")
+}
+
+/// 리프레시 토큰 — 원문 미저장(sha256 해시), 사용 시마다 회전, 재사용 탐지 시 전체 폐기
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime? // 회전·로그아웃·강제 폐기 시각
+  replacedBy String? // 회전으로 대체된 새 토큰 id (재사용 탐지 추적용)
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }
 
 /// 관리자 행위 감사 로그 — 실결제 분쟁 대응 근거 (ARCHITECTURE §11)
