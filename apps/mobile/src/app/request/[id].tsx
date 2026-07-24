@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -40,18 +40,23 @@ export default function RequestDetailScreen() {
   const [cancelling, setCancelling] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!token || Number.isNaN(id)) return;
-    try {
-      setRequest(await getQuoteRequest(token, id));
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
-    }
-  }, [token, id]);
-
+  // effect 내 직접 fetch — cancelled 플래그로 언마운트/stale 응답을 가드한다
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!token || Number.isNaN(id)) return;
+    let cancelled = false;
+    getQuoteRequest(token, id)
+      .then((data) => {
+        if (!cancelled) setRequest(data);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, id, t]);
 
   const onCancel = async () => {
     if (!token) return;

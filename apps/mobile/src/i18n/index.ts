@@ -1,4 +1,5 @@
 import { I18n, type TranslateOptions } from 'i18n-js';
+import { useCallback } from 'react';
 
 import { useAuth } from '@/lib/auth-context';
 import type { LanguageCode } from '@/lib/languages';
@@ -49,8 +50,11 @@ const deviceLanguage = detectDeviceLanguage();
 export function useTranslation() {
   const { profile } = useAuth();
   const locale = profile?.language ?? deviceLanguage ?? 'en';
-  const t = (key: string, options?: TranslateOptions) =>
-    i18n.t(key, { locale, ...options });
+  // locale에만 의존하는 안정 참조 — effect 의존성으로 쓸 수 있다
+  const t = useCallback(
+    (key: string, options?: TranslateOptions) => i18n.t(key, { locale, ...options }),
+    [locale],
+  );
   return { t, locale: locale as LanguageCode };
 }
 
