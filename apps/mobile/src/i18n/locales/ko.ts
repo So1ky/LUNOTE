@@ -166,6 +166,7 @@ const ko: Resources = {
     login: '로그인',
     emptyNone: '아직 결제할 항목이 없어요 — 견적이 여기에 표시돼요.',
     payNow: '지금 결제',
+    expired: '만료됨',
   },
 
   requestDetail: {
@@ -175,6 +176,8 @@ const ko: Resources = {
     contact: '연락 수단: {{method}}',
     yourQuote: '견적',
     proceedPayment: '결제 진행하기',
+    validUntil: '{{date}}까지 유효',
+    quoteExpired: '견적 유효기간이 지났어요 — 새 문의를 등록해 주세요.',
     reviewing:
       '요청을 검토하고 있어요. 24시간 이내에 견적을 보내드려요.',
     cancel: '문의 취소',

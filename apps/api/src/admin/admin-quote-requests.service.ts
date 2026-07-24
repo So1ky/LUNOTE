@@ -3,11 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma, RequestStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
-import { CreateQuoteDto, UpdateQuoteDto } from './dto/create-quote.dto';
+import { CreateQuoteDto } from './dto/create-quote.dto';
 
 /** 관리자 화면용 — 사용자 요약 정보를 포함해 노출한다 */
 const ADMIN_REQUEST_SELECT = {
@@ -36,6 +37,7 @@ const ADMIN_REQUEST_SELECT = {
       amount: true,
       currency: true,
       explanation: true,
+      expiresAt: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -58,11 +60,16 @@ const ADMIN_DETAIL_SELECT = {
 
 @Injectable()
 export class AdminQuoteRequestsService {
+  private readonly QUOTE_VALIDITY_DAYS: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly notifications: NotificationsService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.QUOTE_VALIDITY_DAYS = Number(config.getOrThrow('QUOTE_VALIDITY_DAYS'));
+  }
 
   findAll(status?: RequestStatus) {
     return this.prisma.quoteRequest.findMany({
@@ -89,20 +96,24 @@ export class AdminQuoteRequestsService {
     return { ...request, attachments };
   }
 
-  /** 견적 발송: Quote 생성 + REVIEWING → QUOTED 전이를 한 트랜잭션으로 */
-  async createQuote(requestId: number, dto: CreateQuoteDto) {
+  /** 견적 발송: Quote 생성 + REVIEWING → QUOTED 전이 + 감사 로그를 한 트랜잭션으로 */
+  async createQuote(requestId: number, dto: CreateQuoteDto, adminId: string) {
     const request = await this.findOne(requestId);
 
     if (request.quote) {
-      throw new ConflictException(
-        'Quote already exists — use PATCH to update it',
-      );
+      // 견적은 발행 후 불변 — 수정/재발행 불가 (제품 결정 2026-07-24)
+      throw new ConflictException('Quote already exists — quotes are immutable');
     }
     if (request.status !== RequestStatus.REVIEWING) {
       throw new ConflictException(
         `Cannot quote a request in ${request.status} status`,
       );
     }
+
+    // 발행 후 불변 + 유효기간 — 만료 시 결제 불가 (ARCHITECTURE §7)
+    const expiresAt = new Date(
+      Date.now() + this.QUOTE_VALIDITY_DAYS * 24 * 60 * 60 * 1000,
+    );
 
     await this.prisma.$transaction(async (tx) => {
       await tx.quote.create({
@@ -111,6 +122,7 @@ export class AdminQuoteRequestsService {
           amount: dto.amount,
           currency: dto.currency ?? 'USD',
           explanation: dto.explanation,
+          expiresAt,
         },
       });
       // 상태 조건을 다시 걸어 동시 견적 발송 경쟁을 차단
@@ -121,6 +133,20 @@ export class AdminQuoteRequestsService {
       if (count === 0) {
         throw new ConflictException('Request status changed concurrently');
       }
+      // 감사 로그 — 견적 발행과 같은 트랜잭션 (기록 없는 발행이 존재할 수 없게)
+      await tx.adminAuditLog.create({
+        data: {
+          adminId,
+          action: 'QUOTE_CREATED',
+          targetType: 'QUOTE_REQUEST',
+          targetId: String(requestId),
+          detail: {
+            amount: dto.amount,
+            currency: dto.currency ?? 'USD',
+            expiresAt: expiresAt.toISOString(),
+          },
+        },
+      });
     });
 
     // 사용자에게 견적 도착 알림 (인앱 + 이메일)
@@ -135,28 +161,5 @@ export class AdminQuoteRequestsService {
     return this.findOne(requestId);
   }
 
-  /** 견적 수정: 결제 전(QUOTED)에만 — 결제 후 금액 변경은 불가 (ARCHITECTURE §7) */
-  async updateQuote(requestId: number, dto: UpdateQuoteDto) {
-    const request = await this.findOne(requestId);
-
-    if (!request.quote) {
-      throw new NotFoundException('No quote to update — create one first');
-    }
-    if (request.status !== RequestStatus.QUOTED) {
-      throw new ConflictException(
-        `Cannot update quote in ${request.status} status — only before payment`,
-      );
-    }
-
-    await this.prisma.quote.update({
-      where: { requestId },
-      data: {
-        amount: dto.amount,
-        currency: dto.currency,
-        explanation: dto.explanation,
-      },
-    });
-
-    return this.findOne(requestId);
-  }
+  // 견적 수정 API는 두지 않는다 — 발행 후 불변 (제품 결정 2026-07-24, ARCHITECTURE §7)
 }

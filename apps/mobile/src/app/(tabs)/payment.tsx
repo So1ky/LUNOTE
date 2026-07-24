@@ -28,6 +28,8 @@ export default function PaymentScreen() {
   const { token } = useAuth();
   const [items, setItems] = useState<QuoteRequest[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // 만료 표시 기준 시각 — 렌더 중 Date.now() 호출은 purity 규칙 위반이라 마운트 시점 고정
+  const [now] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -101,10 +103,18 @@ export default function PaymentScreen() {
             </View>
             <View style={styles.rowBottom}>
               <Badge tone={STATUS_TONE[item.status] ?? 'completed'} />
-              {item.status === 'QUOTED' && (
-                // TODO: PortOne 결제 연동 — 현재는 상세 화면으로 이동
-                <Button label={t('payment.payNow')} onPress={() => router.push(`/request/${item.id}`)} />
-              )}
+              {item.status === 'QUOTED' &&
+                (new Date(item.quote!.expiresAt).getTime() < now ? (
+                  <ThemedText type="smallStrong" style={styles.expired}>
+                    {t('payment.expired')}
+                  </ThemedText>
+                ) : (
+                  // TODO: PortOne 결제 연동 — 현재는 상세 화면으로 이동
+                  <Button
+                    label={t('payment.payNow')}
+                    onPress={() => router.push(`/request/${item.id}`)}
+                  />
+                ))}
             </View>
           </Card>
         )}
@@ -141,5 +151,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.md,
+  },
+  expired: {
+    color: Brand.danger,
   },
 });

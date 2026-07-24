@@ -166,6 +166,7 @@ const ja: Resources = {
     login: 'ログイン',
     emptyNone: 'まだお支払いはありません。見積もりはここに表示されます。',
     payNow: '今すぐ支払う',
+    expired: '期限切れ',
   },
 
   requestDetail: {
@@ -175,6 +176,8 @@ const ja: Resources = {
     contact: '連絡方法：{{method}}',
     yourQuote: '見積もり',
     proceedPayment: '支払いに進む',
+    validUntil: '{{date}}まで有効',
+    quoteExpired: 'お見積もりの有効期限が切れました。新しい依頼を作成してください。',
     reviewing:
       'ご依頼を確認中です。24時間以内に見積もりが届きます。',
     cancel: '依頼をキャンセル',

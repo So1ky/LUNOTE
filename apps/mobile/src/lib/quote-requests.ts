@@ -24,6 +24,7 @@ export type Quote = {
   amount: string; // Prisma Decimal은 JSON에서 문자열
   currency: string;
   explanation: string;
+  expiresAt: string; // 발행+7일 — 만료 시 결제 불가 (서버가 강제, UI는 표시만)
   createdAt: string;
 };
 

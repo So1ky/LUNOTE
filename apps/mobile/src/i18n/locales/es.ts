@@ -166,6 +166,7 @@ const es: Resources = {
     login: 'Iniciar sesión',
     emptyNone: 'Nada por pagar aún: los presupuestos aparecerán aquí.',
     payNow: 'Pagar ahora',
+    expired: 'Expirado',
   },
 
   requestDetail: {
@@ -175,6 +176,8 @@ const es: Resources = {
     contact: 'Contacto: {{method}}',
     yourQuote: 'TU PRESUPUESTO',
     proceedPayment: 'Continuar al pago',
+    validUntil: 'Válido hasta {{date}}',
+    quoteExpired: 'El presupuesto ha expirado; envía una nueva solicitud.',
     reviewing:
       'Estamos revisando tu solicitud. Recibirás un presupuesto en un plazo de 24 horas.',
     cancel: 'Cancelar solicitud',

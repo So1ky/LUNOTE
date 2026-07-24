@@ -166,6 +166,7 @@ const zh: Resources = {
     login: '登录',
     emptyNone: '暂无待支付项目，报价将显示在这里。',
     payNow: '立即支付',
+    expired: '已过期',
   },
 
   requestDetail: {
@@ -175,6 +176,8 @@ const zh: Resources = {
     contact: '联系方式：{{method}}',
     yourQuote: '您的报价',
     proceedPayment: '前往支付',
+    validUntil: '有效期至 {{date}}',
+    quoteExpired: '报价已过期——请提交新的请求。',
     reviewing:
       '我们正在审核您的申请，报价将在 24 小时内送达。',
     cancel: '取消申请',

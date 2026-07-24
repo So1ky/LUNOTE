@@ -27,6 +27,7 @@ const REQUEST_SELECT = {
       amount: true,
       currency: true,
       explanation: true,
+      expiresAt: true,
       createdAt: true,
     },
   },

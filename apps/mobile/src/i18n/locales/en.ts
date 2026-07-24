@@ -174,6 +174,7 @@ const en = {
     login: 'Log in',
     emptyNone: 'Nothing to pay yet — quotes will appear here.',
     payNow: 'Pay now',
+    expired: 'Expired',
   },
 
   requestDetail: {
@@ -183,6 +184,8 @@ const en = {
     contact: 'Contact: {{method}}',
     yourQuote: 'YOUR QUOTE',
     proceedPayment: 'Proceed to payment',
+    validUntil: 'Valid until {{date}}',
+    quoteExpired: 'This quote has expired — please submit a new request.',
     reviewing:
       'We are reviewing your request. A quote will arrive within 24 hours.',
     cancel: 'Cancel request',

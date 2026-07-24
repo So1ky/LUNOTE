@@ -152,35 +152,47 @@ describe('Admin quotes (e2e)', () => {
     expect(Number(body.quote.amount)).toBe(340);
   });
 
-  it('견적 수정(QUOTED 상태) → 금액 변경 반영', async () => {
-    const res = await request(app.getHttpServer())
+  it('견적은 발행 후 불변 — 수정 라우트 자체가 없다 (404)', () => {
+    return request(app.getHttpServer())
       .patch(`/admin/quote-requests/${requestId}/quote`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ amount: 300 })
-      .expect(200);
-    expect(
-      Number((res.body as { quote: { amount: string | number } }).quote.amount),
-    ).toBe(300);
+      .expect(404);
   });
 
-  it('일반 사용자는 견적 발송/수정 불가 (403)', () => {
+  it('이미 견적이 있으면 재발송 불가 (409)', () => {
     return request(app.getHttpServer())
-      .patch(`/admin/quote-requests/${requestId}/quote`)
+      .post(`/admin/quote-requests/${requestId}/quote`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ amount: 500, explanation: 'duplicate attempt' })
+      .expect(409);
+  });
+
+  it('일반 사용자는 견적 발송 불가 (403)', () => {
+    return request(app.getHttpServer())
+      .post(`/admin/quote-requests/${requestId}/quote`)
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ amount: 1 })
+      .send({ amount: 1, explanation: 'not allowed' })
       .expect(403);
   });
 
-  it('취소된 문의에는 견적 수정 불가 (409)', async () => {
-    await request(app.getHttpServer())
-      .patch(`/quote-requests/${requestId}/cancel`)
-      .set('Authorization', `Bearer ${userToken}`)
-      .expect(200);
-
-    return request(app.getHttpServer())
-      .patch(`/admin/quote-requests/${requestId}/quote`)
+  it('견적에 유효기간(expiresAt ≈ 발행 + 7일)이 설정된다', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/admin/quote-requests/${requestId}`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ amount: 500 })
-      .expect(409);
+      .expect(200);
+    const quote = (res.body as { quote: { expiresAt: string } }).quote;
+    const diffDays =
+      (new Date(quote.expiresAt).getTime() - Date.now()) / 86_400_000;
+    expect(diffDays).toBeGreaterThan(6.9);
+    expect(diffDays).toBeLessThanOrEqual(7.0);
+  });
+
+  it('견적 발행이 감사 로그에 기록된다', async () => {
+    const logs = await prisma.adminAuditLog.findMany({
+      where: { targetType: 'QUOTE_REQUEST', targetId: String(requestId) },
+    });
+    expect(logs).toHaveLength(1);
+    expect(logs[0].action).toBe('QUOTE_CREATED');
   });
 });

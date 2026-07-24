@@ -75,6 +75,11 @@ export default function RequestDetailScreen() {
 
   const cancellable =
     request?.status === 'REVIEWING' || request?.status === 'QUOTED';
+  // 만료 판정은 서버가 강제한다 — UI는 표시·버튼 숨김만 담당 (기준 시각은 마운트 시점 고정)
+  const [now] = useState(() => Date.now());
+  const quoteExpired = request?.quote
+    ? new Date(request.quote.expiresAt).getTime() < now
+    : false;
 
   return (
     <Screen>
@@ -155,7 +160,17 @@ export default function RequestDetailScreen() {
               <ThemedText type="body" themeColor="textSecondary">
                 {request.quote.explanation}
               </ThemedText>
-              {request.status === 'QUOTED' && (
+              <ThemedText
+                type="small"
+                themeColor="textSecondary"
+                style={quoteExpired && styles.expiredText}>
+                {quoteExpired
+                  ? t('requestDetail.quoteExpired')
+                  : t('requestDetail.validUntil', {
+                      date: formatDate(request.quote.expiresAt, locale),
+                    })}
+              </ThemedText>
+              {request.status === 'QUOTED' && !quoteExpired && (
                 // TODO: PortOne 결제 연동 (A1 마지막 단계)
                 <Button label={t('requestDetail.proceedPayment')} size="lg" disabled />
               )}
@@ -243,5 +258,8 @@ const styles = StyleSheet.create({
   },
   amount: {
     fontVariant: ['tabular-nums'],
+  },
+  expiredText: {
+    color: Brand.danger,
   },
 });
