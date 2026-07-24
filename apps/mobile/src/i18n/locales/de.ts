@@ -166,6 +166,7 @@ const de: Resources = {
     login: 'Anmelden',
     emptyNone: 'Noch nichts zu bezahlen — Angebote erscheinen hier.',
     payNow: 'Jetzt bezahlen',
+    expired: 'Abgelaufen',
   },
 
   requestDetail: {
@@ -175,6 +176,8 @@ const de: Resources = {
     contact: 'Kontakt: {{method}}',
     yourQuote: 'IHR ANGEBOT',
     proceedPayment: 'Weiter zur Zahlung',
+    validUntil: 'Gültig bis {{date}}',
+    quoteExpired: 'Das Angebot ist abgelaufen – bitte neue Anfrage stellen.',
     reviewing:
       'Wir prüfen Ihre Anfrage. Ein Angebot trifft innerhalb von 24 Stunden ein.',
     cancel: 'Anfrage stornieren',

@@ -23,6 +23,7 @@ const POLICY_DEFAULTS: Record<string, string> = {
   SMTP_PORT: '587',
   JWT_EXPIRES: '1d', // TODO(#운영준비 PR-4): refresh token 도입 시 30m으로 단축
   AUTH_CODE_TTL_MIN: '15',
+  QUOTE_VALIDITY_DAYS: '7', // 견적 유효기간 (제품 결정 2026-07-24)
   AUTH_CODE_MAX_ATTEMPTS: '5',
   AUTH_RESEND_COOLDOWN_SEC: '60',
   PRESIGN_UPLOAD_TTL_SEC: '300',

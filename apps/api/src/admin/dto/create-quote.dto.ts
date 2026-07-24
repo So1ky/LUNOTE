@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNumber,
   IsOptional,
@@ -33,5 +33,3 @@ export class CreateQuoteDto {
   @MaxLength(2000)
   explanation: string;
 }
-
-export class UpdateQuoteDto extends PartialType(CreateQuoteDto) {}

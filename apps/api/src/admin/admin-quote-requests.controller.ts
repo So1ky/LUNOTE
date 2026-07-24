@@ -5,7 +5,6 @@ import {
   Param,
   ParseEnumPipe,
   ParseIntPipe,
-  Patch,
   Post,
   Query,
   UseGuards,
@@ -18,11 +17,13 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequestStatus, UserRole } from '@prisma/client';
+import { AuthUser } from '../auth/auth-user';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AdminQuoteRequestsService } from './admin-quote-requests.service';
-import { CreateQuoteDto, UpdateQuoteDto } from './dto/create-quote.dto';
+import { CreateQuoteDto } from './dto/create-quote.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -56,22 +57,12 @@ export class AdminQuoteRequestsController {
     description: '이미 견적 존재 또는 REVIEWING 아님',
   })
   createQuote(
+    @CurrentUser() admin: AuthUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateQuoteDto,
   ) {
-    return this.service.createQuote(id, dto);
+    return this.service.createQuote(id, dto, admin.id);
   }
 
-  @Patch(':id/quote')
-  @ApiOperation({ summary: '[관리자] 견적 수정 — 결제 전(QUOTED)에만' })
-  @ApiResponse({
-    status: 409,
-    description: 'QUOTED 상태가 아님 (결제 후 수정 불가)',
-  })
-  updateQuote(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateQuoteDto,
-  ) {
-    return this.service.updateQuote(id, dto);
-  }
+  // 견적 수정 라우트는 제공하지 않는다 — 발행 후 불변 (제품 결정 2026-07-24)
 }

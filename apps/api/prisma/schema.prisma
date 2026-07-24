@@ -80,9 +80,26 @@ model User {
 
   requests      QuoteRequest[]
   notifications Notification[]
+  auditLogs     AdminAuditLog[]
 
   @@unique([provider, providerId])
   @@map("users")
+}
+
+/// 관리자 행위 감사 로그 — 실결제 분쟁 대응 근거 (ARCHITECTURE §11)
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id])
+  action     String // 예: QUOTE_CREATED
+  targetType String // 예: QUOTE_REQUEST
+  targetId   String
+  detail     Json? // 행위 시점의 핵심 값 스냅샷 (금액/통화 등)
+  createdAt  DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([targetType, targetId])
+  @@map("admin_audit_logs")
 }
 
 // 인앱 알림함 — 관리자(신규 문의)와 사용자(견적 도착) 공용.
@@ -142,6 +159,8 @@ model Quote {
   amount      Decimal      @db.Decimal(12, 2)
   currency    String       @default("USD")
   explanation String // 가격 책정 근거 (와이어프레임의 explanation)
+  // 발행 + QUOTE_VALIDITY_DAYS(기본 7일). 만료된 견적으로는 결제 불가 (ARCHITECTURE §7)
+  expiresAt   DateTime
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
