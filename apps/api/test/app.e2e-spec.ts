@@ -39,7 +39,7 @@ describe('API (e2e)', () => {
     return request(app.getHttpServer())
       .get('/health')
       .expect(200)
-      .expect({ status: 'ok', db: 'up' });
+      .expect({ status: 'ok', db: 'up', queue: 'up' });
   });
 
   it('POST /auth/signup — 가입하면 토큰 발급', async () => {

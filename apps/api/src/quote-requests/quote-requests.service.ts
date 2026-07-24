@@ -71,31 +71,40 @@ export class QuoteRequestsService {
       }
     }
 
-    const created = await this.prisma.quoteRequest.create({
-      data: {
-        userId,
-        category: dto.category,
-        desiredAmount: dto.desiredAmount,
-        currency: dto.currency ?? 'USD',
-        description: dto.description,
-        contactMethod: dto.contactMethod,
-        attachments: dto.attachments?.length
-          ? {
-              create: dto.attachments.map((a) => ({
-                s3Key: a.s3Key,
-                fileName: a.fileName,
-                mimeType: a.mimeType,
-                sizeBytes: a.sizeBytes,
-              })),
-            }
-          : undefined,
-      },
-      select: REQUEST_SELECT,
+    // 문의 생성 + 관리자 인앱 알림을 한 트랜잭션으로 — 알림 유실 불가 (DB-first)
+    const created = await this.prisma.$transaction(async (tx) => {
+      const request = await tx.quoteRequest.create({
+        data: {
+          userId,
+          category: dto.category,
+          desiredAmount: dto.desiredAmount,
+          currency: dto.currency ?? 'USD',
+          description: dto.description,
+          contactMethod: dto.contactMethod,
+          attachments: dto.attachments?.length
+            ? {
+                create: dto.attachments.map((a) => ({
+                  s3Key: a.s3Key,
+                  fileName: a.fileName,
+                  mimeType: a.mimeType,
+                  sizeBytes: a.sizeBytes,
+                })),
+              }
+            : undefined,
+        },
+        select: REQUEST_SELECT,
+      });
+      await this.notifications.notifyAdminsRequestCreated(tx, {
+        requestId: request.id,
+        category: request.category,
+        userEmail,
+      });
+      return request;
     });
 
-    // 운영자에게 접수 알림 (큐 등록 실패는 서비스 내부에서 삼킴 — 응답에 영향 없음)
-    await this.notifications.enqueue({
-      type: 'REQUEST_CREATED',
+    // 이메일은 커밋 이후 큐로 (fire-and-forget — 인앱 알림은 이미 존재)
+    this.notifications.enqueueAdminEmail({
+      type: 'ADMIN_NEW_REQUEST_EMAIL',
       requestId: created.id,
       category: created.category,
       userEmail,
