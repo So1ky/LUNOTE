@@ -76,6 +76,7 @@ export class AdminQuoteRequestsService {
       where: status ? { status } : undefined,
       orderBy: { createdAt: 'desc' },
       select: ADMIN_REQUEST_SELECT,
+      take: 200, // 안전 상한 — 커서 페이지네이션은 규모가 커지면 도입 (2026-07-24 결정)
     });
   }
 

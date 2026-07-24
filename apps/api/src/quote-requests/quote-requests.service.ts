@@ -118,6 +118,7 @@ export class QuoteRequestsService {
       where: { userId }, // IDOR 방지의 핵심: 항상 소유자 조건을 쿼리에 포함
       orderBy: { createdAt: 'desc' },
       select: REQUEST_SELECT,
+      take: 100, // 안전 상한 — 커서 페이지네이션은 규모가 커지면 도입 (2026-07-24 결정)
     });
   }
 
@@ -143,7 +144,14 @@ export class QuoteRequestsService {
   }
 
   async cancel(userId: string, id: number) {
-    await this.findOne(userId, id); // 존재+소유권 확인 (없으면 404)
+    // 존재+소유권만 확인 (없으면 404) — presign까지 하는 findOne은 반환 시 한 번만
+    const exists = await this.prisma.quoteRequest.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!exists) {
+      throw new NotFoundException('Quote request not found');
+    }
 
     // 상태 조건까지 updateMany의 where에 포함해 동시 요청에도 안전하게 처리
     const { count } = await this.prisma.quoteRequest.updateMany({
