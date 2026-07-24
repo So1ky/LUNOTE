@@ -45,7 +45,7 @@ describe('API (e2e)', () => {
   it('POST /auth/signup — 가입하면 토큰 발급', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password, name: 'E2E Tester' })
+      .send({ email, password, firstName: 'E2E', lastName: 'Tester' })
       .expect(201);
     expect((res.body as { accessToken?: string }).accessToken).toBeDefined();
   });

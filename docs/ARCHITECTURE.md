@@ -113,6 +113,12 @@ graph TB
   4. 처리 실패 시 5xx를 반환해 PortOne 재전송을 유도하고, BullMQ로 자체 재처리 잡도 등록.
 - 주문 상태 머신: `REVIEWING → QUOTED → PAID → IN_PROGRESS → COMPLETED` (+ `CANCELLED`, `REFUNDED`).
   허용되지 않은 전이는 서비스 레이어에서 거부.
+- **견적 정책 (2026-07-24 확정)**: 견적은 발행 후 **불변** — 수정 API를 두지 않는다
+  (관리자 임의 변경으로 인한 분쟁 방지). `Quote.expiresAt = 발행 + 7일`,
+  만료된 견적으로는 결제할 수 없다. 관리자 행위(견적 발행 등)는 감사 로그 테이블에 기록한다.
+- **알림 전달 보장 (2026-07-24 확정)**: 인앱 알림 행 생성은 유발 이벤트와 **같은 DB
+  트랜잭션**에서 수행한다(DB-first — Redis 장애와 무관하게 유실 불가).
+  BullMQ 큐는 이메일 등 외부 부수효과 전용 (재시도 3회, 최종 실패 허용).
 
 ## 8. 관측성 (Observability)
 
@@ -124,6 +130,8 @@ graph TB
   - 웹훅 처리 실패, 결제 금액 불일치 감지 (비즈니스 알림)
   - Pod CrashLoopBackOff, 노드 NotReady, RDS 스토리지/커넥션 임계치
 - 대시보드: ① 서비스(요청량/에러/지연) ② 비즈니스(결제 성공률, 문의→결제 전환) ③ 인프라(노드/DB).
+- **앱 계측 (2026-07-24 확정)**: `nestjs-pino`로 JSON 구조화 로그 + 요청별 request-id +
+  민감 필드 redaction. 에러 트래킹은 **Sentry**(무료 티어) — 1인 운영에서 장애 인지의 최소 장치.
 
 ## 9. CI/CD 파이프라인
 
@@ -159,7 +167,9 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 - [x] 보안 HTTP 헤더 (helmet), CORS 허용 출처 명시
 - [x] **리소스 소유권 검증(IDOR 방지)** — 문의 API에 적용 완료 (타인 접근 404, e2e 검증). 견적/결제 API에도 동일 패턴 적용 예정
 - [ ] 파일 업로드: S3 presigned URL, 용량/MIME 제한, 실행 가능 확장자 차단
-- [ ] 토큰 무효화 수단 (refresh token + 블랙리스트, 또는 만료 단축)
+      — 용량 제한은 presigned POST의 `content-length-range` 조건으로 서버가 강제한다
+- [ ] 토큰 무효화 — **refresh token rotation으로 확정(2026-07-24)**: 액세스 30분 +
+      리프레시 30일, 리프레시는 해시로 DB 저장·사용 시마다 회전·재사용 탐지 시 세션 전체 폐기
 - [x] 관리자 API에 role 기반 가드 (RolesGuard) — admin 견적 API 적용, e2e 검증
 
 ### 결제 (§7과 연동)

@@ -4,6 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AuthProvider } from '@prisma/client';
 import { hash as argonHash, verify as argonVerify } from 'argon2';
@@ -12,10 +13,6 @@ import { MailService } from '../notifications/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
-
-const CODE_TTL_MS = 15 * 60 * 1000; // 15분
-const MAX_VERIFY_ATTEMPTS = 5;
-const RESEND_COOLDOWN_MS = 60 * 1000; // 1분
 
 const hashCode = (code: string) =>
   createHash('sha256').update(code).digest('hex');
@@ -27,11 +24,25 @@ export interface JwtPayload {
 
 @Injectable()
 export class AuthService {
+  // 인증 코드 정책 — 기본값과 근거는 env.validation.ts POLICY_DEFAULTS 참고
+  private readonly CODE_TTL_MS: number;
+  private readonly MAX_VERIFY_ATTEMPTS: number;
+  private readonly RESEND_COOLDOWN_MS: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly mail: MailService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.CODE_TTL_MS =
+      Number(config.getOrThrow('AUTH_CODE_TTL_MIN')) * 60 * 1000;
+    this.MAX_VERIFY_ATTEMPTS = Number(
+      config.getOrThrow('AUTH_CODE_MAX_ATTEMPTS'),
+    );
+    this.RESEND_COOLDOWN_MS =
+      Number(config.getOrThrow('AUTH_RESEND_COOLDOWN_SEC')) * 1000;
+  }
 
   async signup(dto: SignupDto) {
     const exists = await this.prisma.user.findUnique({
@@ -53,7 +64,7 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         verificationCodeHash: hashCode(code),
-        verificationCodeExpiresAt: new Date(Date.now() + CODE_TTL_MS),
+        verificationCodeExpiresAt: new Date(Date.now() + this.CODE_TTL_MS),
       },
     });
 
@@ -78,7 +89,7 @@ export class AuthService {
     ) {
       throw new BadRequestException('Code expired — request a new one');
     }
-    if (user.verificationAttempts >= MAX_VERIFY_ATTEMPTS) {
+    if (user.verificationAttempts >= this.MAX_VERIFY_ATTEMPTS) {
       throw new BadRequestException('Too many attempts — request a new code');
     }
 
@@ -112,8 +123,8 @@ export class AuthService {
     }
 
     if (user.verificationCodeExpiresAt) {
-      const lastSentAt = user.verificationCodeExpiresAt.getTime() - CODE_TTL_MS;
-      if (Date.now() - lastSentAt < RESEND_COOLDOWN_MS) {
+      const lastSentAt = user.verificationCodeExpiresAt.getTime() - this.CODE_TTL_MS;
+      if (Date.now() - lastSentAt < this.RESEND_COOLDOWN_MS) {
         throw new BadRequestException('Please wait before requesting again');
       }
     }
@@ -123,7 +134,7 @@ export class AuthService {
       where: { id: userId },
       data: {
         verificationCodeHash: hashCode(code),
-        verificationCodeExpiresAt: new Date(Date.now() + CODE_TTL_MS),
+        verificationCodeExpiresAt: new Date(Date.now() + this.CODE_TTL_MS),
         verificationAttempts: 0,
       },
     });
@@ -143,8 +154,8 @@ export class AuthService {
       const inCooldown =
         user.passwordResetCodeExpiresAt &&
         Date.now() -
-          (user.passwordResetCodeExpiresAt.getTime() - CODE_TTL_MS) <
-          RESEND_COOLDOWN_MS;
+          (user.passwordResetCodeExpiresAt.getTime() - this.CODE_TTL_MS) <
+          this.RESEND_COOLDOWN_MS;
 
       if (!inCooldown) {
         const code = this.generateCode();
@@ -152,7 +163,7 @@ export class AuthService {
           where: { id: user.id },
           data: {
             passwordResetCodeHash: hashCode(code),
-            passwordResetCodeExpiresAt: new Date(Date.now() + CODE_TTL_MS),
+            passwordResetCodeExpiresAt: new Date(Date.now() + this.CODE_TTL_MS),
             passwordResetAttempts: 0,
           },
         });
@@ -179,7 +190,7 @@ export class AuthService {
     if (user.passwordResetCodeExpiresAt < new Date()) {
       throw invalid();
     }
-    if (user.passwordResetAttempts >= MAX_VERIFY_ATTEMPTS) {
+    if (user.passwordResetAttempts >= this.MAX_VERIFY_ATTEMPTS) {
       throw invalid();
     }
 

@@ -11,10 +11,14 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 export class StorageService {
   private readonly client: S3Client;
   private readonly bucket: string;
+  private readonly uploadTtlSec: number;
+  private readonly downloadTtlSec: number;
 
   constructor(config: ConfigService) {
     const endpoint = config.get<string>('S3_ENDPOINT');
     this.bucket = config.getOrThrow<string>('S3_BUCKET');
+    this.uploadTtlSec = Number(config.getOrThrow('PRESIGN_UPLOAD_TTL_SEC'));
+    this.downloadTtlSec = Number(config.getOrThrow('PRESIGN_DOWNLOAD_TTL_SEC'));
     this.client = new S3Client({
       region: config.getOrThrow<string>('S3_REGION'),
       // 로컬 MinIO용 설정. 프로덕션(S3 + IRSA)에서는 endpoint/credentials를 지정하지 않는다.
@@ -32,7 +36,7 @@ export class StorageService {
   }
 
   /** 업로드용 presigned URL — 클라이언트가 이 URL로 직접 PUT (파일이 API 서버를 거치지 않음) */
-  presignUpload(key: string, mimeType: string, expiresInSec = 300) {
+  presignUpload(key: string, mimeType: string) {
     return getSignedUrl(
       this.client,
       new PutObjectCommand({
@@ -40,16 +44,16 @@ export class StorageService {
         Key: key,
         ContentType: mimeType,
       }),
-      { expiresIn: expiresInSec },
+      { expiresIn: this.uploadTtlSec },
     );
   }
 
   /** 다운로드용 presigned URL — 버킷은 비공개이므로 조회 시마다 임시 URL 발급 */
-  presignDownload(key: string, expiresInSec = 3600) {
+  presignDownload(key: string) {
     return getSignedUrl(
       this.client,
       new GetObjectCommand({ Bucket: this.bucket, Key: key }),
-      { expiresIn: expiresInSec },
+      { expiresIn: this.downloadTtlSec },
     );
   }
 }
