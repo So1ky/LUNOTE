@@ -29,7 +29,7 @@ export default function QuoteScreen() {
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     }
-  }, [token]);
+  }, [token, t]);
 
   // 탭에 들어올 때마다 새로고침 (문의 등록/취소 직후 반영)
   useFocusEffect(
