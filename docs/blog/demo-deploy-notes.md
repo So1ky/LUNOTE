@@ -45,7 +45,7 @@
 | 플랜 | **vc2-1c-2gb** (1vCPU/2GB, $10/월) | 스택 상주 메모리 ~700MB + **서버에서 도커 빌드 시 스파이크** 고려. 1GB는 npm ci/tsc 빌드 중 OOM 위험 |
 | 리전 | Seoul | 위 비교 참고 |
 | OS | **Ubuntu 24.04 LTS x64** | "충분히 새롭고 충분히 검증된" 최신 성숙 LTS. 22.04는 지원 1년 미만 남음, 26.04는 출시 4개월(트러블슈팅 자료 부족) |
-| SSH Keys | **맥의 공개키 등록** | 비밀번호보다 안전 + 이후 rsync 배포에 필요. `ssh-keygen -t ed25519`로 생성, `~/.ssh/id_ed25519.pub` 내용 붙여넣기 |
+| SSH Keys | **맥의 공개키 등록** | 비밀번호보다 안전 + 이후 rsync 배포에 필요. `ssh-keygen -t ed25519`로 생성, `~/.ssh/id_ed25519.pub` 내용 붙여넣기. **함정: 배포 폼의 드롭다운은 선택만 가능** — Account → Settings → SSH Keys에서 먼저 등록해야 목록에 뜬다 (등록 후 배포 페이지 새로고침) |
 | Startup Script | 안 씀 | 초기 설정을 손으로 하며 배우는 게 목적 (내용은 §4) |
 | Firewall Group | 안 씀 (기본) | compose가 80/443만 호스트에 노출, DB/Redis는 내부망 전용이라 기본으로도 안전. 나중에 22/80/443 허용 그룹으로 조이면 더 좋음 |
 | Hostname / Label | `lunote-demo` | 콘솔에서 알아보기 위한 이름일 뿐 |
