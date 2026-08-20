@@ -26,6 +26,9 @@ VPS 생성 후 표시되는 **공인 IP**를 메모한다 (아래에서 `<IP>`).
 ssh root@<IP>
 # Docker 설치 (공식 스크립트)
 curl -fsSL https://get.docker.com | sh
+# 스왑 2GB — 도커 이미지 빌드(npm ci 등)의 순간 메모리 스파이크로 인한 OOM 방지
+fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab   # 재부팅 후에도 유지
 # 코드 가져오기
 git clone https://github.com/So1ky/LUNOTE.git && cd LUNOTE/infra/demo
 ```
