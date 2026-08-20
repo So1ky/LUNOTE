@@ -1,0 +1,94 @@
+# LUNOTE 데모 스택 — 소형 VPS 1대에 전체 서비스를 올린다.
+# 용도: 기획자 원격 데모 + (추후) PortOne 심사용 접근 환경.
+# 프로덕션 아님 — 실 운영은 ARCHITECTURE.md의 EKS/Terraform 트랙(A2~A4)을 따른다.
+#
+# 사용법은 같은 폴더의 README.md 참고. 시작: docker compose up -d --build
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lunote
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?README를 보고 .env를 채우세요}
+      POSTGRES_DB: lunote
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # 호스트 포트로 노출하지 않는다 — API 컨테이너만 내부망으로 접근
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: lunote
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:?}
+    volumes:
+      - minio-data:/data
+
+  # 최초 1회 버킷 생성 후 종료
+  minio-init:
+    image: minio/mc
+    depends_on: [minio]
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 lunote $$MINIO_PASSWORD; do sleep 1; done;
+      mc mb --ignore-existing local/lunote-attachments;
+      "
+    environment:
+      MINIO_PASSWORD: ${MINIO_PASSWORD:?}
+
+  api:
+    build: ../../apps/api # apps/api/Dockerfile — README의 가이드 보고 직접 작성
+    restart: unless-stopped
+    depends_on: [db, redis, minio]
+    command: sh -c "npx prisma migrate deploy && node dist/src/main.js"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://lunote:${DB_PASSWORD}@db:5432/lunote?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?}
+      CORS_ORIGINS: https://admin.${DEMO_DOMAIN},https://app.${DEMO_DOMAIN}
+      # presigned URL에 이 주소가 박힌다 — 반드시 외부에서 접근 가능한 공개 URL이어야 함
+      S3_ENDPOINT: https://s3.${DEMO_DOMAIN}
+      S3_REGION: us-east-1
+      S3_BUCKET: lunote-attachments
+      S3_ACCESS_KEY: lunote
+      S3_SECRET_KEY: ${MINIO_PASSWORD}
+      # Brevo SMTP — README 참고
+      SMTP_HOST: ${SMTP_HOST:?}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:?}
+      SMTP_PASS: ${SMTP_PASS:?}
+      MAIL_FROM: ${MAIL_FROM:?}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+
+  admin-web:
+    build:
+      context: ../../apps/admin-web
+      args:
+        VITE_API_URL: https://api.${DEMO_DOMAIN}
+    restart: unless-stopped
+
+  # 단일 진입점 — 서브도메인별 라우팅 + 자동 HTTPS(Let's Encrypt)
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ['80:80', '443:443']
+    depends_on: [api, admin-web, minio]
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./mobile-web-dist:/srv/mobile-web:ro # 로컬에서 expo export한 정적 웹 (README 5단계)
+      - caddy-data:/data
+
+volumes:
+  db-data:
+  minio-data:
+  caddy-data:

@@ -1,0 +1,21 @@
+# 서브도메인 라우팅 + 자동 HTTPS. {$DEMO_DOMAIN}은 compose가 주입한다.
+
+api.{$DEMO_DOMAIN} {
+	reverse_proxy api:3000
+}
+
+admin.{$DEMO_DOMAIN} {
+	reverse_proxy admin-web:80
+}
+
+# 모바일 웹 (expo export 정적 파일) — SPA라 404는 index.html로
+app.{$DEMO_DOMAIN} {
+	root * /srv/mobile-web
+	try_files {path} /index.html
+	file_server
+}
+
+# MinIO — presigned URL이 이 주소를 사용한다
+s3.{$DEMO_DOMAIN} {
+	reverse_proxy minio:9000
+}
