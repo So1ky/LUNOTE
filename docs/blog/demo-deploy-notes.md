@@ -118,6 +118,13 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
 - [x] apps/api/Dockerfile 직접 작성 완료 (PR #71) — 개념 정리는 [docker-basics.md](docker-basics.md).
       로컬 `docker build` 검증 통과 후 커밋
 - [ ] docker compose up -d --build → /health 확인
+  - 트러블슈팅 1: `DEMO_DOMAIN is missing a value` — compose 파일이 아니라 **.env가 없던 것**.
+    compose는 실행 디렉토리의 .env를 자동으로 읽어 `${...}`를 치환하고, `${VAR:?}` 문법은
+    "값 없으면 시작 거부"라는 의도된 안전장치다. `.env`는 숨김 파일이라 `ls -a`로 확인
+  - 트러블슈팅 2: 서버 빌드에서 TS2352 (Redis ping 타입 단언) — 로컬에선 통과하던 컴파일이
+    서버 도커 빌드에서 실패. 겹치는 속성 없는 타입 단언은 `as unknown as`로 경유해야
+    모든 환경에서 결정적 (PR #72). 교훈: "로컬에서 되는데"를 없애는 게 도커의 목적인 만큼,
+    빌드는 환경 차에 민감한 코드가 없어야 한다
 - [ ] 모바일 웹 expo export 업로드
 - [ ] EAS로 안드로이드 APK 빌드 → 링크 공유
 - [ ] 기획자 계정 가입(Brevo 실메일 인증) + 관리자 승격
