@@ -3,6 +3,20 @@
 > LUNOTE 데모 배포([demo-deploy-notes.md](demo-deploy-notes.md)) 중 API Dockerfile을
 > 직접 쓰면서 정리. 진행하며 계속 추가.
 
+## 왜 베이스 이미지가 node인가 — Node vs NestJS vs Next.js
+
+헷갈렸던 것: "내 백엔드는 NestJS인데 왜 `FROM node`지?" (+ NestJS와 Next.js는 이름만
+비슷한 남남 — Nest는 백엔드 서버 프레임워크, Next는 React 웹 프론트 프레임워크다.)
+
+층위가 다르다: **NestJS는 코드의 뼈대(프레임워크)**고, TypeScript를 컴파일하면 결국
+순수 자바스크립트(dist/)가 나온다. 그 JS를 실행하는 엔진이 **Node.js(런타임)**다.
+`FROM node:22-alpine` = "Node 22가 설치된 초경량 리눅스"에서 시작한다는 뜻.
+`22`는 Node LTS 버전, `alpine`은 5MB급 경량 리눅스 배포판.
+
+```
+NestJS(프레임워크) → 컴파일 → 순수 JS → Node.js(런타임)가 실행 → Alpine Linux(OS)
+```
+
 ## 이미지 vs 컨테이너
 
 - **이미지**: 실행에 필요한 모든 것(OS 라이브러리+런타임+코드)을 담은 **불변 스냅샷**. 조리법대로 만든 밀키트
