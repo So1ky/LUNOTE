@@ -48,7 +48,9 @@ systemctl restart ssh
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker taerim && exit   # 재접속
 
-# 스왑 2GB — 도커 이미지 빌드(npm ci 등)의 순간 메모리 스파이크로 인한 OOM 방지
+# 스왑 확인 — Vultr Ubuntu 이미지는 스왑이 이미 잡혀 있는 경우가 많다 (그러면 이 단계 스킵)
+swapon --show
+# 없을 때만: 2GB 생성 — 도커 이미지 빌드(npm ci 등)의 순간 메모리 스파이크로 인한 OOM 방지
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab   # 재부팅 후에도 유지
 # 코드 가져오기

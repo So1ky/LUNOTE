@@ -107,9 +107,11 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
       docker 그룹 추가는 sudo 생략용이지만 사실상 root 동급 권한임을 인지하고 쓸 것
 - [ ] Docker 설치 → 스왑 2GB (빌드 OOM 방지)
   - 트러블슈팅: `fallocate failed: Text file busy` = **이미 스왑으로 활성화된 파일을
-    다시 만들려는 것** (재실행이 원인). `swapon --show`로 확인 — 떠 있으면 이미 완료.
-    재생성이 필요하면 `sudo swapoff /swapfile` 후에. + `&&` 체인에서 sudo는 첫 명령에만
-    적용되므로 각 명령마다 붙일 것. fstab 중복 줄도 확인
+    다시 만들려는 것**. 원인: **Vultr Ubuntu 이미지가 처음부터 5.3G 스왑을 만들어둠** —
+    `swapon --show`로 먼저 확인했으면 이 단계 자체가 불필요했다. 기존 스왑은 그대로 쓰면
+    된다(스왑은 커도 안 쓰면 비용 없음, 디스크 점유뿐). 교훈: 만들기 전에 현황 확인.
+    `&&` 체인에서 sudo는 첫 명령에만 적용되는 것도 주의. fstab에 우리가 덧붙인 줄이
+    기존 줄과 중복되지 않았는지 확인(`grep swap /etc/fstab` — 중복이면 추가한 쪽 삭제)
 - [ ] .env 작성 (DEMO_DOMAIN=<IP>.sslip.io, 시크릿 3종, Brevo SMTP)
 - [ ] apps/api/Dockerfile 직접 작성 (멀티스테이지 — admin-web/Dockerfile 참고)
 - [ ] docker compose up -d --build → /health 확인
