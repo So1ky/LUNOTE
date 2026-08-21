@@ -156,3 +156,5 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
   항상 세트로. 적용은 재로그인 후 (`id <유저>`로 확인)
 - **스왑**: 디스크를 임시 메모리로 — 작은 서버에서 빌드 순간 스파이크 버티기
 - **presigned URL 함정**: URL에 S3 endpoint 주소가 박히므로 localhost면 원격에서 업로드 불가 — 공개 URL로 설정해야 함
+- **Expo 멀티플랫폼**: 코드 한 벌 → iOS/Android/웹 세 출력 (RN이 네이티브로, react-native-web이 HTML로 변환).
+  웹 export는 로컬 node_modules의 CLI가, APK는 EAS 클라우드가 빌드 — 맥에 Android Studio 없이 APK가 나오는 이유
