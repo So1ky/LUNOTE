@@ -117,7 +117,13 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
 - [ ] .env 작성 (DEMO_DOMAIN=<IP>.sslip.io, 시크릿 3종, Brevo SMTP)
 - [x] apps/api/Dockerfile 직접 작성 완료 (PR #71) — 개념 정리는 [docker-basics.md](docker-basics.md).
       로컬 `docker build` 검증 통과 후 커밋
-- [ ] docker compose up -d --build → /health 확인
+- [x] docker compose up -d --build → **https://api.<IP>.sslip.io/health 200 확인** (2026-08-21)
+  - 트러블슈팅 3: 컨테이너는 Up인데 502 + 흰 화면 — 502는 "Caddy까지는 정상, 뒤(upstream)가
+    안 받는다"는 뜻. `docker compose ps`를 다시 보니 api만 **Restarting** 루프.
+    로그 확인: `prisma migrate deploy`가 "datasource.url property is required" 실패.
+    **Prisma 7은 DB 연결 정보를 prisma.config.ts에서 읽는데 Dockerfile 실행 단계에 이 파일을
+    복사 안 했던 것** (PR #73). 교훈: ① 이미지는 COPY한 것만 존재하는 세계 — 로컬에서 되는
+    이유는 레포 전체가 있기 때문 ② "Up인데 안 됨"이면 ps 상태(Restarting?)와 logs부터
   - 트러블슈팅 1: `DEMO_DOMAIN is missing a value` — compose 파일이 아니라 **.env가 없던 것**.
     compose는 실행 디렉토리의 .env를 자동으로 읽어 `${...}`를 치환하고, `${VAR:?}` 문법은
     "값 없으면 시작 거부"라는 의도된 안전장치다. `.env`는 숨김 파일이라 `ls -a`로 확인
