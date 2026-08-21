@@ -115,7 +115,8 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
     이때 fstab에 옛 스왑 줄이 남으면 재부팅 시 문제되므로 `grep swap /etc/fstab`으로
     한 줄만 남았는지 확인
 - [ ] .env 작성 (DEMO_DOMAIN=<IP>.sslip.io, 시크릿 3종, Brevo SMTP)
-- [ ] apps/api/Dockerfile 직접 작성 (멀티스테이지 — admin-web/Dockerfile 참고)
+- [x] apps/api/Dockerfile 직접 작성 완료 (PR #71) — 개념 정리는 [docker-basics.md](docker-basics.md).
+      로컬 `docker build` 검증 통과 후 커밋
 - [ ] docker compose up -d --build → /health 확인
 - [ ] 모바일 웹 expo export 업로드
 - [ ] EAS로 안드로이드 APK 빌드 → 링크 공유
