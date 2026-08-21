@@ -132,6 +132,11 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
     모든 환경에서 결정적 (PR #72). 교훈: "로컬에서 되는데"를 없애는 게 도커의 목적인 만큼,
     빌드는 환경 차에 민감한 코드가 없어야 한다
 - [ ] 모바일 웹 expo export 업로드
+  - 트러블슈팅 5: 웹에서 가입 시 "Cannot reach the server" — 배포된 번들을 curl로 열어보니
+    **이전 테스트 때의 가짜 API 주소가 박혀 있었다.** EXPO_PUBLIC_* 는 번들에 인라인되는데
+    **Metro 캐시는 env 변경을 감지하지 못해** 재export해도 옛 값이 남는다.
+    해결: `expo export -p web -c` (캐시 클리어) + 브라우저 강력 새로고침.
+    교훈: env를 굽는 빌드에서 env를 바꿨다면 캐시부터 의심
   - 트러블슈팅 4: app 도메인 404(0바이트) 흰 화면 — **bind mount 폴더를 docker가 root
     소유로 자동 생성**해서 rsync가 쓸 수 없었다 (`ls -la`로 소유자 root + 빈 폴더 확인).
     해결: `sudo chown -R <유저>:<유저> mobile-web-dist` 후 재rsync. 교훈: compose up 전에
