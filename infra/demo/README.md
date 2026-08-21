@@ -25,18 +25,32 @@ VPS 생성 후 표시되는 **공인 IP**를 메모한다 (아래에서 `<IP>`).
 ```sh
 ssh root@<IP>   # 첫 접속은 Vultr 콘솔에 표시된 root 비밀번호로
 
-# SSH 키 등록 → (새 터미널에서 키 접속 검증 후) → 비밀번호 로그인 차단
-mkdir -p ~/.ssh && echo "<맥의 ~/.ssh/id_ed25519.pub 내용>" >> ~/.ssh/authorized_keys
-# ⚠️ 반드시 새 터미널에서 ssh root@<IP>가 비밀번호 없이 되는지 확인한 뒤에 아래 실행
+# --- 일반 유저 생성 (root 상시 사용 금지 — 실수 방지) ---
+adduser taerim                # 비밀번호는 sudo 확인용 (SSH 로그인은 키로만)
+usermod -aG sudo taerim
+mkdir -p /home/taerim/.ssh
+echo "<맥의 ~/.ssh/id_ed25519.pub 내용>" >> /home/taerim/.ssh/authorized_keys
+chown -R taerim:taerim /home/taerim/.ssh
+chmod 700 /home/taerim/.ssh && chmod 600 /home/taerim/.ssh/authorized_keys
+
+# ⚠️ 새 터미널에서 `ssh taerim@<IP>`가 비밀번호 없이 되는지 확인한 뒤에만 아래 실행
+# --- root 원격 로그인 + 비밀번호 로그인 차단 ---
+sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 grep -rl "PasswordAuthentication yes" /etc/ssh/sshd_config.d/ 2>/dev/null | xargs -r sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/'
 systemctl restart ssh
+```
 
-# Docker 설치 (공식 스크립트)
-curl -fsSL https://get.docker.com | sh
+이후는 `taerim` 유저로 접속해서 진행한다 (`ssh taerim@<IP>`):
+
+```sh
+# Docker 설치 (공식 스크립트) + sudo 없이 docker 쓰기 (적용은 재로그인 후)
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker taerim && exit   # 재접속
+
 # 스왑 2GB — 도커 이미지 빌드(npm ci 등)의 순간 메모리 스파이크로 인한 OOM 방지
-fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
-echo '/swapfile none swap sw 0 0' >> /etc/fstab   # 재부팅 후에도 유지
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab   # 재부팅 후에도 유지
 # 코드 가져오기
 git clone https://github.com/So1ky/LUNOTE.git && cd LUNOTE/infra/demo
 ```

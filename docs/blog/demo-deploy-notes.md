@@ -100,9 +100,11 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
 
 > 여기부터는 infra/demo/README.md의 단계를 따른다. 실제 진행하며 기록 추가 예정.
 
-- [ ] ssh 첫 접속(비밀번호) → 공개키 등록 → **새 터미널에서 키 접속 검증** → 비밀번호 로그인 차단
-      (`PasswordAuthentication no` + sshd_config.d의 cloud-init 오버라이드도 확인 — 순서 틀리면
-      자기 서버에서 잠긴다. 비상구는 Vultr 웹 콘솔)
+- [ ] ssh 첫 접속(root 비밀번호) → **일반 유저 생성**(adduser + sudo 그룹, root 상시 사용 금지)
+      → 유저에게 공개키 등록(chown/chmod 700·600 주의) → **새 터미널에서 키 접속 검증**
+      → `PermitRootLogin no` + `PasswordAuthentication no` (sshd_config.d의 cloud-init
+      오버라이드도 확인 — 순서 틀리면 자기 서버에서 잠긴다. 비상구는 Vultr 웹 콘솔).
+      docker 그룹 추가는 sudo 생략용이지만 사실상 root 동급 권한임을 인지하고 쓸 것
 - [ ] Docker 설치 → 스왑 2GB (빌드 OOM 방지)
 - [ ] .env 작성 (DEMO_DOMAIN=<IP>.sslip.io, 시크릿 3종, Brevo SMTP)
 - [ ] apps/api/Dockerfile 직접 작성 (멀티스테이지 — admin-web/Dockerfile 참고)
