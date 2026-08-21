@@ -12,6 +12,7 @@
       "bundleIdentifier": "com.anonymous.lunote"
     },
     "android": {
+      "package": "app.lunote",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
