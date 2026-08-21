@@ -110,8 +110,10 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
     다시 만들려는 것**. 원인: **Vultr Ubuntu 이미지가 처음부터 5.3G 스왑을 만들어둠** —
     `swapon --show`로 먼저 확인했으면 이 단계 자체가 불필요했다. 기존 스왑은 그대로 쓰면
     된다(스왑은 커도 안 쓰면 비용 없음, 디스크 점유뿐). 교훈: 만들기 전에 현황 확인.
-    `&&` 체인에서 sudo는 첫 명령에만 적용되는 것도 주의. fstab에 우리가 덧붙인 줄이
-    기존 줄과 중복되지 않았는지 확인(`grep swap /etc/fstab` — 중복이면 추가한 쪽 삭제)
+    `&&` 체인에서 sudo는 첫 명령에만 적용되는 것도 주의.
+  - 실제 선택: 기존 5.3G를 지우고 2G로 재생성 (`swapoff` → `rm` → 재생성). 디스크 3.3G 회수.
+    이때 fstab에 옛 스왑 줄이 남으면 재부팅 시 문제되므로 `grep swap /etc/fstab`으로
+    한 줄만 남았는지 확인
 - [ ] .env 작성 (DEMO_DOMAIN=<IP>.sslip.io, 시크릿 3종, Brevo SMTP)
 - [ ] apps/api/Dockerfile 직접 작성 (멀티스테이지 — admin-web/Dockerfile 참고)
 - [ ] docker compose up -d --build → /health 확인
