@@ -143,7 +143,7 @@ expo 웹은 정적으로 export해서 Caddy가 서빙한다. **API 주소는 exp
 ```sh
 cd apps/mobile
 EXPO_PUBLIC_API_URL=https://api.<도메인> npx expo export -p web
-rsync -av dist/ root@<IP>:~/LUNOTE/infra/demo/mobile-web-dist/
+rsync -av --delete dist/ <유저명>@<IP>:~/LUNOTE/infra/demo/mobile-web-dist/
 ```
 
 → 폰에서 `https://app.<도메인>` 접속.
