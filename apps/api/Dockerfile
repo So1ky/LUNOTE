@@ -19,6 +19,8 @@ ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
+# Prisma 7: migrate CLI가 datasource.url을 이 파일에서 읽는다 (없으면 migrate deploy 실패)
+COPY --from=build /app/prisma.config.ts ./
 COPY --from=build /app/package.json ./
 
 EXPOSE 3000
