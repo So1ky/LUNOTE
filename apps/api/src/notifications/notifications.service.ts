@@ -99,7 +99,10 @@ export class NotificationsService {
   async isQueueUp(): Promise<boolean> {
     try {
       // BullMQ의 IRedisClient 타입에 ping이 빠져 있으나 ioredis/node-redis 둘 다 지원한다
-      const client = (await this.queue.client) as { ping(): Promise<string> };
+      // (겹치는 속성이 없는 타입이라 TS 규칙상 unknown을 경유해 단언)
+      const client = (await this.queue.client) as unknown as {
+        ping(): Promise<string>;
+      };
       await Promise.race([
         client.ping(),
         new Promise((_, reject) =>
