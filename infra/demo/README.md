@@ -23,7 +23,15 @@
 VPS 생성 후 표시되는 **공인 IP**를 메모한다 (아래에서 `<IP>`).
 
 ```sh
-ssh root@<IP>
+ssh root@<IP>   # 첫 접속은 Vultr 콘솔에 표시된 root 비밀번호로
+
+# SSH 키 등록 → (새 터미널에서 키 접속 검증 후) → 비밀번호 로그인 차단
+mkdir -p ~/.ssh && echo "<맥의 ~/.ssh/id_ed25519.pub 내용>" >> ~/.ssh/authorized_keys
+# ⚠️ 반드시 새 터미널에서 ssh root@<IP>가 비밀번호 없이 되는지 확인한 뒤에 아래 실행
+sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+grep -rl "PasswordAuthentication yes" /etc/ssh/sshd_config.d/ 2>/dev/null | xargs -r sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/'
+systemctl restart ssh
+
 # Docker 설치 (공식 스크립트)
 curl -fsSL https://get.docker.com | sh
 # 스왑 2GB — 도커 이미지 빌드(npm ci 등)의 순간 메모리 스파이크로 인한 OOM 방지

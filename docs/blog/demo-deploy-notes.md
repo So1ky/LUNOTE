@@ -100,7 +100,10 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
 
 > 여기부터는 infra/demo/README.md의 단계를 따른다. 실제 진행하며 기록 추가 예정.
 
-- [ ] ssh 접속 → Docker 설치 → 스왑 2GB (빌드 OOM 방지)
+- [ ] ssh 첫 접속(비밀번호) → 공개키 등록 → **새 터미널에서 키 접속 검증** → 비밀번호 로그인 차단
+      (`PasswordAuthentication no` + sshd_config.d의 cloud-init 오버라이드도 확인 — 순서 틀리면
+      자기 서버에서 잠긴다. 비상구는 Vultr 웹 콘솔)
+- [ ] Docker 설치 → 스왑 2GB (빌드 OOM 방지)
 - [ ] .env 작성 (DEMO_DOMAIN=<IP>.sslip.io, 시크릿 3종, Brevo SMTP)
 - [ ] apps/api/Dockerfile 직접 작성 (멀티스테이지 — admin-web/Dockerfile 참고)
 - [ ] docker compose up -d --build → /health 확인
