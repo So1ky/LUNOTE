@@ -165,3 +165,6 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
 - **presigned URL 함정**: URL에 S3 endpoint 주소가 박히므로 localhost면 원격에서 업로드 불가 — 공개 URL로 설정해야 함
 - **Expo 멀티플랫폼**: 코드 한 벌 → iOS/Android/웹 세 출력 (RN이 네이티브로, react-native-web이 HTML로 변환).
   웹 export는 로컬 node_modules의 CLI가, APK는 EAS 클라우드가 빌드 — 맥에 Android Studio 없이 APK가 나오는 이유
+- **배포 철학 차이**: Android는 APK 링크만으로 사이드로드 가능(EAS internal distribution =
+  링크 가진 누구나 설치). iPhone은 스토어 밖 설치 원천 차단 — 남에게 주려면 유료 개발자
+  계정($99/년) + TestFlight(심사) 또는 UDID 등록(ad-hoc)뿐. 기획자가 안드로이드라 데모가 쉬웠다
