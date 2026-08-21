@@ -131,7 +131,7 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
     서버 도커 빌드에서 실패. 겹치는 속성 없는 타입 단언은 `as unknown as`로 경유해야
     모든 환경에서 결정적 (PR #72). 교훈: "로컬에서 되는데"를 없애는 게 도커의 목적인 만큼,
     빌드는 환경 차에 민감한 코드가 없어야 한다
-- [ ] 모바일 웹 expo export 업로드
+- [x] 모바일 웹 expo export 업로드 → app 도메인에서 **실가입 + Brevo 실메일 인증 성공** (2026-08-21)
   - 트러블슈팅 5: 웹에서 가입 시 "Cannot reach the server" — 배포된 번들을 curl로 열어보니
     **이전 테스트 때의 가짜 API 주소가 박혀 있었다.** EXPO_PUBLIC_* 는 번들에 인라인되는데
     **Metro 캐시는 env 변경을 감지하지 못해** 재export해도 옛 값이 남는다.
@@ -143,7 +143,9 @@ Brevo가 스팸 계정을 심사하므로 정체불명 값은 계정이 막힐 �
     마운트할 호스트 폴더를 미리 만들어두면 이 문제가 없다. 참고로 흰 화면도 종류가 있다 —
     502(업스트림 다운)와 404(파일 없음)는 원인이 완전히 다르므로 curl로 상태코드부터
 - [ ] EAS로 안드로이드 APK 빌드 → 링크 공유
-- [ ] 기획자 계정 가입(Brevo 실메일 인증) + 관리자 승격
+- [ ] 관리자 승격 — README의 promote-admin은 이미지에 scripts/가 없어 불가(또 'COPY한 것만
+      존재하는 세계'). psql 직접 UPDATE로: `docker compose exec db psql -U lunote -d lunote -c
+      "UPDATE users SET role='ADMIN' WHERE email='...';"`
 
 ## 부록 — 이번에 배운 개념 한 줄 정리
 

@@ -164,8 +164,9 @@ eas build -p android --profile preview
 
 - 앱(웹): `https://app.<도메인>` / 앱(APK): EAS 빌드 링크
 - 관리자: `https://admin.<도메인>` + 관리자 계정
-  (VPS DB는 비어 있다 — 앱/웹에서 가입한 뒤 VPS에서
-  `docker compose exec api npm run promote-admin -- <이메일>` 로 승격)
+  (VPS DB는 비어 있다 — 앱/웹에서 가입한 뒤 VPS에서 psql로 직접 승격:
+  `docker compose exec db psql -U lunote -d lunote -c "UPDATE users SET role = 'ADMIN' WHERE email = '<이메일>';"`
+  — promote-admin 스크립트는 이미지에 scripts/가 없어 컨테이너에선 못 쓴다)
 - 시나리오 예: 가입(실제 메일로 인증코드) → 문의 등록(사진 첨부) → 관리자가 견적 발송
   → 앱에서 알림·견적 확인 → 취소까지. 견적은 발송 후 수정 불가·7일 유효.
 
