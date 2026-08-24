@@ -255,6 +255,13 @@ const en = {
     note: 'The app switches to your selected language right away.',
   },
 
+  chooseLanguage: {
+    title: 'Choose your language',
+    subtitle: 'You can change this anytime in your profile.',
+    continue: 'Continue',
+  },
+
+
   support: {
     title: 'Support',
     subtitle: "We're here to help",

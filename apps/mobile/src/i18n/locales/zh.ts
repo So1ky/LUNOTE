@@ -247,6 +247,13 @@ const zh: Resources = {
     note: '应用将立即切换为您所选的语言。',
   },
 
+  chooseLanguage: {
+    title: '请选择语言',
+    subtitle: '您可以随时在个人资料中更改。',
+    continue: '继续',
+  },
+
+
   support: {
     title: '帮助与支持',
     subtitle: '我们随时为您服务',

@@ -247,6 +247,13 @@ const es: Resources = {
     note: 'La app cambia al idioma seleccionado de inmediato.',
   },
 
+  chooseLanguage: {
+    title: 'Elige tu idioma',
+    subtitle: 'Puedes cambiarlo en cualquier momento desde tu perfil.',
+    continue: 'Continuar',
+  },
+
+
   support: {
     title: 'Soporte',
     subtitle: 'Estamos aquí para ayudarte',

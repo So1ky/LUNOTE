@@ -247,6 +247,13 @@ const ko: Resources = {
     note: '선택한 언어로 앱이 바로 전환돼요.',
   },
 
+  chooseLanguage: {
+    title: '언어를 선택하세요',
+    subtitle: '프로필에서 언제든지 바꿀 수 있어요.',
+    continue: '계속',
+  },
+
+
   support: {
     title: '고객지원',
     subtitle: '언제든 도와드릴게요',

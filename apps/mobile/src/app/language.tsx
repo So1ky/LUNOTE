@@ -8,19 +8,27 @@ import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
-import { LANGUAGES } from '@/lib/languages';
+import { useLanguage } from '@/lib/language-context';
+import { LANGUAGES, type LanguageCode } from '@/lib/languages';
 
 export default function LanguageScreen() {
   const { t } = useTranslation();
-  const { profile, updateProfile } = useAuth();
+  const { token, profile, updateProfile } = useAuth();
+  const { localLanguage, setLocalLanguage } = useLanguage();
   const [saving, setSaving] = useState<string | null>(null);
-  const selected = profile?.language ?? 'en';
+  const selected = profile?.language ?? localLanguage ?? 'en';
 
-  const onSelect = async (code: string) => {
+  const onSelect = async (code: LanguageCode) => {
     if (code === selected || saving) return;
     setSaving(code);
     try {
-      await updateProfile({ language: code });
+      // 로컬에 항상 반영 — 게스트 언어 변경과 로그아웃 후 언어 유지를 담당
+      await setLocalLanguage(code);
+      if (token && profile) {
+        await updateProfile({ language: code });
+      }
+    } catch {
+      // 서버 반영 실패 — selected가 프로필 값으로 되돌아가 실패가 화면에 드러난다
     } finally {
       setSaving(null);
     }

@@ -41,6 +41,12 @@ export default function ProfileScreen() {
             variant="outline"
             onPress={() => router.push('/signup')}
           />
+          {/* 게스트도 언어는 바꿀 수 있어야 한다 — 로컬 저장으로 동작 */}
+          <Button
+            label={t('profile.language')}
+            variant="ghost"
+            onPress={() => router.push('/language')}
+          />
         </View>
       </Screen>
     );

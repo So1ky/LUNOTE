@@ -247,6 +247,13 @@ const de: Resources = {
     note: 'Die App wechselt sofort zur gewählten Sprache.',
   },
 
+  chooseLanguage: {
+    title: 'Wählen Sie Ihre Sprache',
+    subtitle: 'Sie können dies jederzeit in Ihrem Profil ändern.',
+    continue: 'Weiter',
+  },
+
+
   support: {
     title: 'Support',
     subtitle: 'Wir helfen Ihnen gerne',

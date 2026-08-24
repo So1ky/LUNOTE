@@ -247,6 +247,13 @@ const ja: Resources = {
     note: '選択するとすぐにアプリの表示言語が切り替わります。',
   },
 
+  chooseLanguage: {
+    title: '言語を選択してください',
+    subtitle: 'プロフィールからいつでも変更できます。',
+    continue: '続ける',
+  },
+
+
   support: {
     title: 'サポート',
     subtitle: 'お手伝いします',
