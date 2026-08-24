@@ -253,6 +253,25 @@ const es: Resources = {
     continue: 'Continuar',
   },
 
+  welcome: {
+    title: '¡Te damos la bienvenida a LUNOTE! 🎉',
+    tagline: 'Tu conserjería integral para la vida en Corea',
+    intro1: 'Vivir en Corea puede ser complicado. LUNOTE está aquí para hacerlo más fácil.',
+    intro2: '¿Necesitas ayuda con vivienda, visados, hospitales, bancos, telefonía o cualquier otro asunto de la vida en Corea? Solo dinos qué necesitas.',
+    howTitle: 'Cómo funciona',
+    step1Title: '1. Dinos qué necesitas',
+    step1Body: 'Elige una categoría, describe tu solicitud e indícanos tu presupuesto estimado.',
+    step2Title: '2. Recibe un presupuesto personalizado',
+    step2Body: 'Revisaremos tu solicitud y hablaremos contigo del servicio y el precio antes de empezar.',
+    step3Title: '3. Paga y recibe apoyo',
+    step3Body: 'Cuando acordemos el servicio y el precio, paga a través de LUNOTE y nos pondremos en marcha.',
+    solutionTitle: 'Una solicitud. La solución adecuada.',
+    solutionBody1: 'LUNOTE es un servicio de conserjería. Según tu solicitud, te ayudamos directamente o te conectamos con el profesional o proveedor cualificado adecuado.',
+    solutionBody2: 'No necesitas averiguar a quién contactar ni por dónde empezar.',
+    solutionCta: 'Solo dile a LUNOTE qué necesitas.',
+    cta: 'Crea tu primera solicitud',
+    later: 'Explorar la app primero',
+  },
 
   support: {
     title: 'Soporte',

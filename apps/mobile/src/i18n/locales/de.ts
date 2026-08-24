@@ -253,6 +253,25 @@ const de: Resources = {
     continue: 'Weiter',
   },
 
+  welcome: {
+    title: 'Willkommen bei LUNOTE! 🎉',
+    tagline: 'Ihr Rundum-Concierge für das Leben in Korea',
+    intro1: 'Das Leben in Korea kann kompliziert sein. LUNOTE macht es einfacher.',
+    intro2: 'Brauchen Sie Hilfe bei Wohnen, Visa, Krankenhäusern, Banken, Mobilfunk oder anderen Themen rund um das Leben in Korea? Sagen Sie uns einfach, was Sie brauchen.',
+    howTitle: 'So funktioniert es',
+    step1Title: '1. Sagen Sie uns, was Sie brauchen',
+    step1Body: 'Wählen Sie eine Kategorie, beschreiben Sie Ihr Anliegen und nennen Sie uns Ihr geplantes Budget.',
+    step2Title: '2. Erhalten Sie ein persönliches Angebot',
+    step2Body: 'Wir prüfen Ihre Anfrage und besprechen Leistung und Preis mit Ihnen, bevor es losgeht.',
+    step3Title: '3. Bezahlen & Unterstützung erhalten',
+    step3Body: 'Sobald wir uns über Leistung und Preis einig sind, zahlen Sie einfach über LUNOTE — und wir legen los.',
+    solutionTitle: 'Eine Anfrage. Die richtige Lösung.',
+    solutionBody1: 'LUNOTE ist ein Concierge-Service. Je nach Anfrage unterstützen wir Sie direkt oder vermitteln Ihnen die passende qualifizierte Fachkraft oder den passenden Dienstleister.',
+    solutionBody2: 'Sie müssen nicht herausfinden, wen Sie kontaktieren oder wo Sie anfangen sollen.',
+    solutionCta: 'Sagen Sie LUNOTE einfach, was Sie brauchen.',
+    cta: 'Erste Anfrage stellen',
+    later: 'Erst die App erkunden',
+  },
 
   support: {
     title: 'Support',

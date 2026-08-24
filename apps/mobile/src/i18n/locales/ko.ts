@@ -253,6 +253,25 @@ const ko: Resources = {
     continue: '계속',
   },
 
+  welcome: {
+    title: 'LUNOTE에 오신 것을 환영해요! 🎉',
+    tagline: '한국 생활을 위한 올인원 컨시어지',
+    intro1: '한국 생활은 복잡할 수 있어요. LUNOTE가 더 쉽게 만들어 드릴게요.',
+    intro2: '주거, 비자, 병원, 은행, 통신 등 한국 생활에 관한 도움이 필요하신가요? 필요한 것만 알려주세요.',
+    howTitle: '이용 방법',
+    step1Title: '1. 필요한 것을 알려주세요',
+    step1Body: '카테고리를 고르고, 요청 내용을 적고, 예상 예산을 알려주세요.',
+    step2Title: '2. 맞춤 견적을 받아보세요',
+    step2Body: '요청을 검토한 뒤, 진행 전에 서비스와 가격을 함께 상의해요.',
+    step3Title: '3. 결제하고 지원받으세요',
+    step3Body: '서비스와 가격에 합의하면 LUNOTE에서 결제만 하세요. 바로 시작할게요.',
+    solutionTitle: '요청 하나면, 맞는 해결책으로.',
+    solutionBody1: 'LUNOTE는 컨시어지 서비스예요. 요청에 따라 저희가 직접 도와드리거나, 검증된 전문가나 서비스 제공자를 연결해 드려요.',
+    solutionBody2: '누구에게 연락해야 할지, 어디서 시작해야 할지 고민하지 않아도 돼요.',
+    solutionCta: '필요한 것만 LUNOTE에 알려주세요.',
+    cta: '첫 요청 만들기',
+    later: '앱 먼저 둘러보기',
+  },
 
   support: {
     title: '고객지원',

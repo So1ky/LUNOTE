@@ -261,6 +261,25 @@ const en = {
     continue: 'Continue',
   },
 
+  welcome: {
+    title: 'Welcome to LUNOTE! 🎉',
+    tagline: 'Your One-Stop Korea Life Concierge',
+    intro1: 'Living in Korea can be complicated. LUNOTE is here to make it easier.',
+    intro2: 'Need help with housing, visas, hospitals, banking, mobile services, or anything else related to life in Korea? Just tell us what you need.',
+    howTitle: 'How it works',
+    step1Title: '1. Tell us what you need',
+    step1Body: 'Choose a category, describe your request, and let us know your expected budget.',
+    step2Title: '2. Get a personalized quote',
+    step2Body: "We'll review your request and discuss the service and price with you before anything begins.",
+    step3Title: '3. Pay & get support',
+    step3Body: "Once we agree on the service and price, simply pay through LUNOTE and we'll get started.",
+    solutionTitle: 'One request. The right solution.',
+    solutionBody1: 'LUNOTE is a concierge service. Depending on your request, we may assist you directly or connect you with the appropriate qualified professional or service provider.',
+    solutionBody2: "You don't need to figure out who to contact or where to start.",
+    solutionCta: 'Just tell LUNOTE what you need.',
+    cta: 'Make Your First Request',
+    later: 'Explore the app first',
+  },
 
   support: {
     title: 'Support',

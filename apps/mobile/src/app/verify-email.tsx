@@ -31,7 +31,7 @@ export default function VerifyEmailScreen() {
         token,
       });
       await refreshProfile();
-      router.replace('/home');
+      router.replace('/welcome'); // 가입 완료 축하 + 서비스 소개 (기획 피드백)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {

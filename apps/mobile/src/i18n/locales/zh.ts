@@ -253,6 +253,25 @@ const zh: Resources = {
     continue: '继续',
   },
 
+  welcome: {
+    title: '欢迎加入 LUNOTE！🎉',
+    tagline: '您的一站式韩国生活管家',
+    intro1: '在韩国生活可能很复杂。LUNOTE 让一切变得更简单。',
+    intro2: '需要住房、签证、医院、银行、通信服务，或其他任何与韩国生活相关的帮助？只需告诉我们您的需求。',
+    howTitle: '使用流程',
+    step1Title: '1. 告诉我们您的需求',
+    step1Body: '选择类别，描述您的请求，并告知您的预算。',
+    step2Title: '2. 获取专属报价',
+    step2Body: '我们会审核您的请求，并在开始前与您确认服务内容和价格。',
+    step3Title: '3. 付款并获得支持',
+    step3Body: '就服务和价格达成一致后，通过 LUNOTE 付款，我们即刻开始。',
+    solutionTitle: '一次请求，恰当的解决方案。',
+    solutionBody1: 'LUNOTE 是一项管家式服务。根据您的请求，我们会直接协助您，或为您对接合适的专业人士或服务提供方。',
+    solutionBody2: '您无需操心该联系谁、从哪里开始。',
+    solutionCta: '只需把需求告诉 LUNOTE。',
+    cta: '创建首个请求',
+    later: '先逛逛应用',
+  },
 
   support: {
     title: '帮助与支持',
