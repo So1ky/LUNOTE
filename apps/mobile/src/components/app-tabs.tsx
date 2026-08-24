@@ -12,22 +12,20 @@ export default function AppTabs() {
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
       iconColor={{ selected: Brand.purple }}
-      labelStyle={{ selected: { color: Brand.purple } }}>
+      labelStyle={{ selected: { color: Brand.purple } }}
+      // Android: 선택 안 된 탭에도 라벨 상시 표시 — 아이콘만으로는 구분이 어렵다는 피드백
+      labelVisibilityMode="labeled">
       <NativeTabs.Trigger name="home">
         <NativeTabs.Trigger.Label>{t('tabs.home')}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: 'house', selected: 'house.fill' }}
-          src={require('@/assets/images/tabIcons/home.png')} // Android 폴백
-          renderingMode="template"
-        />
+        {/* sf = iOS(SF Symbols), md = Android(Material Symbols — expo-symbols 번들 폰트) */}
+        <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="quote">
         <NativeTabs.Trigger.Label>{t('tabs.quote')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'doc.text', selected: 'doc.text.fill' }}
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
+          md="description"
         />
       </NativeTabs.Trigger>
 
@@ -35,8 +33,7 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Label>{t('tabs.payment')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'creditcard', selected: 'creditcard.fill' }}
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
+          md="credit_card"
         />
       </NativeTabs.Trigger>
 
@@ -44,8 +41,7 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Label>{t('tabs.profile')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'person', selected: 'person.fill' }}
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
+          md="person"
         />
       </NativeTabs.Trigger>
     </NativeTabs>
