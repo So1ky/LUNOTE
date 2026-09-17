@@ -18,6 +18,21 @@ const ICONS = {
   bank: { sf: 'building.columns', ion: 'business-outline' },
   telecom: { sf: 'iphone', ion: 'phone-portrait-outline' },
   other: { sf: 'sparkles', ion: 'sparkles-outline' },
+  // 첨부
+  photo: { sf: 'photo', ion: 'image-outline' },
+  document: { sf: 'doc.text', ion: 'document-text-outline' },
+  // 연락수단
+  email: { sf: 'envelope', ion: 'mail-outline' },
+  phone: { sf: 'phone', ion: 'call-outline' },
+  chat: { sf: 'message', ion: 'chatbubble-ellipses-outline' },
+  // 빈 상태·인증 히어로
+  clipboard: { sf: 'list.clipboard', ion: 'clipboard-outline' },
+  card: { sf: 'creditcard', ion: 'card-outline' },
+  bellOff: { sf: 'bell.slash', ion: 'notifications-off-outline' },
+  lock: { sf: 'lock', ion: 'lock-closed-outline' },
+  key: { sf: 'key', ion: 'key-outline' },
+  checkCircle: { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
+  mailUnread: { sf: 'envelope.badge', ion: 'mail-unread-outline' },
 } as const;
 
 export type AppIconName = keyof typeof ICONS;
