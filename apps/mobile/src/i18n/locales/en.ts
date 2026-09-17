@@ -58,14 +58,14 @@ const en = {
   },
 
   home: {
-    greeting: 'Hello 👋',
-    greetingNamed: 'Hello {{name}} 👋',
+    greeting: 'Hello',
+    greetingNamed: 'Hello, {{name}}',
     subtitle: 'How can we help you settle in Korea?',
     notifications: 'Notifications',
     requestQuote: 'Request a Quote',
     requestQuoteSub: 'Tell us what you need — we’ll handle the rest',
-    categoriesLabel: 'CATEGORIES',
-    recentLabel: 'RECENT REQUESTS',
+    categoriesLabel: 'Categories',
+    recentLabel: 'Recent Requests',
     recentEmptyAuthed: 'Your requests will appear here.',
     recentEmptyGuest: 'Log in to create and track your requests.',
   },
@@ -156,7 +156,7 @@ const en = {
     descriptionPlaceholder:
       'Describe your situation — the more detail, the better the quote.',
     attachments: 'Attachments (optional, up to {{max}} — photos or PDF)',
-    photo: 'PHOTO',
+    photo: 'Photo',
     pdf: 'PDF',
     contactLabel: 'How should we contact you?',
     contactPlaceholder: 'Choose a contact method',
@@ -182,7 +182,7 @@ const en = {
     requested: 'Requested {{date}}',
     budgetSuffix: ' · Budget {{amount}}',
     contact: 'Contact: {{method}}',
-    yourQuote: 'YOUR QUOTE',
+    yourQuote: 'Your Quote',
     proceedPayment: 'Proceed to payment',
     validUntil: 'Valid until {{date}}',
     quoteExpired: 'This quote has expired — please submit a new request.',
@@ -232,7 +232,7 @@ const en = {
 
   account: {
     title: 'Account details',
-    profileSection: 'PROFILE',
+    profileSection: 'Profile',
     email: 'Email',
     firstName: 'First name',
     lastName: 'Last name',
@@ -240,7 +240,7 @@ const en = {
       'Use your real name — it’s how our team identifies you for quotes and payments.',
     saved: 'Saved.',
     saveName: 'Save name',
-    securitySection: 'SECURITY',
+    securitySection: 'Security',
     changePassword: 'Change password',
     confirmTitle: 'Update your name?',
     confirmMessage:
@@ -293,7 +293,7 @@ const en = {
     faq3a: 'Once your quote is ready, you can pay in the app with international cards. Payment support is being finalized and will be available soon.',
     faq4q: 'What languages do you support?',
     faq4a: 'The app is available in six languages, and our concierge team can assist you in English and Korean.',
-    contactLabel: 'CONTACT',
+    contactLabel: 'Contact',
     contactNote:
       'Can’t find your answer? Email us and we’ll get back to you within one business day.',
     emailSupport: 'Email support',

@@ -10,6 +10,14 @@ const ICONS = {
   bell: { sf: 'bell', ion: 'notifications-outline' },
   bellBadge: { sf: 'bell.badge', ion: 'notifications' },
   camera: { sf: 'camera.fill', ion: 'camera' },
+  arrowRight: { sf: 'arrow.right', ion: 'arrow-forward' },
+  // 문의 카테고리 (CATEGORY_META가 참조)
+  housing: { sf: 'house', ion: 'home-outline' },
+  visa: { sf: 'person.text.rectangle', ion: 'id-card-outline' },
+  hospital: { sf: 'cross.case', ion: 'medkit-outline' },
+  bank: { sf: 'building.columns', ion: 'business-outline' },
+  telecom: { sf: 'iphone', ion: 'phone-portrait-outline' },
+  other: { sf: 'sparkles', ion: 'sparkles-outline' },
 } as const;
 
 export type AppIconName = keyof typeof ICONS;

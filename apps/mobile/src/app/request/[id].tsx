@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
 import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -97,10 +98,16 @@ export default function RequestDetailScreen() {
         <View style={styles.body}>
           <Card style={styles.summary}>
             <View style={styles.summaryTop}>
-              <ThemedText type="bodyStrong">
-                {CATEGORY_META[request.category].emoji}{' '}
-                {t(`categories.${request.category}`)}
-              </ThemedText>
+              <View style={styles.summaryTitle}>
+                <AppIcon
+                  name={CATEGORY_META[request.category].icon}
+                  size={18}
+                  color={Brand.purpleSoft}
+                />
+                <ThemedText type="bodyStrong">
+                  {t(`categories.${request.category}`)}
+                </ThemedText>
+              </View>
               <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />
             </View>
             <ThemedText type="small" themeColor="textSecondary">
@@ -229,6 +236,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.md,
+  },
+  summaryTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    flexShrink: 1,
   },
   description: {
     marginTop: Spacing.xxs,

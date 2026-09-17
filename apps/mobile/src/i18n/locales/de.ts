@@ -50,14 +50,14 @@ const de: Resources = {
   },
 
   home: {
-    greeting: 'Hallo 👋',
-    greetingNamed: 'Hallo {{name}} 👋',
+    greeting: 'Hallo',
+    greetingNamed: 'Hallo, {{name}}',
     subtitle: 'Wie können wir Ihnen beim Einleben in Korea helfen?',
     notifications: 'Benachrichtigungen',
     requestQuote: 'Angebot anfragen',
     requestQuoteSub: 'Sagen Sie uns, was Sie brauchen — den Rest übernehmen wir',
-    categoriesLabel: 'KATEGORIEN',
-    recentLabel: 'LETZTE ANFRAGEN',
+    categoriesLabel: 'Kategorien',
+    recentLabel: 'Letzte Anfragen',
     recentEmptyAuthed: 'Ihre Anfragen erscheinen hier.',
     recentEmptyGuest: 'Melden Sie sich an, um Anfragen zu erstellen und zu verfolgen.',
   },
@@ -148,7 +148,7 @@ const de: Resources = {
     descriptionPlaceholder:
       'Beschreiben Sie Ihre Situation — je mehr Details, desto besser das Angebot.',
     attachments: 'Anhänge (optional, bis zu {{max}} — Fotos oder PDF)',
-    photo: 'FOTO',
+    photo: 'Foto',
     pdf: 'PDF',
     contactLabel: 'Wie sollen wir Sie kontaktieren?',
     contactPlaceholder: 'Kontaktmethode wählen',
@@ -174,7 +174,7 @@ const de: Resources = {
     requested: 'Angefragt am {{date}}',
     budgetSuffix: ' · Budget {{amount}}',
     contact: 'Kontakt: {{method}}',
-    yourQuote: 'IHR ANGEBOT',
+    yourQuote: 'Ihr Angebot',
     proceedPayment: 'Weiter zur Zahlung',
     validUntil: 'Gültig bis {{date}}',
     quoteExpired: 'Das Angebot ist abgelaufen – bitte neue Anfrage stellen.',
@@ -224,7 +224,7 @@ const de: Resources = {
 
   account: {
     title: 'Kontodaten',
-    profileSection: 'PROFIL',
+    profileSection: 'Profil',
     email: 'E-Mail',
     firstName: 'Vorname',
     lastName: 'Nachname',
@@ -232,7 +232,7 @@ const de: Resources = {
       'Verwenden Sie Ihren echten Namen — daran erkennt Sie unser Team bei Angeboten und Zahlungen.',
     saved: 'Gespeichert.',
     saveName: 'Namen speichern',
-    securitySection: 'SICHERHEIT',
+    securitySection: 'Sicherheit',
     changePassword: 'Passwort ändern',
     confirmTitle: 'Namen aktualisieren?',
     confirmMessage:
@@ -285,7 +285,7 @@ const de: Resources = {
     faq3a: 'Sobald Ihr Angebot bereit ist, können Sie in der App mit internationalen Karten bezahlen. Die Zahlungsfunktion wird gerade fertiggestellt und ist bald verfügbar.',
     faq4q: 'Welche Sprachen unterstützen Sie?',
     faq4a: 'Die App ist in sechs Sprachen verfügbar, und unser Concierge-Team unterstützt Sie auf Englisch und Koreanisch.',
-    contactLabel: 'KONTAKT',
+    contactLabel: 'Kontakt',
     contactNote:
       'Keine Antwort gefunden? Schreiben Sie uns eine E-Mail und wir melden uns innerhalb eines Werktags.',
     emailSupport: 'Support kontaktieren',

@@ -50,8 +50,8 @@ const ja: Resources = {
   },
 
   home: {
-    greeting: 'こんにちは 👋',
-    greetingNamed: '{{name}}さん、こんにちは 👋',
+    greeting: 'こんにちは',
+    greetingNamed: '{{name}}さん、こんにちは',
     subtitle: '韓国での生活、どんなことをお手伝いしましょうか？',
     notifications: 'お知らせ',
     requestQuote: '見積もりを依頼',

@@ -50,8 +50,8 @@ const zh: Resources = {
   },
 
   home: {
-    greeting: '你好 👋',
-    greetingNamed: '你好 {{name}} 👋',
+    greeting: '你好',
+    greetingNamed: '你好 {{name}}',
     subtitle: '我们能如何帮您在韩国安顿下来？',
     notifications: '通知',
     requestQuote: '申请报价',

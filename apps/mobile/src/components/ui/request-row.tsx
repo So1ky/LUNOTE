@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
 import { Badge, STATUS_TONE } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Brand, Radius, Spacing } from '@/constants/theme';
@@ -20,7 +21,7 @@ export function RequestRow({ request, onPress }: RequestRowProps) {
   return (
     <Card style={styles.row} onPress={onPress}>
       <View style={styles.iconTile}>
-        <ThemedText style={styles.iconEmoji}>{meta.emoji}</ThemedText>
+        <AppIcon name={meta.icon} size={19} color={Brand.purpleSoft} />
       </View>
       <View style={styles.text}>
         <ThemedText type="bodyStrong" numberOfLines={1}>
@@ -46,13 +47,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: Radius.md,
-    backgroundColor: Brand.surfaceAlt,
+    backgroundColor: Brand.purpleTint,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconEmoji: {
-    fontSize: 18,
-    lineHeight: 24,
   },
   text: {
     flex: 1,
