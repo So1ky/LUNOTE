@@ -3,12 +3,13 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { TextField } from '@/components/ui/text-field';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, Radius, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -61,7 +62,9 @@ export default function ChangePasswordScreen() {
     return (
       <Screen center narrow>
         <View style={styles.hero}>
-          <ThemedText style={styles.emoji}>🔒</ThemedText>
+          <View style={styles.heroIcon}>
+            <AppIcon name="lock" size={26} color={Brand.purpleSoft} />
+          </View>
           <ThemedText type="title">{t('changePassword.doneTitle')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
             {t('changePassword.doneSubtitle')}
@@ -137,9 +140,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
   },
-  emoji: {
-    fontSize: 40,
-    lineHeight: 48,
+  heroIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.purpleTint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   centered: {
     textAlign: 'center',

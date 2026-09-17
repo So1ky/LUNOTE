@@ -69,7 +69,7 @@ export default function QuoteScreen() {
         ListEmptyComponent={
           !token ? (
             <EmptyState
-              emoji="🔐"
+              icon="lock"
               message={t('quoteList.emptyGuest')}
               action={{ label: t('quoteList.login'), onPress: () => router.push('/login') }}
             />
@@ -77,7 +77,7 @@ export default function QuoteScreen() {
             <ActivityIndicator color={Brand.purple} style={styles.loading} />
           ) : (
             <EmptyState
-              emoji="📋"
+              icon="clipboard"
               message={t('quoteList.emptyNone')}
               action={{
                 label: t('quoteList.requestQuote'),

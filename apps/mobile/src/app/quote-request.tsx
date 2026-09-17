@@ -2,10 +2,10 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { AppIcon } from '@/components/ui/app-icon';
+import { AppIcon, type AppIconName } from '@/components/ui/app-icon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
@@ -29,28 +29,28 @@ const CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 
 type ContactChannel = 'email' | 'phone' | 'whatsapp';
 
-// 라벨은 i18n(contactChannels.<key>)에서 온다 — 여기는 이모지·입력 힌트만
+// 라벨은 i18n(contactChannels.<key>)에서 온다 — 여기는 아이콘·입력 힌트만
 const CONTACT_CHANNELS: {
   key: ContactChannel;
-  emoji: string;
+  icon: AppIconName;
   placeholder: string;
   keyboardType: 'email-address' | 'phone-pad';
 }[] = [
   {
     key: 'email',
-    emoji: '📧',
+    icon: 'email',
     placeholder: 'you@example.com',
     keyboardType: 'email-address',
   },
   {
     key: 'phone',
-    emoji: '📞',
+    icon: 'phone',
     placeholder: '+82 10-1234-5678',
     keyboardType: 'phone-pad',
   },
   {
     key: 'whatsapp',
-    emoji: '💬',
+    icon: 'chat',
     placeholder: '+1 555 123 4567',
     keyboardType: 'phone-pad',
   },
@@ -267,17 +267,21 @@ export default function QuoteRequestScreen() {
             {attachments.length < MAX_ATTACHMENTS && (
               <>
                 <Card style={styles.addThumb} onPress={() => void onAddPhotos()}>
-                  <ThemedText style={styles.addEmoji}>
-                    {uploading ? '…' : '🖼️'}
-                  </ThemedText>
+                  {uploading ? (
+                    <ActivityIndicator color={Brand.purpleSoft} />
+                  ) : (
+                    <AppIcon name="photo" size={22} color={Brand.purpleSoft} />
+                  )}
                   <ThemedText type="caption" themeColor="textSecondary">
                     {t('quoteRequest.photo')}
                   </ThemedText>
                 </Card>
                 <Card style={styles.addThumb} onPress={() => void onAddFiles()}>
-                  <ThemedText style={styles.addEmoji}>
-                    {uploading ? '…' : '📄'}
-                  </ThemedText>
+                  {uploading ? (
+                    <ActivityIndicator color={Brand.purpleSoft} />
+                  ) : (
+                    <AppIcon name="document" size={22} color={Brand.purpleSoft} />
+                  )}
                   <ThemedText type="caption" themeColor="textSecondary">
                     {t('quoteRequest.pdf')}
                   </ThemedText>
@@ -294,7 +298,8 @@ export default function QuoteRequestScreen() {
             value={channel}
             options={CONTACT_CHANNELS.map((c) => ({
               value: c.key,
-              label: `${c.emoji}  ${t(`contactChannels.${c.key}`)}`,
+              label: t(`contactChannels.${c.key}`),
+              icon: c.icon,
             }))}
             onChange={setChannel}
           />
@@ -392,10 +397,6 @@ const styles = StyleSheet.create({
     padding: 0,
     gap: 2,
     borderRadius: Radius.md,
-  },
-  addEmoji: {
-    fontSize: 20,
-    lineHeight: 26,
   },
   fileChip: {
     flexDirection: 'row',

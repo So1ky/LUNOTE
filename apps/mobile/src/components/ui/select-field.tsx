@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppIcon, type AppIconName } from '@/components/ui/app-icon';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 
 export type SelectOption<T extends string> = {
   value: T;
   label: string;
+  /** 라벨 앞에 표시할 선택적 아이콘 */
+  icon?: AppIconName;
 };
 
 type SelectFieldProps<T extends string> = {
@@ -47,12 +50,17 @@ export function SelectField<T extends string>({
           (open || pressed) && styles.triggerActive,
         ]}
         onPress={() => setOpen((v) => !v)}>
-        <ThemedText
-          type="body"
-          style={!selected && styles.placeholder}
-          numberOfLines={1}>
-          {selected?.label ?? placeholder}
-        </ThemedText>
+        <View style={styles.labelRow}>
+          {selected?.icon && (
+            <AppIcon name={selected.icon} size={18} color={Brand.purpleSoft} />
+          )}
+          <ThemedText
+            type="body"
+            style={!selected && styles.placeholder}
+            numberOfLines={1}>
+            {selected?.label ?? placeholder}
+          </ThemedText>
+        </View>
         <ThemedText type="small" themeColor="textSecondary">
           {open ? '▴' : '▾'}
         </ThemedText>
@@ -75,9 +83,14 @@ export function SelectField<T extends string>({
                   i > 0 && styles.optionDivider,
                   pressed && styles.optionPressed,
                 ]}>
-                <ThemedText type={isSelected ? 'bodyStrong' : 'body'}>
-                  {o.label}
-                </ThemedText>
+                <View style={styles.labelRow}>
+                  {o.icon && (
+                    <AppIcon name={o.icon} size={18} color={Brand.purpleSoft} />
+                  )}
+                  <ThemedText type={isSelected ? 'bodyStrong' : 'body'}>
+                    {o.label}
+                  </ThemedText>
+                </View>
                 {isSelected && <ThemedText style={styles.check}>✓</ThemedText>}
               </Pressable>
             );
@@ -91,6 +104,12 @@ export function SelectField<T extends string>({
 const styles = StyleSheet.create({
   wrapper: {
     gap: Spacing.xs,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    flexShrink: 1,
   },
   trigger: {
     flexDirection: 'row',

@@ -73,7 +73,7 @@ export default function PaymentScreen() {
         ListEmptyComponent={
           !token ? (
             <EmptyState
-              emoji="🔐"
+              icon="lock"
               message={t('payment.emptyGuest')}
               action={{ label: t('payment.login'), onPress: () => router.push('/login') }}
             />
@@ -81,7 +81,7 @@ export default function PaymentScreen() {
             <ActivityIndicator color={Brand.purple} style={styles.loading} />
           ) : (
             <EmptyState
-              emoji="💳"
+              icon="card"
               message={t('payment.emptyNone')}
             />
           )

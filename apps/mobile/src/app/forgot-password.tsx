@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
-import { Brand, Spacing, Type } from '@/constants/theme';
+import { Brand, Radius, Spacing, Type } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 import { api, ApiError } from '@/lib/api';
 import { isValidPassword } from '@/lib/password';
@@ -79,7 +80,9 @@ export default function ForgotPasswordScreen() {
     return (
       <Screen center narrow>
         <View style={styles.hero}>
-          <ThemedText style={styles.emoji}>✅</ThemedText>
+          <View style={styles.heroIcon}>
+            <AppIcon name="checkCircle" size={26} color={Brand.purpleSoft} />
+          </View>
           <ThemedText type="title">{t('forgotPassword.doneTitle')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
             {t('forgotPassword.doneSubtitle')}
@@ -97,7 +100,9 @@ export default function ForgotPasswordScreen() {
   return (
     <Screen keyboard center narrow>
       <View style={styles.hero}>
-        <ThemedText style={styles.emoji}>🔑</ThemedText>
+        <View style={styles.heroIcon}>
+          <AppIcon name="key" size={26} color={Brand.purpleSoft} />
+        </View>
         <ThemedText type="title">{t('forgotPassword.resetTitle')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
           {step === 'request'
@@ -190,9 +195,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
   },
-  emoji: {
-    fontSize: 40,
-    lineHeight: 48,
+  heroIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.purpleTint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   centered: {
     textAlign: 'center',

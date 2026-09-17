@@ -87,7 +87,7 @@ export default function NotificationsScreen() {
           items === null ? (
             <ActivityIndicator color={Brand.purple} style={styles.loading} />
           ) : (
-            <EmptyState emoji="🔕" message={t('notifications.empty')} />
+            <EmptyState icon="bellOff" message={t('notifications.empty')} />
           )
         }
         renderItem={({ item }) => (
