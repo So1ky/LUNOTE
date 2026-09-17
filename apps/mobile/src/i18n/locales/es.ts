@@ -50,14 +50,14 @@ const es: Resources = {
   },
 
   home: {
-    greeting: 'Hola 👋',
-    greetingNamed: 'Hola {{name}} 👋',
+    greeting: 'Hola',
+    greetingNamed: 'Hola, {{name}}',
     subtitle: '¿Cómo podemos ayudarte a instalarte en Corea?',
     notifications: 'Notificaciones',
     requestQuote: 'Solicitar presupuesto',
     requestQuoteSub: 'Cuéntanos qué necesitas: del resto nos encargamos nosotros',
-    categoriesLabel: 'CATEGORÍAS',
-    recentLabel: 'SOLICITUDES RECIENTES',
+    categoriesLabel: 'Categorías',
+    recentLabel: 'Solicitudes recientes',
     recentEmptyAuthed: 'Tus solicitudes aparecerán aquí.',
     recentEmptyGuest: 'Inicia sesión para crear y seguir tus solicitudes.',
   },
@@ -148,7 +148,7 @@ const es: Resources = {
     descriptionPlaceholder:
       'Describe tu situación: cuanto más detalle, mejor será el presupuesto.',
     attachments: 'Adjuntos (opcional, hasta {{max}}: fotos o PDF)',
-    photo: 'FOTO',
+    photo: 'Foto',
     pdf: 'PDF',
     contactLabel: '¿Cómo debemos contactarte?',
     contactPlaceholder: 'Elige un método de contacto',
@@ -174,7 +174,7 @@ const es: Resources = {
     requested: 'Solicitado el {{date}}',
     budgetSuffix: ' · Presupuesto {{amount}}',
     contact: 'Contacto: {{method}}',
-    yourQuote: 'TU PRESUPUESTO',
+    yourQuote: 'Tu presupuesto',
     proceedPayment: 'Continuar al pago',
     validUntil: 'Válido hasta {{date}}',
     quoteExpired: 'El presupuesto ha expirado; envía una nueva solicitud.',
@@ -224,7 +224,7 @@ const es: Resources = {
 
   account: {
     title: 'Datos de la cuenta',
-    profileSection: 'PERFIL',
+    profileSection: 'Perfil',
     email: 'Correo',
     firstName: 'Nombre',
     lastName: 'Apellido',
@@ -232,7 +232,7 @@ const es: Resources = {
       'Usa tu nombre real: así te identifica nuestro equipo para presupuestos y pagos.',
     saved: 'Guardado.',
     saveName: 'Guardar nombre',
-    securitySection: 'SEGURIDAD',
+    securitySection: 'Seguridad',
     changePassword: 'Cambiar contraseña',
     confirmTitle: '¿Actualizar tu nombre?',
     confirmMessage:
@@ -285,7 +285,7 @@ const es: Resources = {
     faq3a: 'Cuando tu presupuesto esté listo, puedes pagar en la app con tarjetas internacionales. El sistema de pago se está ultimando y estará disponible pronto.',
     faq4q: '¿En qué idiomas ofrecen soporte?',
     faq4a: 'La app está disponible en seis idiomas y nuestro equipo de conserjería puede atenderte en inglés y coreano.',
-    contactLabel: 'CONTACTO',
+    contactLabel: 'Contacto',
     contactNote:
       '¿No encuentras tu respuesta? Escríbenos y te responderemos en un día laborable.',
     emailSupport: 'Escribir a soporte',

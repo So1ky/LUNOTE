@@ -97,9 +97,9 @@ export default function HomeScreen() {
             {t('home.requestQuoteSub')}
           </ThemedText>
         </View>
-        <ThemedText type="heading" style={styles.ctaArrow}>
-          →
-        </ThemedText>
+        <View style={styles.ctaArrow}>
+          <AppIcon name="arrowRight" size={18} color={Brand.text} />
+        </View>
       </Card>
 
       <View style={styles.section}>
@@ -109,9 +109,13 @@ export default function HomeScreen() {
         <View style={styles.grid}>
           {CATEGORIES.map((c) => (
             <Card key={c} style={styles.categoryCard} onPress={() => goRequest(c)}>
-              <ThemedText style={styles.categoryEmoji}>
-                {CATEGORY_META[c].emoji}
-              </ThemedText>
+              <View style={styles.categoryIcon}>
+                <AppIcon
+                  name={CATEGORY_META[c].icon}
+                  size={20}
+                  color={Brand.purpleSoft}
+                />
+              </View>
               <ThemedText type="smallStrong">{t(`categories.${c}`)}</ThemedText>
             </Card>
           ))}
@@ -189,7 +193,12 @@ const styles = StyleSheet.create({
     color: 'rgba(244, 245, 251, 0.8)',
   },
   ctaArrow: {
-    color: Brand.text,
+    width: 40,
+    height: 40,
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(245, 246, 251, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   section: {
     gap: Spacing.sm,
@@ -207,8 +216,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.xs,
   },
-  categoryEmoji: {
-    fontSize: 24,
-    lineHeight: 32,
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.purpleTint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

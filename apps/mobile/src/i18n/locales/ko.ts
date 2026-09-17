@@ -50,8 +50,8 @@ const ko: Resources = {
   },
 
   home: {
-    greeting: '안녕하세요 👋',
-    greetingNamed: '{{name}}님 안녕하세요 👋',
+    greeting: '안녕하세요',
+    greetingNamed: '{{name}}님 안녕하세요',
     subtitle: '한국 정착, 무엇을 도와드릴까요?',
     notifications: '알림',
     requestQuote: '견적 요청하기',

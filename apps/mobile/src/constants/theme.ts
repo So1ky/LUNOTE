@@ -12,15 +12,19 @@ import { Platform, type TextStyle } from 'react-native';
  * 서피스는 bg → surface → surfaceAlt 3단계로 깊이를 표현한다.
  */
 export const Brand = {
-  bg: '#0F1430',
-  surface: '#1A2148',
-  surfaceAlt: '#242C5E',
-  border: '#2A3468',
-  purple: '#6C3DF4',
-  purplePressed: '#5A2FD8',
-  text: '#F4F5FB',
-  textSecondary: '#A0A7C4',
-  textMuted: '#6B7299',
+  bg: '#0E1126',
+  surface: '#171C3A',
+  surfaceAlt: '#1F2648',
+  border: '#262E56',
+  purple: '#7B5BF5',
+  purplePressed: '#6847E0',
+  /** 다크 서피스 위 아이콘 전경 — 흰색에 퍼플 기운만 남긴 라벤더 */
+  purpleSoft: '#DBD4FB',
+  /** 아이콘 타일 배경 틴트 */
+  purpleTint: 'rgba(123, 91, 245, 0.20)',
+  text: '#F5F6FB',
+  textSecondary: '#A3AACB',
+  textMuted: '#6F76A0',
   success: '#34D399',
   warning: '#FBBF24',
   danger: '#F87171',
@@ -65,8 +69,8 @@ export const Type = {
   small: { fontSize: 14, lineHeight: 20, fontWeight: '400' },
   /** 보조 텍스트 강조 */
   smallStrong: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
-  /** 섹션 라벨 (대문자 + letterSpacing), 배지 텍스트 */
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 1 },
+  /** 섹션 라벨(문장형 — 대문자·넓은 자간 금지), 배지 텍스트 */
+  caption: { fontSize: 13, lineHeight: 18, fontWeight: '600', letterSpacing: 0.2 },
 } as const satisfies Record<string, TextStyle>;
 
 export const Radius = {

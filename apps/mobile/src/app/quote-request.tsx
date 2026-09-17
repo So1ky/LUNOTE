@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
@@ -203,9 +204,13 @@ export default function QuoteRequestScreen() {
                   ...styles.categoryCard,
                   ...(category === c ? styles.categorySelected : {}),
                 }}>
-                <ThemedText style={styles.categoryEmoji}>
-                  {CATEGORY_META[c].emoji}
-                </ThemedText>
+                <View style={styles.categoryIcon}>
+                  <AppIcon
+                    name={CATEGORY_META[c].icon}
+                    size={18}
+                    color={Brand.purpleSoft}
+                  />
+                </View>
                 <ThemedText type="smallStrong">{t(`categories.${c}`)}</ThemedText>
               </Card>
             ))}
@@ -406,9 +411,13 @@ const styles = StyleSheet.create({
   fileName: {
     flexShrink: 1,
   },
-  categoryEmoji: {
-    fontSize: 20,
-    lineHeight: 28,
+  categoryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.purpleTint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   textArea: {
     minHeight: 120,

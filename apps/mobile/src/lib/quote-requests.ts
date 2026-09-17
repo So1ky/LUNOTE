@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { AppIconName } from '@/components/ui/app-icon';
 import type { Attachment, AttachmentInput } from './attachments';
 
 /** 백엔드 QuoteRequest 응답 (apps/api REQUEST_SELECT와 동일 형태) */
@@ -77,15 +78,15 @@ export function cancelQuoteRequest(token: string, id: number) {
   });
 }
 
-/** 카테고리 라벨은 i18n(categories.<Category>)에서 온다 — 여기는 이모지만 */
-export const CATEGORY_META: Record<Category, { emoji: string }> =
+/** 카테고리 라벨은 i18n(categories.<Category>)에서 온다 — 여기는 아이콘만 */
+export const CATEGORY_META: Record<Category, { icon: AppIconName }> =
   {
-    HOUSING: { emoji: '🏠' },
-    VISA: { emoji: '🛂' },
-    HOSPITAL: { emoji: '🏥' },
-    BANK: { emoji: '🏦' },
-    TELECOM: { emoji: '📱' },
-    OTHER: { emoji: '✨' },
+    HOUSING: { icon: 'housing' },
+    VISA: { icon: 'visa' },
+    HOSPITAL: { icon: 'hospital' },
+    BANK: { icon: 'bank' },
+    TELECOM: { icon: 'telecom' },
+    OTHER: { icon: 'other' },
   };
 
 /** locale는 활성 언어(useTranslation().locale) — 미지정 시 en 폴백 */
