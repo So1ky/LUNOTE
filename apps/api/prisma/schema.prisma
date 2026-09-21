@@ -140,7 +140,8 @@ model QuoteRequest {
   userId        String
   user          User          @relation(fields: [userId], references: [id])
   category      Category
-  desiredAmount Decimal?      @db.Decimal(12, 2) // 사용자가 제시한 희망 예산 (선택)
+  serviceItem   String?       @db.VarChar(40) // 카테고리별 정형 서비스 항목 (예: HOUSING_1) — 구버전 앱은 미전송
+  desiredAmount Decimal?      @db.Decimal(12, 2) // 사용자가 제시한 희망 예산 (Custom Quote 항목에서만 선택 입력)
   currency      String        @default("USD")
   description   String
   contactMethod String // 관리자가 회신할 연락 수단 (이메일 등)

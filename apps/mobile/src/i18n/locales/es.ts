@@ -142,6 +142,8 @@ const es: Resources = {
   quoteRequest: {
     title: 'Solicitar presupuesto',
     category: 'Categoría',
+    service: 'Tipo de servicio',
+    servicePlaceholder: 'Elige un servicio',
     budget: 'Presupuesto deseado (opcional, USD)',
     budgetPlaceholder: '400',
     description: '¿Qué necesitas? (al menos 10 caracteres)',
@@ -157,6 +159,130 @@ const es: Resources = {
     submit: 'Enviar solicitud',
     reviewNote: 'Revisaremos tu solicitud y te enviaremos un presupuesto en un plazo de 24 horas.',
     budgetError: 'El presupuesto deseado debe ser un número positivo',
+  },
+
+  services: {
+    customQuote: 'Presupuesto a medida',
+    HOUSING_1: {
+      title: 'Búsqueda de vivienda y guía de zonas',
+      desc: 'Ayuda para entender los barrios, los tipos de alquiler, los depósitos, la renta mensual, la terminología de vivienda y cómo buscar casa en Corea.\n\nIncluye: información general de vivienda y orientación en la búsqueda\nNo incluye: intermediación inmobiliaria ni negociación de precios',
+    },
+    HOUSING_2: {
+      title: 'Apoyo de comunicación inmobiliaria',
+      desc: 'Apoyo lingüístico y de comunicación al contactar con una agencia inmobiliaria, un propietario o un proveedor de vivienda elegido por ti.\n\nIncluye: llamadas, mensajes y coordinación de citas\nNo incluye: intermediación o negociación en tu nombre',
+    },
+    HOUSING_3: {
+      title: 'Interpretación y acompañamiento en visitas',
+      desc: 'Asistencia presencial durante la visita a una vivienda.\n\nIncluye: interpretación general y ayuda con la comunicación\nNo incluye: intermediación inmobiliaria, negociación de contratos ni asesoría legal',
+    },
+    HOUSING_4: {
+      title: 'Apoyo de mudanza y altas de suministros',
+      desc: 'Ayuda con los trámites de mudanza y la comunicación sobre suministros y servicios básicos de la vivienda.\n\nEjemplos: electricidad, gas, agua, internet, oficina de administración del edificio',
+    },
+    HOUSING_5: {
+      title: 'Otra solicitud de vivienda',
+      desc: 'Cuéntanos qué necesitas y LUNOTE revisará tu solicitud.',
+    },
+    VISA_1: {
+      title: 'Información de visado y lista de requisitos',
+      desc: 'Orientación general basada en información migratoria disponible públicamente.\n\nEjemplos: documentos necesarios, trámites migratorios, dónde solicitar, guía general del proceso',
+    },
+    VISA_2: {
+      title: 'Apoyo con webs de inmigración y citas',
+      desc: 'Ayuda para navegar por los sitios web de inmigración de Corea y entender el proceso de reserva de citas.',
+    },
+    VISA_3: {
+      title: 'Organización de documentos y apoyo lingüístico',
+      desc: 'Ayuda para entender y organizar los documentos necesarios para los trámites migratorios.\n\nLos trabajos profesionales o regulados legalmente se derivarán a un profesional cualificado cuando sea necesario.',
+    },
+    VISA_4: {
+      title: 'Acompañamiento a la oficina de inmigración',
+      desc: 'Interpretación general y apoyo de comunicación al visitar una oficina de inmigración.\n\nLUNOTE no actúa como tu representante migratorio salvo que la ley lo permita.',
+    },
+    VISA_5: {
+      title: 'Otra solicitud de visado',
+      desc: 'Describe tu situación y evaluaremos qué tipo de apoyo podemos ofrecerte.',
+    },
+    HOSPITAL_1: {
+      title: 'Orientación sanitaria en Corea',
+      desc: 'Ayuda general para entender cómo funciona la sanidad en Corea.\n\nEjemplos: qué especialidad médica puede atender cada tipo de problema, cómo funcionan hospitales y clínicas, información general sobre acudir al hospital\n\nEste servicio no ofrece consejo médico ni diagnóstico.',
+    },
+    HOSPITAL_2: {
+      title: 'Apoyo de comunicación con hospitales',
+      desc: 'Asistencia lingüística al comunicarte con un centro médico que ya usas o que has elegido.\n\nEjemplos: ayuda con llamadas, consultas generales, comunicación de citas',
+    },
+    HOSPITAL_3: {
+      title: 'Interpretación y acompañamiento en el hospital',
+      desc: 'Asistencia presencial lingüística y administrativa general durante tu visita al hospital.\n\nNo es interpretación médica en los casos que requieren interpretación profesional certificada.',
+    },
+    HOSPITAL_4: {
+      title: 'Documentos médicos y coordinación de intérpretes',
+      desc: 'Ayuda para entender documentos hospitalarios generales o para conseguir un intérprete profesional o proveedor adecuado cuando haga falta.\n\nLos honorarios del intérprete profesional se pagan aparte.',
+    },
+    HOSPITAL_5: {
+      title: 'Otra solicitud de salud',
+      desc: 'Describe la ayuda que necesitas y LUNOTE revisará tu solicitud.',
+    },
+    BANK_1: {
+      title: 'Guía para abrir una cuenta bancaria',
+      desc: 'Información general sobre los documentos y el proceso que se suelen requerir para abrir una cuenta bancaria en Corea.',
+    },
+    BANK_2: {
+      title: 'Apoyo con apps bancarias y autenticación',
+      desc: 'Ayuda para entender la configuración de la banca móvil, las apps bancarias coreanas, la autenticación y los servicios bancarios generales.',
+    },
+    BANK_3: {
+      title: 'Interpretación y acompañamiento en el banco',
+      desc: 'Asistencia presencial lingüística y de comunicación en el banco.',
+    },
+    BANK_4: {
+      title: 'Apoyo con transferencias internacionales',
+      desc: 'Asistencia general para entender los procedimientos de envío de dinero al extranjero y comunicarte con tu banco.\n\nLUNOTE no ofrece asesoría financiera ni recomienda productos financieros.',
+    },
+    BANK_5: {
+      title: 'Otra solicitud bancaria',
+      desc: 'Cuéntanos qué dificultad bancaria estás teniendo.',
+    },
+    TELECOM_1: {
+      title: 'Guía de SIM/eSIM y planes móviles',
+      desc: 'Ayuda para entender las tarjetas SIM, las eSIM y los planes móviles de Corea.',
+    },
+    TELECOM_2: {
+      title: 'Apoyo para contratar servicio móvil',
+      desc: 'Ayuda con la comunicación y los trámites al dar de alta un servicio móvil coreano.\n\nLas tarifas del operador y el coste del plan se pagan aparte.',
+    },
+    TELECOM_3: {
+      title: 'Apoyo para instalar internet en casa',
+      desc: 'Ayuda para conocer los servicios de internet disponibles y coordinar los trámites de instalación.',
+    },
+    TELECOM_4: {
+      title: 'Apoyo con atención al cliente de telecos',
+      desc: 'Ayuda para comunicarte con los operadores de telecomunicaciones.\n\nEjemplos: cambios de plan, dudas de facturación, cancelación, comunicación con soporte técnico',
+    },
+    TELECOM_5: {
+      title: 'Otra solicitud de móvil e internet',
+      desc: 'Cuéntanos con qué necesitas ayuda.',
+    },
+    OTHER_1: {
+      title: 'Orientación en oficinas públicas',
+      desc: 'Orientación general y asistencia lingüística al usar los servicios públicos coreanos.\n\nCuando la ley exija trabajo administrativo profesional, LUNOTE te conectará con un profesional cualificado.',
+    },
+    OTHER_2: {
+      title: 'Apoyo con llamadas en coreano',
+      desc: '¿Necesitas que alguien haga o te ayude con una llamada en coreano?\n\nEjemplos: atención al cliente, reservas, consultas generales, proveedores de servicios',
+    },
+    OTHER_3: {
+      title: 'Información escolar y de cuidado infantil',
+      desc: 'Apoyo general para investigar y comunicarte con guarderías, jardines de infancia, escuelas, academias y servicios infantiles.',
+    },
+    OTHER_4: {
+      title: 'Conserjería de vida en Corea',
+      desc: '¿No encuentras la categoría adecuada? Cuéntale a LUNOTE qué intentas resolver.\n\nPodemos investigar el asunto, comunicarnos con proveedores coreanos, coordinar los siguientes pasos o conectarte con un profesional adecuado.',
+    },
+    OTHER_5: {
+      title: 'Otra solicitud',
+      desc: 'Describe lo que necesitas.',
+    },
   },
 
   payment: {
@@ -260,7 +386,7 @@ const es: Resources = {
     intro2: '¿Necesitas ayuda con vivienda, visados, hospitales, bancos, telefonía o cualquier otro asunto de la vida en Corea? Solo dinos qué necesitas.',
     howTitle: 'Cómo funciona',
     step1Title: '1. Dinos qué necesitas',
-    step1Body: 'Elige una categoría, describe tu solicitud e indícanos tu presupuesto estimado.',
+    step1Body: 'Elige una categoría, selecciona el servicio que necesitas y describe tu solicitud.',
     step2Title: '2. Recibe un presupuesto personalizado',
     step2Body: 'Revisaremos tu solicitud y hablaremos contigo del servicio y el precio antes de empezar.',
     step3Title: '3. Paga y recibe apoyo',

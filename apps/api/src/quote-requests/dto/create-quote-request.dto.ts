@@ -49,6 +49,14 @@ export class CreateQuoteRequestDto {
   @IsEnum(Category)
   category: Category;
 
+  // 카테고리별 정형 서비스 항목 — 형식은 {CATEGORY}_{1..5}, 카테고리 일치는 서비스에서 검증
+  @ApiPropertyOptional({ example: 'HOUSING_1' })
+  @IsOptional()
+  @Matches(/^(HOUSING|VISA|HOSPITAL|BANK|TELECOM|OTHER)_[1-5]$/, {
+    message: 'serviceItem must match {CATEGORY}_{1-5}',
+  })
+  serviceItem?: string;
+
   // 사용자가 제시하는 희망 예산 (선택) — 실제 결제 금액은 관리자 견적(Quote)이 결정한다
   @ApiPropertyOptional({ example: 400, description: '희망 예산 (선택)' })
   @IsOptional()

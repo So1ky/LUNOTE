@@ -9,6 +9,7 @@ import {
   customerName,
   formatAmount,
   formatDate,
+  SERVICE_LABELS,
   type AdminQuoteRequestDetail,
 } from '../lib/types';
 
@@ -127,6 +128,8 @@ export function RequestDetailPage() {
             </p>
             <div className="muted" style={{ fontSize: 13 }}>
               Requested {formatDate(request.createdAt)}
+              {request.serviceItem &&
+                ` · Service: ${SERVICE_LABELS[request.serviceItem] ?? request.serviceItem}`}
               {request.desiredAmount &&
                 ` · Customer budget ${formatAmount(request.desiredAmount, request.currency)}`}
             </div>

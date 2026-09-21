@@ -142,6 +142,8 @@ const de: Resources = {
   quoteRequest: {
     title: 'Angebot anfragen',
     category: 'Kategorie',
+    service: 'Serviceart',
+    servicePlaceholder: 'Service auswählen',
     budget: 'Wunschbudget (optional, USD)',
     budgetPlaceholder: '400',
     description: 'Was brauchen Sie? (mindestens 10 Zeichen)',
@@ -157,6 +159,130 @@ const de: Resources = {
     submit: 'Anfrage senden',
     reviewNote: 'Wir prüfen Ihre Anfrage und senden innerhalb von 24 Stunden ein Angebot.',
     budgetError: 'Das Wunschbudget muss eine positive Zahl sein',
+  },
+
+  services: {
+    customQuote: 'Individuelles Angebot',
+    HOUSING_1: {
+      title: 'Wohnungssuche & Viertel-Guide',
+      desc: 'Hilfe beim Verstehen von Wohnvierteln, Mietarten, Kautionen, Monatsmieten, Wohnbegriffen und der Wohnungssuche in Korea.\n\nEnthalten: allgemeine Wohninformationen und Unterstützung bei der Suche\nNicht enthalten: Immobilienvermittlung oder Preisverhandlung',
+    },
+    HOUSING_2: {
+      title: 'Kommunikationshilfe mit Maklern',
+      desc: 'Sprach- und Kommunikationsunterstützung beim Kontakt mit einer von Ihnen gewählten Immobilienagentur, Vermieterin oder Wohnungsanbieter.\n\nEnthalten: Anrufe, Nachrichten und Terminkoordination\nNicht enthalten: Vermittlung oder Verhandlung in Ihrem Namen',
+    },
+    HOUSING_3: {
+      title: 'Dolmetschen & Begleitung bei Besichtigungen',
+      desc: 'Persönliche Unterstützung während einer Wohnungsbesichtigung.\n\nEnthalten: allgemeines Dolmetschen und Kommunikationshilfe\nNicht enthalten: Immobilienvermittlung, Vertragsverhandlung oder Rechtsberatung',
+    },
+    HOUSING_4: {
+      title: 'Einzug & Anmeldung von Versorgern',
+      desc: 'Hilfe bei Einzugsformalitäten und der Kommunikation rund um Versorger und die alltägliche Wohnungseinrichtung.\n\nBeispiele: Strom, Gas, Wasser, Internet, Hausverwaltung',
+    },
+    HOUSING_5: {
+      title: 'Andere Wohnanfrage',
+      desc: 'Sagen Sie uns, was Sie brauchen — LUNOTE prüft Ihre Anfrage.',
+    },
+    VISA_1: {
+      title: 'Visa-Informationen & Checkliste',
+      desc: 'Allgemeine Orientierung auf Basis öffentlich verfügbarer Einwanderungsinformationen.\n\nBeispiele: erforderliche Dokumente, Einwanderungsverfahren, Antragsstellen, allgemeine Prozessübersicht',
+    },
+    VISA_2: {
+      title: 'Hilfe mit Einwanderungs-Websites & Terminen',
+      desc: 'Hilfe beim Navigieren der koreanischen Einwanderungs-Websites und beim Verstehen des Reservierungsprozesses.',
+    },
+    VISA_3: {
+      title: 'Dokumentenorganisation & Sprachhilfe',
+      desc: 'Hilfe beim Verstehen und Ordnen der für Einwanderungsverfahren nötigen Dokumente.\n\nFachliche oder gesetzlich regulierte Aufgaben werden bei Bedarf an qualifizierte Fachleute weitergeleitet.',
+    },
+    VISA_4: {
+      title: 'Begleitung zur Einwanderungsbehörde',
+      desc: 'Allgemeines Dolmetschen und Kommunikationsunterstützung beim Besuch einer Einwanderungsbehörde.\n\nLUNOTE tritt nicht als Ihr Einwanderungsvertreter auf, sofern dies nicht gesetzlich zulässig ist.',
+    },
+    VISA_5: {
+      title: 'Andere Visa-Anfrage',
+      desc: 'Beschreiben Sie Ihre Situation — wir prüfen, welche Unterstützung möglich ist.',
+    },
+    HOSPITAL_1: {
+      title: 'Orientierung im koreanischen Gesundheitswesen',
+      desc: 'Allgemeine Hilfe, um zu verstehen, wie das Gesundheitswesen in Korea funktioniert.\n\nBeispiele: welche Fachrichtung für ein Anliegen zuständig sein kann, wie Krankenhäuser und Kliniken arbeiten, allgemeine Informationen zum Krankenhausbesuch\n\nDieser Service bietet keine medizinische Beratung oder Diagnose.',
+    },
+    HOSPITAL_2: {
+      title: 'Kommunikationshilfe mit Krankenhäusern',
+      desc: 'Sprachliche Unterstützung bei der Kommunikation mit einer medizinischen Einrichtung, die Sie bereits nutzen oder ausgewählt haben.\n\nBeispiele: Hilfe bei Anrufen, allgemeine Fragen, Terminabsprachen',
+    },
+    HOSPITAL_3: {
+      title: 'Dolmetschen & Begleitung beim Arztbesuch',
+      desc: 'Persönliche sprachliche und allgemeine administrative Unterstützung während Ihres Krankenhausbesuchs.\n\nDies ist kein medizinisches Dolmetschen, wo zertifizierte Fachdolmetscher erforderlich sind.',
+    },
+    HOSPITAL_4: {
+      title: 'Medizinische Dokumente & Dolmetschervermittlung',
+      desc: 'Hilfe beim Verstehen allgemeiner Krankenhausdokumente oder bei der Vermittlung geeigneter Fachdolmetscher oder Dienstleister, wenn nötig.\n\nHonorare für Fachdolmetscher sind separat.',
+    },
+    HOSPITAL_5: {
+      title: 'Andere Gesundheitsanfrage',
+      desc: 'Beschreiben Sie die benötigte Hilfe — LUNOTE prüft Ihre Anfrage.',
+    },
+    BANK_1: {
+      title: 'Leitfaden zur Kontoeröffnung',
+      desc: 'Allgemeine Informationen zu Dokumenten und Abläufen, die für die Eröffnung eines koreanischen Bankkontos üblicherweise nötig sind.',
+    },
+    BANK_2: {
+      title: 'Hilfe mit Banking-Apps & Authentifizierung',
+      desc: 'Hilfe beim Einrichten von Mobile Banking, koreanischen Banking-Apps, Authentifizierung und allgemeinen Bankdiensten.',
+    },
+    BANK_3: {
+      title: 'Dolmetschen & Begleitung zur Bank',
+      desc: 'Persönliche Sprach- und Kommunikationsunterstützung in der Bank.',
+    },
+    BANK_4: {
+      title: 'Hilfe bei Auslandsüberweisungen',
+      desc: 'Allgemeine Unterstützung beim Verstehen von Auslandsüberweisungen und der Kommunikation mit Ihrer Bank.\n\nLUNOTE bietet keine Finanzberatung und empfiehlt keine Finanzprodukte.',
+    },
+    BANK_5: {
+      title: 'Andere Bankanfrage',
+      desc: 'Sagen Sie uns, welche Schwierigkeiten Sie rund ums Banking haben.',
+    },
+    TELECOM_1: {
+      title: 'SIM/eSIM & Tarif-Guide',
+      desc: 'Hilfe beim Verstehen koreanischer SIM-Karten, eSIMs und Mobilfunktarife.',
+    },
+    TELECOM_2: {
+      title: 'Hilfe bei der Mobilfunk-Einrichtung',
+      desc: 'Hilfe bei Kommunikation und Abläufen bei der Einrichtung eines koreanischen Mobilfunkdienstes.\n\nAnbietergebühren und Tarifkosten sind separat.',
+    },
+    TELECOM_3: {
+      title: 'Hilfe beim Internetanschluss zu Hause',
+      desc: 'Hilfe beim Verstehen verfügbarer Internetdienste und der Koordination der Installation.',
+    },
+    TELECOM_4: {
+      title: 'Hilfe mit dem Telekom-Kundenservice',
+      desc: 'Hilfe bei der Kommunikation mit Telekommunikationsanbietern.\n\nBeispiele: Tarifwechsel, Rechnungsfragen, Kündigung, Kommunikation mit dem technischen Support',
+    },
+    TELECOM_5: {
+      title: 'Andere Mobilfunk- & Internetanfrage',
+      desc: 'Sagen Sie uns, wobei Sie Hilfe brauchen.',
+    },
+    OTHER_1: {
+      title: 'Orientierung bei Behörden',
+      desc: 'Allgemeine Orientierung und Sprachhilfe bei der Nutzung koreanischer Behörden und öffentlicher Dienste.\n\nWo gesetzlich professionelle Verwaltungsarbeit erforderlich ist, verbindet LUNOTE Sie mit qualifizierten Fachleuten.',
+    },
+    OTHER_2: {
+      title: 'Hilfe bei Anrufen auf Koreanisch',
+      desc: 'Brauchen Sie jemanden, der einen Anruf auf Koreanisch übernimmt oder dabei hilft?\n\nBeispiele: Kundenservice, Reservierungen, allgemeine Anfragen, Dienstleister',
+    },
+    OTHER_3: {
+      title: 'Infos zu Schule & Kinderbetreuung',
+      desc: 'Allgemeine Unterstützung bei Recherche und Kommunikation mit Kitas, Kindergärten, Schulen, Nachhilfeinstituten und Kinderdiensten.',
+    },
+    OTHER_4: {
+      title: 'Korea-Alltags-Concierge',
+      desc: 'Keine passende Kategorie gefunden? Sagen Sie LUNOTE, was Sie lösen möchten.\n\nWir können recherchieren, mit koreanischen Dienstleistern kommunizieren, nächste Schritte koordinieren oder Sie mit passenden Fachleuten verbinden.',
+    },
+    OTHER_5: {
+      title: 'Andere Anfrage',
+      desc: 'Beschreiben Sie, was Sie brauchen.',
+    },
   },
 
   payment: {
@@ -260,7 +386,7 @@ const de: Resources = {
     intro2: 'Brauchen Sie Hilfe bei Wohnen, Visa, Krankenhäusern, Banken, Mobilfunk oder anderen Themen rund um das Leben in Korea? Sagen Sie uns einfach, was Sie brauchen.',
     howTitle: 'So funktioniert es',
     step1Title: '1. Sagen Sie uns, was Sie brauchen',
-    step1Body: 'Wählen Sie eine Kategorie, beschreiben Sie Ihr Anliegen und nennen Sie uns Ihr geplantes Budget.',
+    step1Body: 'Wählen Sie eine Kategorie, den passenden Service und beschreiben Sie Ihr Anliegen.',
     step2Title: '2. Erhalten Sie ein persönliches Angebot',
     step2Body: 'Wir prüfen Ihre Anfrage und besprechen Leistung und Preis mit Ihnen, bevor es losgeht.',
     step3Title: '3. Bezahlen & Unterstützung erhalten',

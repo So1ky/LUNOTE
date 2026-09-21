@@ -150,6 +150,8 @@ const en = {
   quoteRequest: {
     title: 'Request a Quote',
     category: 'Category',
+    service: 'Service Type',
+    servicePlaceholder: 'Choose a service',
     budget: 'Desired budget (optional, USD)',
     budgetPlaceholder: '400',
     description: 'What do you need? (at least 10 characters)',
@@ -165,6 +167,131 @@ const en = {
     submit: 'Send a Request',
     reviewNote: 'We will review your request and send a quote within 24 hours.',
     budgetError: 'Desired budget must be a positive number',
+  },
+
+  // 카테고리별 정형 서비스 항목 (SERVICE_CATALOG의 id와 키가 일치해야 한다)
+  services: {
+    customQuote: 'Custom Quote',
+    HOUSING_1: {
+      title: 'Housing Search & Area Guide',
+      desc: 'Help understanding neighborhoods, rental types, deposits, monthly rent, housing terminology and how to search for housing in Korea.\n\nIncludes: General housing information and search guidance\nDoes not include: Real-estate brokerage or price negotiation',
+    },
+    HOUSING_2: {
+      title: 'Real Estate Communication Support',
+      desc: 'Language and communication support when contacting a real-estate agency, landlord or housing provider selected by you.\n\nIncludes: Calls, messages and appointment coordination\nDoes not include: Brokerage or negotiation on your behalf',
+    },
+    HOUSING_3: {
+      title: 'Property Viewing Interpretation & Accompaniment',
+      desc: 'In-person assistance during a property viewing.\n\nIncludes: General interpretation and communication assistance\nDoes not include: Real-estate brokerage, contract negotiation or legal advice',
+    },
+    HOUSING_4: {
+      title: 'Move-in & Utility Setup Support',
+      desc: 'Help with moving-in procedures and communication regarding utilities and everyday housing setup.\n\nExamples: electricity, gas, water, internet, building management office',
+    },
+    HOUSING_5: {
+      title: 'Other Housing Request',
+      desc: 'Tell us what you need and LUNOTE will review your request.',
+    },
+    VISA_1: {
+      title: 'Visa Information & Checklist',
+      desc: 'General guidance based on publicly available immigration information.\n\nExamples: required documents, immigration procedures, where to apply, general process guidance',
+    },
+    VISA_2: {
+      title: 'Immigration Website & Appointment Support',
+      desc: 'Help navigating Korean immigration websites and understanding the reservation process.',
+    },
+    VISA_3: {
+      title: 'Document Organization & Language Support',
+      desc: 'Help understanding and organizing documents required for immigration procedures.\n\nProfessional or legally regulated work will be referred to an appropriate qualified professional when necessary.',
+    },
+    VISA_4: {
+      title: 'Immigration Office Accompaniment',
+      desc: 'General interpretation and communication support when visiting an immigration office.\n\nLUNOTE does not act as your immigration representative unless legally permitted.',
+    },
+    VISA_5: {
+      title: 'Other Visa Request',
+      desc: 'Describe your situation and we will review what type of support can be provided.',
+    },
+    HOSPITAL_1: {
+      title: 'Korea Healthcare Navigation',
+      desc: 'General help understanding how healthcare works in Korea.\n\nExamples: which medical department may handle a particular type of issue, how hospitals and clinics operate, general information about visiting a hospital\n\nThis service does not provide medical advice or diagnosis.',
+    },
+    HOSPITAL_2: {
+      title: 'Hospital Communication Support',
+      desc: 'Language assistance when communicating with a medical institution you are already using or have selected.\n\nExamples: phone call assistance, general questions, schedule communication',
+    },
+    HOSPITAL_3: {
+      title: 'Hospital Visit Interpretation & Accompaniment',
+      desc: 'In-person language and general administrative assistance during your hospital visit.\n\nThis is not medical interpretation where certified professional interpretation is required.',
+    },
+    HOSPITAL_4: {
+      title: 'Medical Document & Interpreter Coordination',
+      desc: 'Help understanding general hospital documents or arranging an appropriate professional interpreter or service provider when required.\n\nProfessional interpreter fees are separate.',
+    },
+    HOSPITAL_5: {
+      title: 'Other Healthcare Request',
+      desc: 'Describe the help you need and LUNOTE will review your request.',
+    },
+    BANK_1: {
+      title: 'Bank Account Opening Guide',
+      desc: 'General information regarding the documents and process commonly required to open a Korean bank account.',
+    },
+    BANK_2: {
+      title: 'Banking App & Authentication Support',
+      desc: 'Help understanding the setup process for mobile banking, Korean banking apps, authentication and general banking services.',
+    },
+    BANK_3: {
+      title: 'Bank Visit Interpretation & Accompaniment',
+      desc: 'In-person language and communication assistance at a bank.',
+    },
+    BANK_4: {
+      title: 'International Transfer Process Support',
+      desc: 'General assistance understanding overseas remittance procedures and communicating with your bank.\n\nLUNOTE does not provide financial advice or recommend financial products.',
+    },
+    BANK_5: {
+      title: 'Other Banking Request',
+      desc: 'Tell us what banking-related difficulty you are experiencing.',
+    },
+    TELECOM_1: {
+      title: 'SIM / eSIM & Mobile Plan Guide',
+      desc: 'Help understanding Korean SIM cards, eSIMs and mobile plans.',
+    },
+    TELECOM_2: {
+      title: 'Mobile Service Setup Support',
+      desc: 'Help with communication and procedures when setting up a Korean mobile service.\n\nCarrier fees and plan costs are separate.',
+    },
+    TELECOM_3: {
+      title: 'Home Internet Setup Support',
+      desc: 'Help understanding available internet services and coordinating installation procedures.',
+    },
+    TELECOM_4: {
+      title: 'Telecom Customer Service Support',
+      desc: 'Help communicating with telecom providers.\n\nExamples: plan changes, billing questions, cancellation, technical support communication',
+    },
+    TELECOM_5: {
+      title: 'Other Mobile & Internet Request',
+      desc: 'Tell us what you need help with.',
+    },
+    OTHER_1: {
+      title: 'Government Office Navigation',
+      desc: 'General guidance and language assistance when using Korean public services.\n\nWhere professional administrative work is legally required, LUNOTE will connect you with an appropriate qualified professional.',
+    },
+    OTHER_2: {
+      title: 'Korean Phone Call & Communication Support',
+      desc: 'Need someone to make or assist with a Korean-language call?\n\nExamples: customer service, reservations, general inquiries, service providers',
+    },
+    OTHER_3: {
+      title: 'School & Childcare Information Support',
+      desc: "General support researching and communicating with daycare centers, kindergartens, schools, academies and children's services.",
+    },
+    OTHER_4: {
+      title: 'Korea Life Concierge',
+      desc: "Can't find the right category? Tell LUNOTE what you're trying to solve.\n\nWe can help research the issue, communicate with Korean service providers, coordinate the next steps, or connect you with an appropriate professional.",
+    },
+    OTHER_5: {
+      title: 'Other Request',
+      desc: 'Describe what you need.',
+    },
   },
 
   payment: {
@@ -268,7 +395,7 @@ const en = {
     intro2: 'Need help with housing, visas, hospitals, banking, mobile services, or anything else related to life in Korea? Just tell us what you need.',
     howTitle: 'How it works',
     step1Title: '1. Tell us what you need',
-    step1Body: 'Choose a category, describe your request, and let us know your expected budget.',
+    step1Body: 'Choose a category, select the service you need, and describe your request.',
     step2Title: '2. Get a personalized quote',
     step2Body: "We'll review your request and discuss the service and price with you before anything begins.",
     step3Title: '3. Pay & get support',
