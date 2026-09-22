@@ -14,6 +14,7 @@ import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
 const REQUEST_SELECT = {
   id: true,
   category: true,
+  serviceItem: true,
   desiredAmount: true,
   currency: true,
   description: true,
@@ -64,6 +65,13 @@ export class QuoteRequestsService {
   async create(userId: string, userEmail: string, dto: CreateQuoteRequestDto) {
     // 소유권 검증: presign이 발급한 키는 항상 본인 프리픽스로 시작한다.
     // 다른 사용자의 키(또는 임의 경로)를 첨부하려는 시도를 차단.
+    // 서비스 항목은 선택한 카테고리에 종속 — 다른 카테고리의 항목 ID는 거부
+    if (dto.serviceItem && !dto.serviceItem.startsWith(`${dto.category}_`)) {
+      throw new BadRequestException(
+        'serviceItem does not belong to the selected category',
+      );
+    }
+
     const myPrefix = `uploads/${userId}/`;
     for (const att of dto.attachments ?? []) {
       if (!att.s3Key.startsWith(myPrefix)) {
@@ -77,6 +85,7 @@ export class QuoteRequestsService {
         data: {
           userId,
           category: dto.category,
+          serviceItem: dto.serviceItem,
           desiredAmount: dto.desiredAmount,
           currency: dto.currency ?? 'USD',
           description: dto.description,

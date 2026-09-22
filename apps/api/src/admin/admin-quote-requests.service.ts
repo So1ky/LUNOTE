@@ -14,6 +14,7 @@ import { CreateQuoteDto } from './dto/create-quote.dto';
 const ADMIN_REQUEST_SELECT = {
   id: true,
   category: true,
+  serviceItem: true,
   desiredAmount: true,
   currency: true,
   description: true,
@@ -103,7 +104,9 @@ export class AdminQuoteRequestsService {
 
     if (request.quote) {
       // 견적은 발행 후 불변 — 수정/재발행 불가 (제품 결정 2026-07-24)
-      throw new ConflictException('Quote already exists — quotes are immutable');
+      throw new ConflictException(
+        'Quote already exists — quotes are immutable',
+      );
     }
     if (request.status !== RequestStatus.REVIEWING) {
       throw new ConflictException(

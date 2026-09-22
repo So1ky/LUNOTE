@@ -110,6 +110,11 @@ export default function RequestDetailScreen() {
               </View>
               <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />
             </View>
+            {request.serviceItem && (
+              <ThemedText type="smallStrong">
+                {t(`services.${request.serviceItem}.title`)}
+              </ThemedText>
+            )}
             <ThemedText type="small" themeColor="textSecondary">
               {t('requestDetail.requested', {
                 date: formatDate(request.createdAt, locale),

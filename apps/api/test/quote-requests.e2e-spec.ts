@@ -90,6 +90,46 @@ describe('QuoteRequests (e2e)', () => {
     expect(body.quote).toBeNull(); // 아직 견적 없음
   });
 
+  it('POST /quote-requests — serviceItem을 보내면 응답에 그대로 저장된다', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/quote-requests')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({
+        category: 'HOUSING',
+        serviceItem: 'HOUSING_1',
+        description: 'Need help understanding neighborhoods in Seoul.',
+        contactMethod: 'email: owner@test.com',
+      })
+      .expect(201);
+    expect((res.body as { serviceItem: string }).serviceItem).toBe('HOUSING_1');
+  });
+
+  it('POST /quote-requests — 카테고리와 불일치하는 serviceItem은 400', () => {
+    return request(app.getHttpServer())
+      .post('/quote-requests')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({
+        category: 'VISA',
+        serviceItem: 'HOUSING_1',
+        description: 'long enough description here',
+        contactMethod: 'email: a@b.c',
+      })
+      .expect(400);
+  });
+
+  it('POST /quote-requests — 형식이 틀린 serviceItem은 400', () => {
+    return request(app.getHttpServer())
+      .post('/quote-requests')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({
+        category: 'HOUSING',
+        serviceItem: 'HOUSING_9',
+        description: 'long enough description here',
+        contactMethod: 'email: a@b.c',
+      })
+      .expect(400);
+  });
+
   it('POST /quote-requests — 잘못된 카테고리는 400', () => {
     return request(app.getHttpServer())
       .post('/quote-requests')

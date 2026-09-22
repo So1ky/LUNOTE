@@ -32,6 +32,7 @@ export type Quote = {
 export type QuoteRequest = {
   id: number;
   category: Category;
+  serviceItem: string | null; // 정형 서비스 항목 (예: HOUSING_1) — 구버전 요청은 null
   desiredAmount: string | null;
   currency: string;
   description: string;
@@ -46,6 +47,7 @@ export type QuoteRequest = {
 
 export type CreateQuoteRequestInput = {
   category: Category;
+  serviceItem: string;
   desiredAmount?: number;
   description: string;
   contactMethod: string;

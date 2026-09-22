@@ -4,6 +4,7 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
+import { ServiceSelectField } from '@/components/service-select-field';
 import { ThemedText } from '@/components/themed-text';
 import { AppIcon, type AppIconName } from '@/components/ui/app-icon';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import {
   createQuoteRequest,
   type Category,
 } from '@/lib/quote-requests';
+import { isCustomQuoteItem, type ServiceItemId } from '@/lib/service-catalog';
 
 const MAX_ATTACHMENTS = 5;
 
@@ -67,6 +69,7 @@ export default function QuoteRequestScreen() {
     : null;
 
   const [category, setCategory] = useState<Category | null>(initial);
+  const [serviceItem, setServiceItem] = useState<ServiceItemId | null>(null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [channel, setChannel] = useState<ContactChannel | null>(null);
@@ -146,10 +149,12 @@ export default function QuoteRequestScreen() {
     setAttachments((prev) => prev.filter((a) => a.s3Key !== s3Key));
 
   const onSubmit = async () => {
-    if (!token || !category) return;
+    if (!token || !category || !serviceItem) return;
     setError(null);
 
-    const desiredAmount = amount.trim() ? Number(amount) : undefined;
+    // 희망 예산은 Custom Quote 항목에서만 — 항목 변경 전에 입력한 값은 무시
+    const isCustom = isCustomQuoteItem(serviceItem);
+    const desiredAmount = isCustom && amount.trim() ? Number(amount) : undefined;
     if (desiredAmount !== undefined && (Number.isNaN(desiredAmount) || desiredAmount <= 0)) {
       setError(t('quoteRequest.budgetError'));
       return;
@@ -160,6 +165,7 @@ export default function QuoteRequestScreen() {
       // 서버에는 "채널: 값" 형태의 문자열로 저장 (예: "whatsapp: +1 555 123 4567")
       await createQuoteRequest(token, {
         category,
+        serviceItem,
         desiredAmount,
         description: description.trim(),
         contactMethod: `${channel}: ${contactValue.trim()}`,
@@ -182,6 +188,7 @@ export default function QuoteRequestScreen() {
 
   const canSubmit =
     !!category &&
+    !!serviceItem &&
     description.trim().length >= 10 &&
     !!channel &&
     contactValue.trim().length >= 3;
@@ -199,7 +206,11 @@ export default function QuoteRequestScreen() {
             {CATEGORIES.map((c) => (
               <Card
                 key={c}
-                onPress={() => setCategory(c)}
+                onPress={() => {
+                  // 카테고리를 바꾸면 이전 카테고리의 서비스 항목은 무효
+                  if (c !== category) setServiceItem(null);
+                  setCategory(c);
+                }}
                 style={{
                   ...styles.categoryCard,
                   ...(category === c ? styles.categorySelected : {}),
@@ -217,13 +228,25 @@ export default function QuoteRequestScreen() {
           </View>
         </View>
 
-        <TextField
-          label={t('quoteRequest.budget')}
-          placeholder={t('quoteRequest.budgetPlaceholder')}
-          keyboardType="numeric"
-          value={amount}
-          onChangeText={setAmount}
-        />
+        {category && (
+          <ServiceSelectField
+            label={t('quoteRequest.service')}
+            placeholder={t('quoteRequest.servicePlaceholder')}
+            category={category}
+            value={serviceItem}
+            onChange={setServiceItem}
+          />
+        )}
+
+        {serviceItem && isCustomQuoteItem(serviceItem) && (
+          <TextField
+            label={t('quoteRequest.budget')}
+            placeholder={t('quoteRequest.budgetPlaceholder')}
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={setAmount}
+          />
+        )}
 
         <TextField
           label={t('quoteRequest.description')}
