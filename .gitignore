@@ -31,3 +31,7 @@ coverage/
 
 # 로컬 전용 개인 노트 (커밋 금지)
 /notes/
+
+# 로컬 전용 계획·스펙 문서 및 블로그 초안 (public 저장소 — 커밋 금지)
+/docs/superpowers/
+/docs/blog/
