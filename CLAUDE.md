@@ -12,8 +12,8 @@ EKS(Spot+Karpenter) + Terraform + Jenkins/ArgoCD + Prometheus·Grafana·Loki / P
 infra/k8s/가 ArgoCD GitOps 소스다.
 
 **인프라는 아직 미구축이다.** 현재 실제 배포는 `infra/demo/`의 VPS 1대 데모
-(docker compose + Caddy)뿐. 구축 순서는
-[배포 마스터 체크리스트](docs/superpowers/plans/2026-09-18-deploy-master-checklist.md).
+(docker compose + Caddy)뿐. 구축 순서는 배포 마스터 체크리스트
+(`docs/superpowers/plans/` — 로컬 전용, git 추적 제외).
 
 ## 로컬 개발 환경 (macOS)
 
