@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LUNOTE — Concierge for life in Korea</title>
+<meta name="description" content="LUNOTE is a concierge service for foreigners living in or moving to Korea. Send a request, get a quote, and settle in with confidence.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #131c2e;
+    --moon: #ede6d6;
+    --mist: #97a3bc;
+    --line: #2a3852;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--night);
+    color: var(--moon);
+    font-family: "Fraunces", Georgia, "Times New Roman", serif;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3rem 1.5rem;
+  }
+  main {
+    max-width: 34rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .crescent {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 2.25rem;
+  }
+  h1 {
+    font-size: clamp(2.6rem, 8vw, 3.6rem);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    margin-bottom: 1.25rem;
+  }
+  .tagline {
+    font-size: 1.3rem;
+    line-height: 1.5;
+    margin-bottom: 2.5rem;
+  }
+  .desc {
+    color: var(--mist);
+    font-size: 1.05rem;
+    line-height: 1.75;
+    margin-bottom: 1.1rem;
+  }
+  .desc:lang(ko) { word-break: keep-all; }
+  .contact-block {
+    margin-top: 2.5rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--line);
+    width: 100%;
+  }
+  .contact-block p {
+    color: var(--mist);
+    font-size: 0.95rem;
+    margin-bottom: 0.6rem;
+  }
+  a {
+    color: var(--moon);
+    font-size: 1.1rem;
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+    text-decoration-color: var(--line);
+    transition: text-decoration-color 0.2s;
+  }
+  a:hover { text-decoration-color: var(--moon); }
+  a:focus-visible {
+    outline: 2px solid var(--moon);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+  footer {
+    margin-top: 4rem;
+    color: var(--mist);
+    font-size: 0.85rem;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    main { animation: rise 0.9s ease-out; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+  }
+</style>
+</head>
+<body>
+<main>
+  <svg class="crescent" viewBox="0 0 44 44" role="img" aria-label="Crescent moon">
+    <path d="M33 6a19 19 0 1 0 5 31A22 22 0 0 1 33 6z" fill="#ede6d6"/>
+  </svg>
+  <h1>LUNOTE</h1>
+  <p class="tagline">A concierge for life in Korea.</p>
+  <p class="desc">LUNOTE helps foreigners moving to or living in Korea handle the hard parts — housing, phone plans, banking, healthcare and more — through a simple request-and-quote service with vetted local partners.</p>
+  <p class="desc" lang="ko">한국에 거주 중이거나 입국을 앞둔 외국인을 위한 컨시어지 서비스입니다.</p>
+  <p class="desc">The LUNOTE app is in development and will launch on iOS and Android.</p>
+  <div class="contact-block">
+    <p>Questions or partnership inquiries</p>
+    <a href="mailto:contact@lunoteapp.com">contact@lunoteapp.com</a>
+  </div>
+</main>
+<footer>© 2026 Lunote Inc. All rights reserved.</footer>
+</body>
+</html>
