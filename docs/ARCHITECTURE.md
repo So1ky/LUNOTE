@@ -20,7 +20,7 @@
 | 관리자 웹 | **Vite + React SPA** (`apps/admin-web`) | 내부 운영 도구. SSR 불필요 → 정적 빌드(S3/CloudFront 또는 nginx 컨테이너)로 배포 단순화. 기존 관리자 API(JWT + RolesGuard)만 소비, 백엔드 변경 없음 |
 | 백엔드 | **NestJS (TypeScript)** | 프론트와 언어 통일, 1인 운영 속도 최우선 |
 | ORM | **Prisma** | 타입 안전 쿼리 + 마이그레이션 관리 |
-| DB | AWS RDS PostgreSQL, Single-AZ + PITR(5분) | 파일은 S3 (presigned URL) |
+| DB | AWS RDS PostgreSQL, **Multi-AZ** + PITR(5분) | 파일은 S3 (presigned URL). 2026-09-22 SPOF 검토로 Single-AZ→Multi-AZ 변경 (유일하게 데이터가 걸린 SPOF) |
 | 큐/캐시 | **Redis + BullMQ** | 푸시 알림 발송, 웹훅 재처리 잡 |
 | 인증 | Passport — Google/Apple OAuth **+ 이메일/비밀번호** + JWT | 비밀번호는 argon2 해싱, 재설정은 이메일 링크 방식 |
 | 결제 | PortOne (해외카드/Apple Pay 허브) | 웹훅 서명 검증 + 멱등성 필수 |
@@ -51,7 +51,7 @@ graph TB
                     OBS[Prometheus/Grafana/Loki]
                     CICD[Jenkins + ArgoCD]
                 end
-                RDS[(RDS PostgreSQL<br/>Single-AZ + PITR)]
+                RDS[(RDS PostgreSQL<br/>Multi-AZ + PITR)]
                 REDIS[(ElastiCache Redis)]
             end
         end
@@ -197,11 +197,15 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
       비활성 소셜 로그인 버튼도 심사 전 구현 또는 제거 (미완성 UI 리젝 사유)
 - [ ] 외국인 이용자 대상이므로 처리방침 영문 제공
 
-## 12. 미결정 사항
+## 12. 확정된 식별자·환경 결정 (구 미결정 사항)
 
-- **번들 식별자**: 현재 prebuild가 생성한 임시값 `com.anonymous.lunote`.
-  App Store에 최초 등록하면 **영구히 변경 불가**하므로, 출시 전 실제 도메인 기반
-  (예: `app.lunote`)으로 확정해야 한다. iOS/Android 양쪽을 같은 값으로 맞춘다.
+- **도메인 `lunoteapp.com` / 번들 식별자 `com.lunoteapp` 확정 (2026-09-22)** — iOS/Android 동일.
+  App Store 최초 등록 후 변경 불가하므로 등록 시 이 값 사용.
+  (`app.json`의 임시값 `app.lunote`는 스토어 등록 전에 교체 — 교체 시 개발 빌드 재빌드 필요.)
+- **환경 분리 (2026-09-17)**: EKS 클러스터 1개 + `staging`/`prod` 네임스페이스 분리.
+  근거·완화책은 배포 설계 스펙(`docs/superpowers/specs/` — 로컬 전용, git 추적 제외) §0.
+- **가용성 방침 (2026-09-22 SPOF 검토)**: RDS Multi-AZ 채택. NAT는 1개 유지(비용 우선,
+  AZ별 확장은 무중단 재적용 가능), Redis 단일 노드 유지(인앱 알림 DB-first 설계로 완화됨).
 - **앱 최소 지원 OS**: Expo SDK 57(RN 0.86) 기준 iOS 15.1 이상. 출시 시 확정한다.
 
 ## 13. 로드맵
