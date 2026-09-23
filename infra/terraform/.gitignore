@@ -1,0 +1,10 @@
+# Terraform 로컬 산출물 — state와 변수 파일은 절대 커밋하지 않는다
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+# .terraform.lock.hcl은 커밋한다 (provider 핀)
