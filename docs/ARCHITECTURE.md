@@ -175,6 +175,8 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 
 - 워커 노드: Karpenter + Spot. 코어 노드그룹(On-Demand 소형)에는 CoreDNS, ArgoCD 등 필수 컴포넌트만.
 - 예상 월 비용 $150~250 (EKS $73 + 노드 + NAT + RDS + ALB). 매출 발생 전 고정비이므로 월 단위로 실측·기록한다.
+- **(2026-09-29) 데이터 계층 구축분**: RDS Multi-AZ db.t4g.micro ≈$38 + gp3 스토리지 ≈$5 +
+  Redis cache.t4g.micro ≈$15 ≈ 합계 **$58/월** (청구서 실측 전 추정치). S3/ECR은 종량, 바스천은 검증 시간만 과금.
 - 전체 스택은 Terraform만으로 재현 가능해야 한다 — 리전 장애 등 최악의 상황에서 RDS 백업 + `terraform apply`로 복구하는 것이 DR 전략의 기본이다.
 
 ## 11. 보안 체크리스트
@@ -209,9 +211,12 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 
 ### 인프라 (A2~A4)
 
-- [ ] RDS 저장 시 암호화(KMS), S3 SSE + 퍼블릭 액세스 차단
+- [x] RDS 저장 시 암호화(KMS), S3 SSE + 퍼블릭 액세스 차단 — RDS는 aws/rds 관리형 키,
+      첨부 S3(staging/prod 2개)는 SSE-S3 + 퍼블릭 전면 차단 (2026-09-29, `infra/terraform/modules/rds`, `s3`)
 - [ ] 전 구간 TLS (ACM + ALB), HSTS
-- [ ] RDS/Redis 프라이빗 서브넷, 보안그룹 SG 참조 최소권한 (§4)
+- [x] RDS/Redis 프라이빗 서브넷, 보안그룹 SG 참조 최소권한 (§4) — RDS Multi-AZ(db.t4g.micro) +
+      Redis 7.1(TLS+AUTH, cache.t4g.micro)까지 SG 참조 인그레스로 구축 완료. ECR(`lunote/api`)은
+      IMMUTABLE 태그로 latest 금지 규칙을 레지스트리 단에서 강제 (2026-09-29, `infra/terraform/modules/{rds,elasticache,ecr}`)
 - [ ] K8s: 비root 컨테이너, RBAC 최소권한, NetworkPolicy
 - [ ] 이미지 취약점 스캔 (CI에 trivy 등), `npm audit` 정기 확인
 - [ ] 감사 로그: 결제 상태 전이·관리자 행위 기록 (분쟁 대응 근거)
