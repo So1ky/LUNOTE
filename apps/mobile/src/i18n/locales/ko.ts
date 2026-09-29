@@ -295,6 +295,25 @@ const ko: Resources = {
     expired: '만료됨',
   },
 
+  pay: {
+    title: '결제',
+    summary: '문의 #{{id}}',
+    secure: '포트원을 통해 PayPal이 안전하게 처리해요. LUNOTE는 카드 정보를 보지 않아요.',
+    payWithPaypal: 'PayPal 또는 PayPal을 통한 신용/체크카드로 결제할 수 있어요.',
+    confirming: '결제를 확인하고 있어요…',
+    pendingConfirm:
+      '결제 확인 중이에요. 곧 문의에 반영되고 알림을 보내드릴게요.',
+    success: '결제 완료',
+    successBody: '결제가 확인됐어요. 바로 작업을 시작할게요.',
+    failed: '결제가 완료되지 않았어요.',
+    notPayable: '아직 결제할 수 있는 상태가 아니에요.',
+    unsupportedCurrency: '아직 지원하지 않는 통화예요.',
+    notConfigured: '지금은 결제를 이용할 수 없어요. 잠시 후 다시 시도해 주세요.',
+    sdkUnavailable: '결제하려면 최신 버전의 앱이 필요해요. 업데이트 후 다시 시도해 주세요.',
+    webUnsupported: '결제는 LUNOTE 모바일 앱에서 할 수 있어요.',
+    backToRequest: '문의로 돌아가기',
+  },
+
   requestDetail: {
     title: '문의 #{{id}}',
     requested: '{{date}} 요청',

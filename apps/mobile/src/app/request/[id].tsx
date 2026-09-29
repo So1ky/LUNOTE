@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -31,6 +31,7 @@ import {
 } from '@/lib/quote-requests';
 
 export default function RequestDetailScreen() {
+  const router = useRouter();
   const { t, locale } = useTranslation();
   const { token } = useAuth();
   const params = useLocalSearchParams<{ id: string }>();
@@ -183,8 +184,11 @@ export default function RequestDetailScreen() {
                     })}
               </ThemedText>
               {request.status === 'QUOTED' && !quoteExpired && (
-                // TODO: PortOne 결제 연동 (A1 마지막 단계)
-                <Button label={t('requestDetail.proceedPayment')} size="lg" disabled />
+                <Button
+                  label={t('requestDetail.proceedPayment')}
+                  size="lg"
+                  onPress={() => router.push(`/pay/${request.id}`)}
+                />
               )}
             </Card>
           ) : (

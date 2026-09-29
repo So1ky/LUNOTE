@@ -5,10 +5,31 @@
  */
 
 /** 어디서나 항상 있어야 하는 값 */
-const ALWAYS_REQUIRED = ['DATABASE_URL', 'JWT_SECRET', 'S3_BUCKET', 'S3_REGION'];
+const ALWAYS_REQUIRED = [
+  'DATABASE_URL',
+  'JWT_SECRET',
+  'S3_BUCKET',
+  'S3_REGION',
+];
+
+/** PortOne 연동값 — 시크릿 2개 + 공개 식별자 2개 (storeId/channelKey는 앱에 내려가는 공개값) */
+export const PORTONE_ENV_KEYS = [
+  'PORTONE_API_SECRET',
+  'PORTONE_WEBHOOK_SECRET',
+  'PORTONE_STORE_ID',
+  'PORTONE_PAYPAL_CHANNEL_KEY',
+] as const;
 
 /** 프로덕션에서만 필수 (로컬은 아래 DEV_DEFAULTS로 대체) */
-const PROD_REQUIRED = ['REDIS_URL', 'CORS_ORIGINS', 'SMTP_HOST', 'HOST'];
+const PROD_REQUIRED = [
+  'REDIS_URL',
+  'CORS_ORIGINS',
+  'SMTP_HOST',
+  'HOST',
+  // PortOne — 없으면 결제가 불가능한 채로 뜨므로 프로덕션은 기동 실패시킨다.
+  // 로컬은 미설정 허용: PaymentsService가 503(PAYMENTS_NOT_CONFIGURED)으로 응답한다.
+  ...PORTONE_ENV_KEYS,
+];
 
 /** 개발 편의 기본값 — 프로덕션에서는 PROD_REQUIRED가 우선이라 적용되지 않는 것 포함 */
 const DEV_DEFAULTS: Record<string, string> = {

@@ -48,6 +48,11 @@ enum PaymentStatus {
   REFUNDED
 }
 
+// 결제 채널. PortOne 위의 PG를 구분한다 — 통화 라우팅(USD→PAYPAL)과 정산 대조에 쓴다
+enum PaymentProvider {
+  PAYPAL
+}
+
 model User {
   id           String       @id @default(uuid())
   email        String       @unique
@@ -187,20 +192,25 @@ model Quote {
   @@map("quotes")
 }
 
+// 결제 시도 1건 = 1행. id를 PortOne paymentId로 그대로 쓴다 (PortOne은 완료된 paymentId 재사용 불가).
+// 같은 견적에 PAID가 2건 생기는 것은 마이그레이션의 부분 유니크 인덱스(payments_one_paid_per_quote)가 DB 수준에서 막는다.
 model Payment {
-  id        String        @id @default(uuid()) // PortOne paymentId로 사용하는 우리 쪽 식별자
-  quoteId   String
-  quote     Quote         @relation(fields: [quoteId], references: [id])
-  amount    Decimal       @db.Decimal(12, 2)
-  currency  String
-  status    PaymentStatus @default(PENDING)
-  paidAt    DateTime?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id          String          @id @default(uuid()) // PortOne paymentId로 사용하는 우리 쪽 식별자
+  quoteId     String
+  quote       Quote           @relation(fields: [quoteId], references: [id])
+  provider    PaymentProvider // 결제 채널 — 통화/PG 확장 시 여기서 분기 (PAYPAL=USD, 추후 INICIS=KRW)
+  amount      Decimal         @db.Decimal(12, 2)
+  currency    String
+  status      PaymentStatus   @default(PENDING)
+  portoneTxId String? // PortOne 거래번호(transactionId) — 분쟁/정산 대조용
+  failReason  String? // 실패/불일치 사유 (PG 코드 등, 개인정보 없음)
+  paidAt      DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   events PaymentEvent[]
 
-  @@index([quoteId])
+  @@index([quoteId, status])
   @@map("payments")
 }
 

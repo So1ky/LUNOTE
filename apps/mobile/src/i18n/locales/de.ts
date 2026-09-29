@@ -295,6 +295,25 @@ const de: Resources = {
     expired: 'Abgelaufen',
   },
 
+  pay: {
+    title: 'Bezahlung',
+    summary: 'ANFRAGE #{{id}}',
+    secure: 'Sicher verarbeitet von PayPal über PortOne. LUNOTE sieht deine Kartendaten nie.',
+    payWithPaypal: 'Bezahle mit PayPal oder per Kredit-/Debitkarte über PayPal.',
+    confirming: 'Zahlung wird bestätigt…',
+    pendingConfirm:
+      'Deine Zahlung wird bestätigt. Sie erscheint in Kürze in der Anfrage – du erhältst eine Benachrichtigung.',
+    success: 'Zahlung abgeschlossen',
+    successBody: 'Wir haben deine Zahlung erhalten und legen sofort los.',
+    failed: 'Die Zahlung wurde nicht abgeschlossen.',
+    notPayable: 'Diese Anfrage ist noch nicht zahlungsbereit.',
+    unsupportedCurrency: 'Diese Währung wird für Zahlungen noch nicht unterstützt.',
+    notConfigured: 'Zahlungen sind derzeit nicht verfügbar. Bitte versuche es später erneut.',
+    sdkUnavailable: 'Für Zahlungen wird die neueste App-Version benötigt. Bitte aktualisieren und erneut versuchen.',
+    webUnsupported: 'Zahlungen sind in der LUNOTE-App verfügbar.',
+    backToRequest: 'Zurück zur Anfrage',
+  },
+
   requestDetail: {
     title: 'Anfrage #{{id}}',
     requested: 'Angefragt am {{date}}',
