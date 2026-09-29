@@ -109,10 +109,9 @@ export default function PaymentScreen() {
                     {t('payment.expired')}
                   </ThemedText>
                 ) : (
-                  // TODO: PortOne 결제 연동 — 현재는 상세 화면으로 이동
                   <Button
                     label={t('payment.payNow')}
-                    onPress={() => router.push(`/request/${item.id}`)}
+                    onPress={() => router.push(`/pay/${item.id}`)}
                   />
                 ))}
             </View>

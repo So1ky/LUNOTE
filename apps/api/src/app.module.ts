@@ -10,6 +10,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { AdminModule } from './admin/admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { PaymentsModule } from './payments/payments.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { StorageModule } from './storage/storage.module';
@@ -62,6 +63,7 @@ import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
     QuoteRequestsModule,
     AdminModule,
     AttachmentsModule,
+    PaymentsModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -304,6 +304,25 @@ const en = {
     expired: 'Expired',
   },
 
+  pay: {
+    title: 'Checkout',
+    summary: 'REQUEST #{{id}}',
+    secure: 'Processed securely by PayPal through PortOne. LUNOTE never sees your card details.',
+    payWithPaypal: 'Pay with PayPal or a credit/debit card via PayPal.',
+    confirming: 'Confirming your payment…',
+    pendingConfirm:
+      'Your payment is being confirmed. It will show in the request shortly — you will get a notification.',
+    success: 'Payment complete',
+    successBody: 'We received your payment and will get started right away.',
+    failed: 'The payment was not completed.',
+    notPayable: 'This request is not ready for payment.',
+    unsupportedCurrency: 'This currency is not supported for payment yet.',
+    notConfigured: 'Payments are not available right now. Please try again later.',
+    sdkUnavailable: 'Payments require the latest version of the app. Please update and try again.',
+    webUnsupported: 'Payments are available in the LUNOTE mobile app.',
+    backToRequest: 'Back to request',
+  },
+
   requestDetail: {
     title: 'Request #{{id}}',
     requested: 'Requested {{date}}',

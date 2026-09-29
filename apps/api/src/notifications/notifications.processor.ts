@@ -26,6 +26,34 @@ export class NotificationsProcessor extends WorkerHost {
     switch (job.data.type) {
       case 'ADMIN_NEW_REQUEST_EMAIL':
         return this.sendAdminEmails(job.data);
+      case 'ADMIN_PAYMENT_PAID_EMAIL':
+        return this.sendAdminPaymentPaidEmails(job.data);
+    }
+  }
+
+  /** 결제 확정 → 모든 관리자에게 이메일 (착수 지연 방지) */
+  private async sendAdminPaymentPaidEmails(data: {
+    requestId: number;
+    amount: string;
+    currency: string;
+    provider: string;
+  }) {
+    const admins = await this.prisma.user.findMany({
+      where: { role: UserRole.ADMIN },
+      select: { email: true },
+    });
+    if (admins.length === 0) {
+      this.logger.warn(
+        '관리자 계정이 없어 결제 확정 이메일을 보낼 수 없습니다',
+      );
+      return;
+    }
+    for (const admin of admins) {
+      await this.mail.send(
+        admin.email,
+        `[LUNOTE] 결제 확정 #${data.requestId} (${data.currency} ${data.amount})`,
+        `문의 #${data.requestId}의 결제가 확정되었습니다.\n\n금액: ${data.currency} ${data.amount}\n채널: ${data.provider}\n\n작업을 시작하고 상태를 IN_PROGRESS로 변경하세요.`,
+      );
     }
   }
 

@@ -295,6 +295,25 @@ const ja: Resources = {
     expired: '期限切れ',
   },
 
+  pay: {
+    title: 'お支払い',
+    summary: '依頼 #{{id}}',
+    secure: 'PortOneを通じてPayPalが安全に処理します。LUNOTEはカード情報を参照しません。',
+    payWithPaypal: 'PayPal、またはPayPal経由のクレジット/デビットカードでお支払いいただけます。',
+    confirming: 'お支払いを確認しています…',
+    pendingConfirm:
+      'お支払いを確認中です。まもなく依頼に反映され、通知をお送りします。',
+    success: 'お支払い完了',
+    successBody: 'お支払いを確認しました。すぐに作業を開始します。',
+    failed: 'お支払いは完了しませんでした。',
+    notPayable: 'この依頼はまだお支払いできる状態ではありません。',
+    unsupportedCurrency: 'この通貨はまだお支払いに対応していません。',
+    notConfigured: '現在お支払いをご利用いただけません。しばらくしてからもう一度お試しください。',
+    sdkUnavailable: 'お支払いには最新版のアプリが必要です。アップデート後にもう一度お試しください。',
+    webUnsupported: 'お支払いはLUNOTEモバイルアプリからご利用いただけます。',
+    backToRequest: '依頼に戻る',
+  },
+
   requestDetail: {
     title: '依頼 #{{id}}',
     requested: '依頼日 {{date}}',

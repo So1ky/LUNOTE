@@ -23,7 +23,7 @@
 | DB | AWS RDS PostgreSQL, **Multi-AZ** + PITR(5분) | 파일은 S3 (presigned URL). 2026-09-22 SPOF 검토로 Single-AZ→Multi-AZ 변경 (유일하게 데이터가 걸린 SPOF) |
 | 큐/캐시 | **Redis + BullMQ** | 푸시 알림 발송, 웹훅 재처리 잡 |
 | 인증 | Passport — Google/Apple OAuth **+ 이메일/비밀번호** + JWT | 비밀번호는 argon2 해싱, 재설정은 이메일 링크 방식 |
-| 결제 | PortOne (해외카드/Apple Pay 허브) | 웹훅 서명 검증 + 멱등성 필수 |
+| 결제 | PortOne (페이팔 SPB) + 수동 계좌이체 | 웹훅 서명 검증 + 멱등성 필수, 계좌이체는 관리자 확인 흐름 |
 | 컨테이너 오케스트레이션 | AWS EKS | 코어 노드그룹 On-Demand + 워커 Spot(Karpenter) |
 | CI/CD | Jenkins(동적 에이전트 Pod) + ArgoCD | GitOps 무중단 배포 |
 | IaC | Terraform | 콘솔 수동 조작 금지 |
@@ -113,6 +113,32 @@ graph TB
   4. 처리 실패 시 5xx를 반환해 PortOne 재전송을 유도하고, BullMQ로 자체 재처리 잡도 등록.
 - 주문 상태 머신: `REVIEWING → QUOTED → PAID → IN_PROGRESS → COMPLETED` (+ `CANCELLED`, `REFUNDED`).
   허용되지 않은 전이는 서비스 레이어에서 거부.
+- **PG 전략 (2026-09-07 확정, 2026-09-23 개정)**: 1차 출시는 **페이팔(PortOne V2, SPB 일반결제)과
+  수동 계좌이체(법인계좌)** 두 가지. 페이팔은 심사 없이 즉시 개통되고 무형 서비스 업종 제한이 없기 때문.
+  국내 카드(KG이니시스)는 가계약을 진행하지 않고 소멸시킨다(2026-09-23) —
+  국내 카드 수요가 지표로 입증되면 재신청한다(가계약→카드사 심사 리드타임 2~3주).
+  엑심베이(해외카드 직접·Apple Pay)는 매출 검증 후 검토.
+  - 페이팔은 판매자·구매자가 모두 한국 계정이면 결제 불가 — **해외 결제수단 보유자(입국 전/직후) 전용**이다.
+    한국 계좌를 보유한 정착 외국인은 계좌이체가 커버한다.
+  - **수동 계좌이체 (2026-09-23 확정)**: KRW 견적은 INICIS 도입 전까지 BANK_TRANSFER로 라우팅.
+    PG 파이프라인(웹훅+교차검증) 밖의 별도 흐름: `입금 대기 → 관리자 입금 확인 → PAID`,
+    기한 내 미입금 시 자동 만료. 주문번호 기반 입금코드를 입금자명에 입력하게 해 매칭한다
+    (입금자명·금액 불일치는 관리자 확인으로 마감). 환불은 수동 이체,
+    현금영수증은 소비자 요청 시 홈택스 수동 발급. 입금 확인 자동화(가상계좌)는 국내 PG 재신청 시점에.
+  - 페이팔은 KRW를 받지 못하므로 **견적·결제 통화는 USD**로 확정한다.
+    `Payment.provider`(PAYPAL / 추후 INICIS)는 견적 통화로 라우팅한다 (USD→PAYPAL, KRW→INICIS).
+    앱은 provider에 따라 결제 UI 컴포넌트를 분기한다 (페이팔=`PaymentUI` 버튼 렌더링, 국내 PG=`Payment` 결제창).
+  - PortOne `totalAmount`는 통화 최소 단위 정수(USD 센트)다. 변환은 서버 `payments/currency.ts` 한 곳에서만.
+  - 결제 의도(`POST /payments`)는 `quoteId`만 받는다 — 금액/통화의 원천은 서버의 Quote.
+    응답에는 storeId/channelKey(공개 식별자)만 나가고 API Secret·웹훅 시크릿은 서버 밖으로 나가지 않는다.
+  - 앱 콜백 후 `POST /payments/:id/confirm`은 웹훅과 **같은 전이 함수**를 호출한다
+    (앱 결과는 신뢰하지 않고 PortOne 조회 API로 재검증). 상태 조건을 `updateMany`의 where에 넣어
+    웹훅·confirm이 동시에 와도 전이는 한 번만 일어난다.
+  - 같은 견적에 PAID 결제가 2건 생기는 것은 DB 부분 유니크 인덱스(`payments_one_paid_per_quote`)가 막는다.
+  - 취소/환불은 PortOne 콘솔에서 실행하고 `Transaction.Cancelled` 웹훅으로 REFUNDED를 반영한다
+    (관리자 환불 API는 필요가 입증될 때 추가).
+  - PortOne 외부 호출은 `PortOneGateway` 한 클래스로만 나간다 — e2e는 이 클래스를 가짜로 바꿔
+    실 API 없이 서명 검증·불일치·중복·환불 시나리오를 검증한다.
 - **견적 정책 (2026-07-24 확정)**: 견적은 발행 후 **불변** — 수정 API를 두지 않는다
   (관리자 임의 변경으로 인한 분쟁 방지). `Quote.expiresAt = 발행 + 7일`,
   만료된 견적으로는 결제할 수 없다. 관리자 행위(견적 발행 등)는 감사 로그 테이블에 기록한다.
@@ -174,10 +200,12 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 
 ### 결제 (§7과 연동)
 
-- [x] 웹훅 서명 검증 + 이벤트ID UNIQUE 멱등성 (스키마 반영 완료)
-- [ ] 결제 확정 전 PortOne 조회 API로 금액/통화 교차검증
-- [ ] **카드 정보는 어떤 형태로도 저장하지 않는다** — PortOne이 처리 (PCI-DSS 범위 회피)
-- [ ] 금액 불일치 감지 시 상태 변경 없이 알림 발송
+- [x] 웹훅 서명 검증 + 이벤트ID UNIQUE 멱등성 (구현·e2e 검증 완료 — `payments.e2e-spec.ts`)
+- [x] 결제 확정 전 PortOne 조회 API로 금액/통화 교차검증 (`PaymentsService.applyRemote`)
+- [x] **카드 정보는 어떤 형태로도 저장하지 않는다** — PortOne이 처리 (PCI-DSS 범위 회피).
+      Payment 행에는 금액·통화·상태·PortOne 거래번호만 있다
+- [x] 금액 불일치 감지 시 상태 변경 없이 알림 발송 (관리자 인앱 알림 + Sentry)
+- [ ] 프로덕션 웹훅 URL 등록 + PortOne 발신 IP(52.78.5.241) 허용 검토 (A4)
 
 ### 인프라 (A2~A4)
 

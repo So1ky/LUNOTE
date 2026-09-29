@@ -13,6 +13,8 @@ async function bootstrap() {
   // bufferLogs: pino 로거가 준비되기 전 부트 로그도 구조화 로그로 내보낸다
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    // PortOne 웹훅 서명은 원문 바이트로 검증한다 — JSON 재직렬화본은 서명이 안 맞는다
+    rawBody: true,
   });
   app.useLogger(app.get(Logger));
   const config = app.get(ConfigService);

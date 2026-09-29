@@ -295,6 +295,24 @@ const zh: Resources = {
     expired: '已过期',
   },
 
+  pay: {
+    title: '支付',
+    summary: '请求 #{{id}}',
+    secure: '由PayPal通过PortOne安全处理。LUNOTE不会看到您的卡片信息。',
+    payWithPaypal: '可使用PayPal或通过PayPal使用信用卡/借记卡支付。',
+    confirming: '正在确认您的付款…',
+    pendingConfirm: '付款正在确认中，稍后会显示在请求中，并向您发送通知。',
+    success: '支付完成',
+    successBody: '我们已收到您的付款，将立即开始处理。',
+    failed: '付款未完成。',
+    notPayable: '该请求尚未处于可支付状态。',
+    unsupportedCurrency: '暂不支持该货币支付。',
+    notConfigured: '目前无法使用支付功能，请稍后再试。',
+    sdkUnavailable: '支付需要最新版本的应用，请更新后重试。',
+    webUnsupported: '请在LUNOTE移动应用中完成支付。',
+    backToRequest: '返回请求',
+  },
+
   requestDetail: {
     title: '申请 #{{id}}',
     requested: '申请于 {{date}}',
