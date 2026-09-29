@@ -20,19 +20,20 @@
     background: var(--night);
     color: var(--moon);
     font-family: "Fraunces", Georgia, "Times New Roman", serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1.5rem;
+  }
+  .hero {
     min-height: 100svh;
+    max-width: 34rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 3rem 1.5rem;
-  }
-  main {
-    max-width: 34rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    padding: 3rem 0;
   }
   .crescent {
     width: 44px;
@@ -57,20 +58,101 @@
     margin-bottom: 1.1rem;
   }
   .desc:lang(ko) { word-break: keep-all; }
-  .contact-block {
-    margin-top: 2.5rem;
-    padding-top: 2.5rem;
-    border-top: 1px solid var(--line);
+  section {
     width: 100%;
+    max-width: 40rem;
+    border-top: 1px solid var(--line);
+    padding: 3.5rem 0;
+    text-align: left;
   }
-  .contact-block p {
+  h2 {
+    font-size: 1.7rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+  }
+  .section-lede {
+    color: var(--mist);
+    font-size: 1.05rem;
+    line-height: 1.75;
+    margin-bottom: 2rem;
+  }
+  .service {
+    border-top: 1px solid var(--line);
+    padding: 1.4rem 0;
+  }
+  .service:first-of-type { border-top: none; padding-top: 0.5rem; }
+  .service h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+  .service p {
+    color: var(--mist);
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  .steps { list-style: none; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2.4rem 1fr;
+    column-gap: 1rem;
+    padding: 1.2rem 0;
+  }
+  .steps li + li { border-top: 1px solid var(--line); }
+  .steps li::before {
+    content: counter(step);
+    font-size: 1.5rem;
+    color: var(--mist);
+    line-height: 1.2;
+  }
+  .steps h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+  .steps p {
+    color: var(--mist);
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  .company-rows { width: 100%; }
+  .company-rows > div {
+    display: grid;
+    grid-template-columns: 11rem 1fr;
+    column-gap: 1.5rem;
+    padding: 0.9rem 0;
+    border-top: 1px solid var(--line);
+  }
+  .company-rows > div:first-child { border-top: none; }
+  .company-rows dt {
+    color: var(--mist);
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+  .company-rows dd {
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  .company-rows dd .ko {
+    display: block;
+    color: var(--mist);
+    font-size: 0.9rem;
+    word-break: keep-all;
+  }
+  @media (max-width: 34rem) {
+    .company-rows > div {
+      grid-template-columns: 1fr;
+      row-gap: 0.15rem;
+    }
+  }
+  .contact-note {
     color: var(--mist);
     font-size: 0.95rem;
     margin-bottom: 0.6rem;
   }
   a {
     color: var(--moon);
-    font-size: 1.1rem;
     text-decoration: underline;
     text-underline-offset: 0.25em;
     text-decoration-color: var(--line);
@@ -83,12 +165,17 @@
     border-radius: 2px;
   }
   footer {
-    margin-top: 4rem;
+    width: 100%;
+    max-width: 40rem;
+    border-top: 1px solid var(--line);
+    padding: 2rem 0 3rem;
     color: var(--mist);
     font-size: 0.85rem;
+    line-height: 1.7;
+    text-align: center;
   }
   @media (prefers-reduced-motion: no-preference) {
-    main { animation: rise 0.9s ease-out; }
+    .hero { animation: rise 0.9s ease-out; }
     @keyframes rise {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: none; }
@@ -97,7 +184,7 @@
 </style>
 </head>
 <body>
-<main>
+<header class="hero">
   <svg class="crescent" viewBox="0 0 44 44" role="img" aria-label="Crescent moon">
     <path d="M33 6a19 19 0 1 0 5 31A22 22 0 0 1 33 6z" fill="#ede6d6"/>
   </svg>
@@ -106,11 +193,98 @@
   <p class="desc">LUNOTE helps foreigners moving to or living in Korea handle the hard parts — housing, phone plans, banking, healthcare and more — through a simple request-and-quote service with vetted local partners.</p>
   <p class="desc" lang="ko">한국에 거주 중이거나 입국을 앞둔 외국인을 위한 컨시어지 서비스입니다.</p>
   <p class="desc">The LUNOTE app is in development and will launch on iOS and Android.</p>
-  <div class="contact-block">
-    <p>Questions or partnership inquiries</p>
-    <a href="mailto:contact@lunoteapp.com">contact@lunoteapp.com</a>
+</header>
+
+<section aria-labelledby="services-title">
+  <h2 id="services-title">What we help with</h2>
+  <p class="section-lede">Settling into Korea means paperwork, phone calls, and appointments — most of them in Korean. Send LUNOTE a request in your own language and we take it from there.</p>
+  <div class="service">
+    <h3>Housing</h3>
+    <p>Finding a place, understanding jeonse and wolse contracts, and getting through move-in day without surprises.</p>
   </div>
-</main>
-<footer>© 2026 Lunote Inc. All rights reserved.</footer>
+  <div class="service">
+    <h3>Visa &amp; immigration</h3>
+    <p>Preparing documents, booking immigration office appointments, and keeping track of what's due when.</p>
+  </div>
+  <div class="service">
+    <h3>Hospital</h3>
+    <p>Booking appointments at clinics and hospitals, and helping with communication and insurance paperwork.</p>
+  </div>
+  <div class="service">
+    <h3>Bank</h3>
+    <p>Opening a Korean bank account and getting cards and transfers working.</p>
+  </div>
+  <div class="service">
+    <h3>Telecom</h3>
+    <p>Choosing a phone plan, activating a SIM, and setting up home internet.</p>
+  </div>
+  <div class="service">
+    <h3>Anything else</h3>
+    <p>Can't find the right category? Tell us what you're trying to solve. We research the issue, talk to Korean service providers on your behalf, or connect you with the right professional.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how-title">
+  <h2 id="how-title">How it works</h2>
+  <ol class="steps">
+    <li>
+      <div>
+        <h3>Send a request</h3>
+        <p>Choose a category, describe what you need, and tell us how to reach you.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h3>Get a quote</h3>
+        <p>We review your request and send back a quote with the scope and the price — before you pay anything.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h3>We handle it</h3>
+        <p>Accept the quote and pay in the app. We take care of the rest with vetted local partners and keep you updated along the way.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section aria-labelledby="company-title">
+  <h2 id="company-title">Company</h2>
+  <p class="section-lede">LUNOTE is operated by Lunote Inc., a company registered in the Republic of Korea.</p>
+  <dl class="company-rows">
+    <div>
+      <dt>Company name</dt>
+      <dd>Lunote Inc. <span class="ko" lang="ko">주식회사 루노테</span></dd>
+    </div>
+    <div>
+      <dt>Representative</dt>
+      <dd>Euntak Lee <span class="ko" lang="ko">이은탁</span></dd>
+    </div>
+    <div>
+      <dt>Business registration no.</dt>
+      <dd>720-86-04050</dd>
+    </div>
+    <div>
+      <dt>Address</dt>
+      <dd>101-dong 2003-ho, 388 Poeun-daero, Suji-gu, Yongin-si, Gyeonggi-do, Republic of Korea
+        <span class="ko" lang="ko">경기도 용인시 수지구 포은대로 388, 101동 2003호</span></dd>
+    </div>
+    <div>
+      <dt>Contact</dt>
+      <dd><a href="mailto:contact@lunoteapp.com">contact@lunoteapp.com</a></dd>
+    </div>
+  </dl>
+</section>
+
+<section aria-labelledby="contact-title">
+  <h2 id="contact-title">Contact</h2>
+  <p class="contact-note">Questions or partnership inquiries</p>
+  <a href="mailto:contact@lunoteapp.com">contact@lunoteapp.com</a>
+</section>
+
+<footer>
+  <p>Lunote Inc. <span lang="ko">(주식회사 루노테)</span> · Business registration no. 720-86-04050</p>
+  <p>© 2026 Lunote Inc. All rights reserved.</p>
+</footer>
 </body>
 </html>
