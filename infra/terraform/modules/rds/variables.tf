@@ -13,8 +13,8 @@ variable "subnet_ids" {
 }
 
 variable "ingress_security_group_ids" {
-  description = "5432 인그레스를 허용할 SG 목록 (SG 참조 방식만 — CIDR 금지)"
-  type        = list(string)
+  description = "인그레스를 허용할 SG 맵 (정적 키 → SG id, SG 참조 방식만 — CIDR 금지)"
+  type        = map(string)
 }
 
 variable "instance_class" {

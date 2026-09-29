@@ -12,7 +12,7 @@ resource "aws_security_group" "this" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "redis" {
-  for_each = toset(var.ingress_security_group_ids)
+  for_each = var.ingress_security_group_ids
 
   security_group_id            = aws_security_group.this.id
   referenced_security_group_id = each.value
