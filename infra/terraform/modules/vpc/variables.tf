@@ -9,3 +9,9 @@ variable "cluster_name" {
   type        = string
   default     = "lunote"
 }
+
+variable "enable_nat_gateway" {
+  description = "NAT Gateway 활성화 — 노드 없는 구축 기간엔 false로 꺼서 비용 절약 (재생성 시 IP 변경됨)"
+  type        = bool
+  default     = true
+}

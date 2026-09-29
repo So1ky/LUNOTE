@@ -10,7 +10,7 @@ module "vpc" {
   private_subnets = ["10.0.128.0/20", "10.0.144.0/20"]
 
   # 비용: NAT는 단일 AZ 1개로 시작 (ARCHITECTURE.md §4, 2026-09-22 SPOF 검토에서 유지 재확정)
-  enable_nat_gateway = true
+  enable_nat_gateway = var.enable_nat_gateway
   single_nat_gateway = true
 
   enable_dns_support   = true
