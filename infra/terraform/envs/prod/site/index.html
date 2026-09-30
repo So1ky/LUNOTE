@@ -283,6 +283,25 @@
 </section>
 
 <footer>
+  <!-- KB에스크로 이체 인증마크 적용 시작 -->
+  <script>
+  function onPopKBAuthMark()
+  {
+  window.open('','KB_AUTHMARK','height=604, width=648, status=yes, toolbar=no, menubar=no, location=no');
+  document.KB_AUTHMARK_FORM.action='https://okbfex.kbstar.com/quics';
+  document.KB_AUTHMARK_FORM.target='KB_AUTHMARK';
+  document.KB_AUTHMARK_FORM.submit();
+  }
+  </script>
+  <form name="KB_AUTHMARK_FORM" method="get">
+  <input type="hidden" name="page" value="C021590"/>
+  <input type="hidden" name="cc" value="b034066:b035526"/>
+  <input type="hidden" name="mHValue" value='f8c34aa23576c93f4dc65e2ea1ae7692'/>
+  </form>
+  <a href="#" onclick="javascript:onPopKBAuthMark();return false;">
+  <img src="https://img1.kbstar.com/img/escrow/escrowcmark.gif" border="0" alt="KB에스크로이체 매매보호 가입 확인" style="margin-bottom:1rem"/>
+  </a>
+  <!-- KB에스크로 이체 인증마크 적용 종료 -->
   <p>Lunote Inc. <span lang="ko">(주식회사 루노테)</span> · Business registration no. 720-86-04050</p>
   <p>© 2026 Lunote Inc. All rights reserved.</p>
 </footer>
