@@ -27,9 +27,11 @@ resource "aws_db_instance" "this" {
   engine_version = var.engine_version
   instance_class = var.instance_class
 
-  # 2026-09-22 SPOF 검토: 데이터가 걸린 유일한 SPOF라 Multi-AZ (ARCHITECTURE.md §2)
-  multi_az          = true
+  multi_az          = var.multi_az
   storage_encrypted = true # AWS 관리형 aws/rds 키 — CMK 불채택 근거는 Plan 2 결정 표
+
+  # 1인 운영 — 변경을 유지보수 윈도까지 미루지 않는다 (provider측 플래그, drift 없음)
+  apply_immediately = true
 
   allocated_storage     = 20
   max_allocated_storage = 50
