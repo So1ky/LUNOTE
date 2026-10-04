@@ -1,0 +1,57 @@
+# staging 네임스페이스 가드레일 — 한 환경이 클러스터 자원을 독점하지 못하게 하고, 통신은 기본 거부.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute
+  namespace: staging
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    limits.memory: 8Gi
+    pods: "20"
+---
+# requests/limits를 빠뜨린 컨테이너의 기본값 (Quota가 limits.memory를 요구하므로 필수)
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: staging
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      default:
+        memory: 512Mi
+---
+# 기본 거부 — 허용은 워크로드별 NetworkPolicy가 명시한다
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: staging
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# DNS는 모든 파드에 허용
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: staging
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
