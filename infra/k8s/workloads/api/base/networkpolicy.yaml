@@ -1,0 +1,41 @@
+# 네임스페이스는 기본 거부(platform/namespaces/*-guardrails.yaml). API와 마이그레이션 Job에 필요한 통신만 연다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: api
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # ALB(퍼블릭 서브넷)에서만 — target-type ip라 ALB가 파드 IP로 직접 보낸다
+    - from:
+        - ipBlock:
+            cidr: 10.0.0.0/20
+        - ipBlock:
+            cidr: 10.0.16.0/20
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # RDS·Redis (프라이빗 서브넷)
+    - to:
+        - ipBlock:
+            cidr: 10.0.128.0/20
+        - ipBlock:
+            cidr: 10.0.144.0/20
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    # 외부 HTTPS(PortOne·S3·STS·Sentry)와 SMTP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 587

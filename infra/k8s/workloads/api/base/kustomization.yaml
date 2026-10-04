@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - serviceaccount.yaml
+  - deployment.yaml
+  - service.yaml
+  - migrate-job.yaml
+  - networkpolicy.yaml
+configMapGenerator:
+  # RDS 인증 기관(공개 인증서) — https://truststore.pki.rds.amazonaws.com/ap-northeast-2/ap-northeast-2-bundle.pem
+  - name: rds-ca
+    options:
+      annotations:
+        argocd.argoproj.io/sync-wave: "-2"
+    files:
+      - rds-ca-ap-northeast-2.pem
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: api
+    includeTemplates: true
