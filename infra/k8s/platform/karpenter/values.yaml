@@ -1,0 +1,13 @@
+# 차트 버전·설치 명령은 README.md 참고. Phase 3-3에서 ArgoCD Application으로 인수.
+replicas: 1 # 기본 2는 hostname anti-affinity 필수라 코어 노드 1대에선 1개가 Pending — 증설 시 2로
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-karpenter-controller
+settings:
+  clusterName: lunote
+  interruptionQueue: Karpenter-lunote
+controller:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi

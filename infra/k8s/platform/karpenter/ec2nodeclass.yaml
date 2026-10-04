@@ -1,0 +1,22 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiSelectorTerms:
+    - alias: al2023@latest # 코어 노드그룹과 동일 계열 (arm64는 NodePool requirements가 강제)
+  role: lunote-karpenter-node
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: lunote # 프라이빗 서브넷 (Plan 1에서 태그 선반영)
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: lunote # node SG(클러스터 통신) + app SG(RDS/Redis 인그레스) 둘 다 매칭
+  metadataOptions:
+    httpTokens: required # IMDSv2 강제
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 20Gi
+        volumeType: gp3
+        encrypted: true

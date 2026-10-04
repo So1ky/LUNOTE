@@ -1,0 +1,13 @@
+# 기본 StorageClass를 EBS CSI(gp3, 암호화)로 — in-tree gp2 대체.
+# Phase 4 Jenkins·Phase 5 Prometheus PV가 사용. ArgoCD 인수 대상(Phase 3-3).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: gp3
+  encrypted: "true"

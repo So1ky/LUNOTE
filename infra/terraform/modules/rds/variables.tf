@@ -27,3 +27,9 @@ variable "engine_version" {
   type        = string
   default     = "17"
 }
+
+variable "multi_az" {
+  description = "가용성 방침은 ARCHITECTURE.md §12 — 전환은 온라인 속성 변경"
+  type        = bool
+  default     = true
+}

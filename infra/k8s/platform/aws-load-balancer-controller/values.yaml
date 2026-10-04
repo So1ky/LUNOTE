@@ -1,0 +1,18 @@
+# 차트 버전·설치 명령은 README.md 참고. Phase 3-3에서 ArgoCD 인수.
+clusterName: lunote
+region: ap-northeast-2
+vpcId: vpc-04537b4bcd7344514
+replicaCount: 1 # 코어 노드 1대 — 증설 시 2로
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-lbc
+# 플랫폼 컴포넌트는 코어 노드그룹에만 — Karpenter(Spot) 노드는 회수 대상이라 회피한다
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: karpenter.sh/nodepool
+              operator: DoesNotExist
