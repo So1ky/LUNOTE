@@ -61,7 +61,10 @@ sleep_infra() {
   k scale statefulset argocd-application-controller -n argocd --replicas=0
   # 2. 워크로드를 내려 Karpenter가 새 노드를 만들 이유를 없앤다
   for ns in staging prod; do
-    k scale deployment --all -n "$ns" --replicas=0
+    # Deployment가 없는 네임스페이스에서는 scale이 오류로 끝나므로 건너뛴다
+    if [ -n "$(k get deployment -n "$ns" -o name)" ]; then
+      k scale deployment --all -n "$ns" --replicas=0
+    fi
   done
   # 3. Karpenter 노드를 먼저 지운다 — 코어 노드를 먼저 내리면 Karpenter가 죽어 Spot 노드가 주인 없이 남는다
   k delete nodeclaims --all --wait=true --timeout=10m
