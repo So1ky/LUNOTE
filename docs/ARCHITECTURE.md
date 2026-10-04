@@ -20,7 +20,7 @@
 | 관리자 웹 | **Vite + React SPA** (`apps/admin-web`) | 내부 운영 도구. SSR 불필요 → 정적 빌드(S3/CloudFront 또는 nginx 컨테이너)로 배포 단순화. 기존 관리자 API(JWT + RolesGuard)만 소비, 백엔드 변경 없음 |
 | 백엔드 | **NestJS (TypeScript)** | 프론트와 언어 통일, 1인 운영 속도 최우선 |
 | ORM | **Prisma** | 타입 안전 쿼리 + 마이그레이션 관리 |
-| DB | AWS RDS PostgreSQL, **Multi-AZ** + PITR(5분) | 파일은 S3 (presigned URL). 2026-09-22 SPOF 검토로 Single-AZ→Multi-AZ 변경 (유일하게 데이터가 걸린 SPOF) |
+| DB | AWS RDS PostgreSQL, **Single-AZ** + PITR(5분) | 파일은 S3 (presigned URL). 2026-10-04 결정: 출시 후에도 Single-AZ 유지, **누적 실결제 10건 도달 시 Multi-AZ 전환**(속성 하나, 온라인 변경). 유실 위험은 PITR로 동일, 잃는 건 장애 시 자동 페일오버뿐 |
 | 큐/캐시 | **Redis + BullMQ** | 푸시 알림 발송, 웹훅 재처리 잡 |
 | 인증 | Passport — Google/Apple OAuth **+ 이메일/비밀번호** + JWT | 비밀번호는 argon2 해싱, 재설정은 이메일 링크 방식 |
 | 결제 | PortOne (페이팔 SPB) + 수동 계좌이체 | 웹훅 서명 검증 + 멱등성 필수, 계좌이체는 관리자 확인 흐름 |
@@ -51,7 +51,7 @@ graph TB
                     OBS[Prometheus/Grafana/Loki]
                     CICD[Jenkins + ArgoCD]
                 end
-                RDS[(RDS PostgreSQL<br/>Multi-AZ + PITR)]
+                RDS[(RDS PostgreSQL<br/>Single-AZ + PITR)]
                 REDIS[(ElastiCache Redis)]
             end
         end
@@ -177,6 +177,10 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 - 예상 월 비용 $150~250 (EKS $73 + 노드 + NAT + RDS + ALB). 매출 발생 전 고정비이므로 월 단위로 실측·기록한다.
 - **(2026-09-29) 데이터 계층 구축분**: RDS Multi-AZ db.t4g.micro ≈$38 + gp3 스토리지 ≈$5 +
   Redis cache.t4g.micro ≈$15 ≈ 합계 **$58/월** (청구서 실측 전 추정치). S3/ECR은 종량, 바스천은 검증 시간만 과금.
+- **(2026-10-04) RDS Single-AZ 전환**: 비용 재검토로 Multi-AZ 해제 (≈-$20/월, 데이터 계층 ≈$38/월).
+  누적 실결제 10건 도달 시 `multi_az = true` 복원 (§12 가용성 방침).
+- **(2026-10-04) EKS 구축분**: 컨트롤플레인 $73 + NAT 재개 ≈$44 + 코어 노드 t4g.medium×1 ≈$30 +
+  EBS·KMS ≈$3 ≈ **$150/월** (추정치). Spot 노드는 워크로드가 있을 때만 과금. 전체 합계 ≈$190/월.
 - 전체 스택은 Terraform만으로 재현 가능해야 한다 — 리전 장애 등 최악의 상황에서 RDS 백업 + `terraform apply`로 복구하는 것이 DR 전략의 기본이다.
 
 ## 11. 보안 체크리스트
@@ -214,7 +218,7 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 - [x] RDS 저장 시 암호화(KMS), S3 SSE + 퍼블릭 액세스 차단 — RDS는 aws/rds 관리형 키,
       첨부 S3(staging/prod 2개)는 SSE-S3 + 퍼블릭 전면 차단 (2026-09-29, `infra/terraform/modules/rds`, `s3`)
 - [ ] 전 구간 TLS (ACM + ALB), HSTS
-- [x] RDS/Redis 프라이빗 서브넷, 보안그룹 SG 참조 최소권한 (§4) — RDS Multi-AZ(db.t4g.micro) +
+- [x] RDS/Redis 프라이빗 서브넷, 보안그룹 SG 참조 최소권한 (§4) — RDS Single-AZ(db.t4g.micro, §12) +
       Redis 7.1(TLS+AUTH, cache.t4g.micro)까지 SG 참조 인그레스로 구축 완료. ECR(`lunote/api`)은
       IMMUTABLE 태그로 latest 금지 규칙을 레지스트리 단에서 강제 (2026-09-29, `infra/terraform/modules/{rds,elasticache,ecr}`)
 - [ ] K8s: 비root 컨테이너, RBAC 최소권한, NetworkPolicy
@@ -237,7 +241,17 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
   (`app.json`의 임시값 `app.lunote`는 스토어 등록 전에 교체 — 교체 시 개발 빌드 재빌드 필요.)
 - **환경 분리 (2026-09-17)**: EKS 클러스터 1개 + `staging`/`prod` 네임스페이스 분리.
   근거·완화책은 배포 설계 스펙(`docs/superpowers/specs/` — 로컬 전용, git 추적 제외) §0.
-- **가용성 방침 (2026-09-22 SPOF 검토)**: RDS Multi-AZ 채택. NAT는 1개 유지(비용 우선,
+- **EKS 구성 (2026-10-04 구축)**: 클러스터 `lunote`, K8s **1.36**(Karpenter 1.14 지원 상한에 맞춤),
+  코어 노드그룹 AL2023 arm64 `t4g.medium` 1대(min 1/max 2, taint 없음), vpc-cni prefix delegation,
+  EBS CSI + gp3 기본 StorageClass. Karpenter NodePool `default`는 Spot 우선(on-demand 폴백)·arm64 전용·
+  c/m/r 5세대+·한도 16 vCPU/32Gi. 권한은 전부 IRSA(Karpenter·LBC·EBS CSI).
+  **책임 분리**: Terraform은 AWS 리소스만(`infra/terraform`), 클러스터 내부(Karpenter 1.14.1·AWS Load
+  Balancer Controller 3.5.0 차트, NodePool)는 helm/kubectl + `infra/k8s/platform/`의 커밋 파일 —
+  ArgoCD 도입 시 그대로 인수. 플랫폼 컴포넌트는 `karpenter.sh/nodepool DoesNotExist` affinity로 코어 노드에 고정.
+- **가용성 방침 (2026-09-22 SPOF 검토, 2026-10-04 개정)**: RDS는 **Single-AZ로 운영하다
+  누적 실결제 10건 도달 시 Multi-AZ 전환** (`envs/prod/rds.tf`의 `multi_az` 속성 — 온라인 변경).
+  데이터 유실 위험은 PITR(5분)로 Single-AZ에서도 동일, Multi-AZ가 더해주는 건 1~2분 자동
+  페일오버뿐이라 실사용자 발생 전까지 ≈$20/월을 아낀다. NAT는 1개 유지(비용 우선,
   AZ별 확장은 무중단 재적용 가능), Redis 단일 노드 유지(인앱 알림 DB-first 설계로 완화됨).
 - **앱 최소 지원 OS**: Expo SDK 57(RN 0.86) 기준 iOS 15.1 이상. 출시 시 확정한다.
 
