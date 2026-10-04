@@ -1,0 +1,33 @@
+# Karpenter 컨트롤러(차트) + NodePool/EC2NodeClass. AWS측 리소스는 infra/terraform/envs/prod/karpenter.tf.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: public.ecr.aws/karpenter # OCI 레지스트리 (스킴 없이)
+      chart: karpenter
+      targetRevision: 1.14.1
+      helm:
+        releaseName: karpenter
+        valueFiles:
+          - $values/infra/k8s/platform/karpenter/values.yaml
+    - repoURL: https://github.com/So1ky/LUNOTE.git
+      targetRevision: develop
+      ref: values
+    - repoURL: https://github.com/So1ky/LUNOTE.git
+      targetRevision: develop
+      path: infra/k8s/platform/karpenter
+      directory:
+        include: "{ec2nodeclass.yaml,nodepool.yaml}" # values.yaml은 매니페스트가 아니므로 제외
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: karpenter
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false # NodePool이 실수로 삭제되면 워크로드 노드가 전부 회수된다
+    syncOptions:
+      - ServerSideApply=true

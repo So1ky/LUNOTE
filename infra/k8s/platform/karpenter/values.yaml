@@ -1,4 +1,4 @@
-# 차트 버전·설치 명령은 README.md 참고. Phase 3-3에서 ArgoCD Application으로 인수.
+# 차트 버전은 infra/k8s/apps/karpenter.yaml의 targetRevision. ArgoCD가 관리한다.
 replicas: 1 # 기본 2는 hostname anti-affinity 필수라 코어 노드 1대에선 1개가 Pending — 증설 시 2로
 serviceAccount:
   annotations:

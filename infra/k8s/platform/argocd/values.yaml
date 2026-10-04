@@ -1,0 +1,40 @@
+# argo-cd 차트 10.9.6 (앱 v3.5.3) — 부트스트랩만 helm, 이후 ArgoCD가 자기 자신을 관리한다
+# (infra/k8s/apps/argocd.yaml). 부트스트랩·재해복구 절차는 infra/k8s/README.md.
+# 외부 노출 없음 — 접속은 kubectl port-forward (README 참고).
+global:
+  # 플랫폼 컴포넌트는 코어 노드그룹에만 — Karpenter(Spot) 노드는 회수 대상이라 회피한다
+  affinity:
+    nodeAffinity:
+      type: hard
+      matchExpressions:
+        - key: karpenter.sh/nodepool
+          operator: DoesNotExist
+# 1인 운영 — SSO 불필요
+dex:
+  enabled: false
+# 알림은 Phase 5의 Alertmanager → 텔레그램으로 일원화
+notifications:
+  enabled: false
+# ApplicationSet은 미사용 — 필요해지면 1로
+applicationSet:
+  replicas: 0
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+repoServer:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+server:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+redis:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi

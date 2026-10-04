@@ -60,3 +60,7 @@ output "attachment_buckets" {
 output "bastion_instance_id" {
   value = one(aws_instance.bastion[*].id)
 }
+
+output "eso_role_arns" {
+  value = { for env, role in aws_iam_role.eso : env => role.arn }
+}
