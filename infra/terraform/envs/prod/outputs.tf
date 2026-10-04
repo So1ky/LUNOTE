@@ -14,6 +14,18 @@ output "eks_oidc_provider_arn" {
   value = module.eks.oidc_provider_arn
 }
 
+output "karpenter_controller_role_arn" {
+  value = module.karpenter.iam_role_arn
+}
+
+output "karpenter_node_role_name" {
+  value = module.karpenter.node_iam_role_name
+}
+
+output "karpenter_queue_name" {
+  value = module.karpenter.queue_name
+}
+
 output "private_subnet_ids" {
   value = module.vpc.private_subnet_ids
 }
