@@ -45,7 +45,7 @@ module "eks" {
       ami_type       = "AL2023_ARM_64_STANDARD"
       instance_types = [var.core_instance_type]
 
-      min_size     = 1
+      min_size     = 0 # 출시 전 비용 절감용으로 0대까지 허용 (scripts/infra-power.sh) — 평소 desired는 1
       max_size     = 2
       desired_size = var.core_desired_size
     }
