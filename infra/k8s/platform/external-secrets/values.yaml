@@ -1,0 +1,27 @@
+# external-secrets 차트 2.11.0 — ArgoCD Application(infra/k8s/apps/external-secrets.yaml)이 관리.
+# 컨트롤러에는 AWS 권한을 주지 않는다. 권한은 환경 네임스페이스의 SA(eso-reader)에만 있다
+# (infra/k8s/platform/namespaces/, infra/terraform/envs/prod/eso.tf).
+installCRDs: true
+# 플랫폼 컴포넌트는 코어 노드그룹에만 — Karpenter(Spot) 노드는 회수 대상이라 회피한다
+global:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
+resources:
+  requests:
+    cpu: 20m
+    memory: 96Mi
+webhook:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 48Mi
+certController:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
