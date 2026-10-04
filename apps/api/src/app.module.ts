@@ -15,6 +15,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { StorageModule } from './storage/storage.module';
 import { validateEnv } from './config/env.validation';
+import { redisConnectionFromUrl } from './config/redis-connection';
 import { HealthController } from './health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
@@ -47,13 +48,11 @@ import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
     BullModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        // BullMQ(ioredis)는 URL 대신 host/port 옵션을 받는다
-        const url = new URL(config.getOrThrow<string>('REDIS_URL'));
-        return {
-          connection: { host: url.hostname, port: Number(url.port || 6379) },
-        };
-      },
+      useFactory: (config: ConfigService) => ({
+        connection: redisConnectionFromUrl(
+          config.getOrThrow<string>('REDIS_URL'),
+        ),
+      }),
     }),
     PrismaModule,
     StorageModule,
