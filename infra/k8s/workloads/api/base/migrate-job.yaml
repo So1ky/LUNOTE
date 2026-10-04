@@ -1,0 +1,56 @@
+# 스키마 마이그레이션 — 새 파드 롤아웃 전에 실행되고, 실패하면 sync가 실패해 롤아웃이 멈춘다.
+# PreSync가 아니라 Sync hook + wave -1: 같은 앱의 ExternalSecret(wave -2)이 먼저 준비돼야 한다.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: api-migrate
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api-migrate
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        karpenter.sh/nodepool: default
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: lunote-api
+          command: ["node_modules/.bin/prisma", "migrate", "deploy"]
+          env:
+            - name: HOME
+              value: /tmp
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

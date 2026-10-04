@@ -64,3 +64,11 @@ output "bastion_instance_id" {
 output "eso_role_arns" {
   value = { for env, role in aws_iam_role.eso : env => role.arn }
 }
+
+output "api_role_arns" {
+  value = { for env, role in aws_iam_role.api : env => role.arn }
+}
+
+output "api_certificate_arn" {
+  value = aws_acm_certificate_validation.api.certificate_arn
+}

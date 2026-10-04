@@ -47,7 +47,7 @@ graph TB
             subgraph "Private Subnet (2 AZ)"
                 subgraph EKS
                     API[NestJS API Pods]
-                    WORKER[BullMQ Worker Pods]
+                    WORKER[BullMQ Worker<br/>현재는 API 프로세스에 통합]
                     OBS[Prometheus/Grafana/Loki]
                     CICD[Jenkins + ArgoCD]
                 end
@@ -221,7 +221,7 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
 - [x] RDS/Redis 프라이빗 서브넷, 보안그룹 SG 참조 최소권한 (§4) — RDS Single-AZ(db.t4g.micro, §12) +
       Redis 7.1(TLS+AUTH, cache.t4g.micro)까지 SG 참조 인그레스로 구축 완료. ECR(`lunote/api`)은
       IMMUTABLE 태그로 latest 금지 규칙을 레지스트리 단에서 강제 (2026-09-29, `infra/terraform/modules/{rds,elasticache,ecr}`)
-- [ ] K8s: 비root 컨테이너, RBAC 최소권한, NetworkPolicy
+- [x] K8s: 비root 컨테이너, RBAC 최소권한, NetworkPolicy (2026-10-04 staging 적용 — 워크로드 SA는 K8s API 권한 없음)
 - [ ] 이미지 취약점 스캔 (CI에 trivy 등), `npm audit` 정기 확인
 - [ ] 감사 로그: 결제 상태 전이·관리자 행위 기록 (분쟁 대응 근거)
 
@@ -258,6 +258,28 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
   맡는다. 네임스페이스 `SecretStore`만 쓰므로 staging에서 prod 시크릿은 읽을 수 없다(AccessDenied 검증).
   Redis 논리 DB: prod `/0`, staging `/1`. 코어 노드는 1대 유지(설치 후 메모리 requests ≈55%) —
   Jenkins·Prometheus 도입 시 재측정.
+- **staging 배포 (2026-10-04)**: `https://api-staging.lunoteapp.com`. 워크로드는
+  `infra/k8s/workloads/api/`의 Kustomize base + `overlays/staging`(prod overlay는 prod 배포 때 추가),
+  ArgoCD Application `api-staging`이 동기화한다(워크로드 앱은 prune 켬 — 해시 ConfigMap 정리).
+  - **워커는 API 프로세스에 통합 유지**(결정 변경 — 기존 구상은 별도 Worker Deployment): 큐가 관리자
+    이메일 전용이고 규모 가정이 ~50 MAU라 분리 이점이 작다. 큐 부하가 생기면 워커 진입점을 분리한다.
+  - **배포 순서**: sync-wave로 ExternalSecret·설정(−2) → `prisma migrate deploy` Job(Sync hook, −1) →
+    Deployment(0). 마이그레이션이 실패하면 롤아웃하지 않는다. PreSync hook은 같은 앱의 ExternalSecret보다
+    먼저 실행돼 최초 배포에서 Secret이 없어 실패하므로 쓰지 않는다.
+  - **배치**: 앱 파드는 Karpenter 노드에만(`nodeSelector karpenter.sh/nodepool: default`) — RDS/Redis
+    인그레스가 참조하는 `lunote-app` SG는 Karpenter 노드에만 붙는다. 비root(uid 1000)·읽기 전용 루트·
+    capabilities drop ALL. probe는 readiness만 `/health`, liveness는 TCP(DB 장애로 재시작 루프 방지).
+  - **DB TLS**: node-postgres는 `sslmode=require`에서 인증서를 검증한다. RDS CA 번들을 ConfigMap으로
+    마운트하고 `NODE_EXTRA_CA_CERTS`로 신뢰시킨다(검증을 끄지 않는다).
+  - **Redis**: `REDIS_URL`의 스킴(rediss=TLS)·AUTH·경로(논리 DB)를 BullMQ 연결 옵션으로 변환.
+  - **격리**: 네임스페이스별 ResourceQuota·LimitRange·NetworkPolicy 기본 거부(vpc-cni
+    `enableNetworkPolicy`), PriorityClass(prod 1000 / staging 100). API에는 ALB 서브넷→3000, DNS,
+    프라이빗 서브넷 5432/6379, 외부 443/587만 허용.
+  - **진입**: ALB 1대를 staging/prod가 공유(Ingress group·이름 `lunote`), 서울 리전 `*.lunoteapp.com`
+    ACM을 호스트명으로 자동 탐색, DNS는 Terraform이 ALB를 이름으로 조회해 alias. PortOne 웹훅 경로는
+    `/payments/portone/webhook`(발신 IP allowlist는 미적용 — 서명 검증 + 조회 교차검증으로 방어).
+  - **권한**: API IRSA 롤 `lunote-api-{staging,prod}` — 자기 환경 첨부 버킷의 객체 Put/Get만.
+  - 첫 이미지는 로컬 수동 빌드(arm64, git SHA 태그). CI 자동화는 A3. 신규 비용 ≈$30/월(ALB + Spot 노드 1대).
 - **가용성 방침 (2026-09-22 SPOF 검토, 2026-10-04 개정)**: RDS는 **Single-AZ로 운영하다
   누적 실결제 10건 도달 시 Multi-AZ 전환** (`envs/prod/rds.tf`의 `multi_az` 속성 — 온라인 변경).
   데이터 유실 위험은 PITR(5분)로 Single-AZ에서도 동일, Multi-AZ가 더해주는 건 1~2분 자동

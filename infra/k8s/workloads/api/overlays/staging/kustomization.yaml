@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: staging
+resources:
+  - ../../base
+  - externalsecret.yaml
+  - ingress.yaml
+images:
+  - name: lunote-api
+    newName: 695019457880.dkr.ecr.ap-northeast-2.amazonaws.com/lunote/api
+    newTag: d68777f265f7 # git SHA — Phase 4부터 CI가 이 줄을 갱신한다
+configMapGenerator:
+  - name: api-config
+    options:
+      annotations:
+        argocd.argoproj.io/sync-wave: "-2"
+    literals:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+      - LOG_LEVEL=info
+      - S3_BUCKET=lunote-attachments-staging-695019457880
+      - S3_REGION=ap-northeast-2
+      - CORS_ORIGINS=https://admin-staging.lunoteapp.com
+      - SMTP_HOST=smtp-relay.brevo.com
+      - SMTP_PORT=587
+patches:
+  - target:
+      kind: ServiceAccount
+      name: api
+    patch: |-
+      - op: add
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::695019457880:role/lunote-api-staging
+  - target:
+      kind: Deployment
+      name: api
+    patch: |-
+      - op: add
+        path: /spec/template/spec/priorityClassName
+        value: lunote-staging

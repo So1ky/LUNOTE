@@ -1,9 +1,12 @@
 # staging 환경 네임스페이스 + Secrets Manager 읽기 경로.
-# ResourceQuota/LimitRange/NetworkPolicy는 Phase 3-4에서 추가한다.
+# 가드레일(ResourceQuota/LimitRange/NetworkPolicy)은 staging-guardrails.yaml.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: staging
+  labels:
+    # ALB 타깃 등록이 끝나야 파드가 Ready — 롤링 업데이트 중 502 방지
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
 ---
 # ESO가 이 SA의 토큰으로 lunote-eso-staging 롤을 맡는다 (lunote/staging/* + lunote/shared/redis 읽기 전용)
 apiVersion: v1

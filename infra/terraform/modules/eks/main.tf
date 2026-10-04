@@ -30,6 +30,8 @@ module "eks" {
       # t4g.medium 기본 max-pods 17 한계 해소 — 코어 노드 1대 결정의 전제
       configuration_values = jsonencode({
         env = { ENABLE_PREFIX_DELEGATION = "true" }
+        # NetworkPolicy 적용 활성화 — 꺼져 있으면 정책을 만들어도 무효 (스펙 §5 기본 거부)
+        enableNetworkPolicy = "true"
       })
     }
     aws-ebs-csi-driver = {
