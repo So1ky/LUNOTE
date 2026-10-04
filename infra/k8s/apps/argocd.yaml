@@ -1,0 +1,28 @@
+# ArgoCD 자기 관리 — helm 부트스트랩 릴리스를 인수한다.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      targetRevision: 10.9.6
+      helm:
+        releaseName: argocd
+        valueFiles:
+          - $values/infra/k8s/platform/argocd/values.yaml
+    - repoURL: https://github.com/So1ky/LUNOTE.git
+      targetRevision: develop
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - ServerSideApply=true # CRD가 client-side apply 주석 한도(262144B) 초과

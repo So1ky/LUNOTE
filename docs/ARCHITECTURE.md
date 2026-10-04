@@ -246,8 +246,18 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
   EBS CSI + gp3 기본 StorageClass. Karpenter NodePool `default`는 Spot 우선(on-demand 폴백)·arm64 전용·
   c/m/r 5세대+·한도 16 vCPU/32Gi. 권한은 전부 IRSA(Karpenter·LBC·EBS CSI).
   **책임 분리**: Terraform은 AWS 리소스만(`infra/terraform`), 클러스터 내부(Karpenter 1.14.1·AWS Load
-  Balancer Controller 3.5.0 차트, NodePool)는 helm/kubectl + `infra/k8s/platform/`의 커밋 파일 —
-  ArgoCD 도입 시 그대로 인수. 플랫폼 컴포넌트는 `karpenter.sh/nodepool DoesNotExist` affinity로 코어 노드에 고정.
+  Balancer Controller 3.5.0 차트, NodePool)는 `infra/k8s/platform/`의 커밋 파일을 ArgoCD가 관리(아래).
+  플랫폼 컴포넌트는 `karpenter.sh/nodepool DoesNotExist` affinity로 코어 노드에 고정.
+- **GitOps·시크릿 (2026-10-04 구축)**: ArgoCD 3.5(차트 10.9.6) **App of Apps** — 루트
+  (`infra/k8s/bootstrap/root-app.yaml`)가 `infra/k8s/apps/`를 감시하고, 플랫폼 컴포넌트 전부(ArgoCD 자신,
+  Karpenter, LBC, ESO, StorageClass, 환경 네임스페이스)를 `develop` 브랜치 기준으로 동기화한다.
+  automated + selfHeal, **자동 prune은 끔**(실수로 지운 파일이 NodePool 삭제로 이어지지 않게).
+  비HA 최소 구성(dex·notifications 없음), 외부 노출 없이 port-forward 접속.
+  External Secrets Operator 2.11.0: 컨트롤러에는 AWS 권한이 없고, 환경 네임스페이스의 SA `eso-reader`가
+  **환경별 IRSA 롤**(`lunote-eso-{staging,prod}` — `lunote/<env>/*` + `lunote/shared/redis` 읽기 전용)을
+  맡는다. 네임스페이스 `SecretStore`만 쓰므로 staging에서 prod 시크릿은 읽을 수 없다(AccessDenied 검증).
+  Redis 논리 DB: prod `/0`, staging `/1`. 코어 노드는 1대 유지(설치 후 메모리 requests ≈55%) —
+  Jenkins·Prometheus 도입 시 재측정.
 - **가용성 방침 (2026-09-22 SPOF 검토, 2026-10-04 개정)**: RDS는 **Single-AZ로 운영하다
   누적 실결제 10건 도달 시 Multi-AZ 전환** (`envs/prod/rds.tf`의 `multi_az` 속성 — 온라인 변경).
   데이터 유실 위험은 PITR(5분)로 Single-AZ에서도 동일, Multi-AZ가 더해주는 건 1~2분 자동
