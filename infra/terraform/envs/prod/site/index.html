@@ -271,7 +271,7 @@
     </div>
     <div>
       <dt>Contact</dt>
-      <dd><a href="mailto:contact@lunoteapp.com">contact@lunoteapp.com</a></dd>
+      <dd><a class="email" data-u="contact" data-d="lunoteapp.com">contact [at] lunoteapp [dot] com</a></dd>
     </div>
   </dl>
 </section>
@@ -279,7 +279,7 @@
 <section aria-labelledby="contact-title">
   <h2 id="contact-title">Contact</h2>
   <p class="contact-note">Questions or partnership inquiries</p>
-  <a href="mailto:contact@lunoteapp.com">contact@lunoteapp.com</a>
+  <a class="email" data-u="contact" data-d="lunoteapp.com">contact [at] lunoteapp [dot] com</a>
 </section>
 
 <footer>
@@ -305,5 +305,13 @@
   <p>Lunote Inc. <span lang="ko">(주식회사 루노테)</span> · Business registration no. 720-86-04050</p>
   <p>© 2026 Lunote Inc. All rights reserved.</p>
 </footer>
+<!-- 주소 수집 봇 대응: 소스에 메일 주소를 평문으로 두지 않고 여기서 조립한다 (스크립트 미실행 시 위 대체 표기가 보인다) -->
+<script>
+  document.querySelectorAll('a.email').forEach(function (a) {
+    var addr = a.dataset.u + '@' + a.dataset.d;
+    a.href = 'mailto:' + addr;
+    a.textContent = addr;
+  });
+</script>
 </body>
 </html>

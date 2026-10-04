@@ -190,3 +190,14 @@ resource "aws_route53_record" "apex_txt" {
     "google-site-verification=-L2k8Mm6RSslUp7N82-zj7xMX2j-ZzQDKKe3byzKdnA",
   ]
 }
+
+# DMARC — 이 도메인을 발신자로 위조한 메일을 수신 측이 거부하게 한다 (2026-10-04, 주소 도용 스팸 대응).
+# 현재 lunoteapp.com에서 발송하는 메일이 없어 reject가 안전하다. 앱 메일(noreply@ 등) 발송을 도입할 때는
+# 발송 서비스의 DKIM을 이 도메인으로 서명(정렬)하도록 먼저 설정해야 한다 — 안 하면 우리 메일이 거부된다.
+resource "aws_route53_record" "dmarc" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "_dmarc.${local.domain}"
+  type    = "TXT"
+  ttl     = 3600
+  records = ["v=DMARC1; p=reject; sp=reject"]
+}
