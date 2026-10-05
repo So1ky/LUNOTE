@@ -46,7 +46,7 @@ services:
     build: ../../apps/api # apps/api/Dockerfile — README의 가이드 보고 직접 작성
     restart: unless-stopped
     depends_on: [db, redis, minio]
-    command: sh -c "npx prisma migrate deploy && node dist/src/main.js"
+    command: sh -c "node_modules/.bin/prisma migrate deploy && node dist/src/main.js" # 이미지에 npm/npx 없음
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
