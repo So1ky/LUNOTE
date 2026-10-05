@@ -3,3 +3,9 @@ variable "enable_bastion" {
   type        = bool
   default     = false
 }
+
+variable "enable_nat_gateway" {
+  description = "NAT Gateway — 노드를 전부 내린 동안에만 false (scripts/infra-power.sh sleep). 노드가 있으면 반드시 true"
+  type        = bool
+  default     = true
+}

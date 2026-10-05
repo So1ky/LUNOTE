@@ -280,6 +280,11 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
     `/payments/portone/webhook`(발신 IP allowlist는 미적용 — 서명 검증 + 조회 교차검증으로 방어).
   - **권한**: API IRSA 롤 `lunote-api-{staging,prod}` — 자기 환경 첨부 버킷의 객체 Put/Get만.
   - 첫 이미지는 로컬 수동 빌드(arm64, git SHA 태그). CI 자동화는 A3. 신규 비용 ≈$30/월(ALB + Spot 노드 1대).
+- **출시 전 비용 절감 (2026-10-04)**: 실사용자가 생기기 전까지 작업하지 않는 시간에는
+  `scripts/infra-power.sh sleep`으로 Karpenter 노드·코어 노드그룹(0대)·NAT Gateway·RDS(정지)를 내리고
+  `wake`로 올린다(≈$100/월분 정지). EKS 컨트롤 플레인·ALB·ElastiCache는 정지 기능이 없거나 번거로워 유지.
+  노드 수(desired)와 RDS 기동/정지는 Terraform이 관리하지 않는 운영 상태라 CLI로 바꾸고, NAT는
+  `enable_nat_gateway` 변수로 Terraform이 만든다/지운다. **실결제가 시작되면 사용하지 않는다.**
 - **가용성 방침 (2026-09-22 SPOF 검토, 2026-10-04 개정)**: RDS는 **Single-AZ로 운영하다
   누적 실결제 10건 도달 시 Multi-AZ 전환** (`envs/prod/rds.tf`의 `multi_az` 속성 — 온라인 변경).
   데이터 유실 위험은 PITR(5분)로 Single-AZ에서도 동일, Multi-AZ가 더해주는 건 1~2분 자동
