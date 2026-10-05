@@ -56,3 +56,6 @@ export function AppIcon({ name, size, color }: AppIconProps) {
   }
   return ionicon;
 }
+
+const gateCheck: number = "type error";
+export { gateCheck };
