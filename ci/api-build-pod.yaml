@@ -12,7 +12,7 @@ metadata:
   annotations:
     karpenter.sh/do-not-disrupt: "true" # 빌드 중 노드 통합으로 Pod가 옮겨지지 않게
     # AWS 권한(IRSA)은 aws 컨테이너에만 넣는다 — npm·테스트·Dockerfile RUN이 도는 컨테이너는 ECR 권한이 없다
-    eks.amazonaws.com/skip-containers: jnlp,node,postgres,redis,s3mock,mailpit,buildkit,trivy
+    eks.amazonaws.com/skip-containers: jnlp,node,postgres,redis,s3mock,mailpit,buildkit,trivy,crane
 spec:
   serviceAccountName: jenkins-agent # IRSA — lunote/api ECR push만 (위 주석으로 aws 컨테이너에만 주입)
   nodeSelector:
@@ -109,6 +109,8 @@ spec:
         limits:
           memory: 128Mi
     # --- 이미지 빌드·스캔·push ---
+    # 한 번 빌드한 OCI 산출물(/image-out)을 trivy가 스캔하고 crane이 그대로 올린다 — 다시 빌드하지 않는다.
+    # /image-out은 이 세 컨테이너에만 붙인다. 작업 폴더에 두면 npm·테스트가 돈 컨테이너가 산출물을 바꿀 수 있다.
     # 특권 없이 동작하는 빌더. seccomp/AppArmor만 풀어 준다(사용자 네임스페이스 생성에 필요).
     - name: buildkit
       image: moby/buildkit:v0.33.1-rootless@sha256:f8a833b2de9d68e27f0815e4a737abdfaf8a2e4c615650557df11025101557b4
@@ -120,9 +122,6 @@ spec:
           type: Unconfined
         runAsUser: 1000
         runAsGroup: 1000
-      env:
-        - name: DOCKER_CONFIG
-          value: /docker-config
       resources:
         requests:
           cpu: 500m
@@ -132,8 +131,8 @@ spec:
       volumeMounts:
         - name: buildkit
           mountPath: /home/user/.local/share/buildkit
-        - name: docker-config
-          mountPath: /docker-config
+        - name: image-out
+          mountPath: /image-out
     - name: trivy
       image: aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
       command: ["sleep", "infinity"]
@@ -149,6 +148,35 @@ spec:
           memory: 512Mi
         limits:
           memory: 2Gi
+      volumeMounts:
+        - name: image-out
+          mountPath: /image-out
+          readOnly: true
+    # 스캔을 통과한 산출물을 ECR에 올린다. 셸이 필요해 debug 변형(busybox 포함)을 쓴다 — v0.22.1과 같은 빌드.
+    # ECR 토큰은 aws 컨테이너가 만든 /docker-config/config.json으로 받는다(이 컨테이너에는 AWS 권한이 없다).
+    - name: crane
+      image: gcr.io/go-containerregistry/crane:debug@sha256:e78770b31258a3846f878036d9c1f63fbe4c871f9f56990bf77fd95c013e3c1b
+      command: ["sleep", "infinity"]
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      env:
+        - name: HOME
+          value: /tmp
+        - name: DOCKER_CONFIG
+          value: /docker-config
+      resources:
+        requests:
+          cpu: 20m
+          memory: 64Mi
+        limits:
+          memory: 256Mi
+      volumeMounts:
+        - name: docker-config
+          mountPath: /docker-config
+        - name: image-out
+          mountPath: /image-out
+          readOnly: true
     # ECR 로그인 토큰 발급(IRSA)과 이미지 존재 확인
     - name: aws
       image: public.ecr.aws/aws-cli/aws-cli:2.37.9@sha256:92de75724b6a746951f0e8b915d86bbccd7cb55aff96cd0cb4f7017272160780
@@ -170,6 +198,8 @@ spec:
           mountPath: /docker-config
   volumes:
     - name: buildkit
+      emptyDir: {}
+    - name: image-out
       emptyDir: {}
     # ECR 토큰(12시간 유효)은 디스크가 아니라 메모리에만 둔다
     - name: docker-config

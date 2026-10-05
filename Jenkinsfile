@@ -191,11 +191,23 @@ pipeline {
           when { environment name: 'IMAGE_EXISTS', value: 'false' }
           steps {
             container('buildkit') {
-              sh '''
-                buildctl build --frontend dockerfile.v0 \
-                  --local context=apps/api --local dockerfile=apps/api \
-                  --output type=docker,name="$ECR_REGISTRY/$ECR_REPO:$TAG",dest="$WORKSPACE/image.tar"
-              '''
+              script {
+                // OCI 레이아웃으로 한 번만 빌드한다. 이 산출물을 스캔하고 그대로 올린다(다시 빌드하지 않는다).
+                // /image-out은 buildkit·trivy·crane만 보는 볼륨이다 — npm·테스트가 돈 컨테이너는 산출물을 건드릴 수 없다.
+                sh '''
+                  buildctl build --frontend dockerfile.v0 \
+                    --local context=apps/api --local dockerfile=apps/api \
+                    --output type=oci,dest=/image-out/image,tar=false
+                '''
+                // 스캔 전에 매니페스트 다이제스트를 확정해 둔다 — push는 이 다이제스트를 지정해서만 한다
+                env.IMAGE_DIGEST = sh(returnStdout: true, script: '''
+                  set -eu
+                  digests=$(grep -o '"digest":"sha256:[a-f0-9]\\{64\\}"' /image-out/image/index.json | cut -d'"' -f4)
+                  [ "$(echo "$digests" | grep -c .)" -eq 1 ] || { echo "index.json의 매니페스트가 1개가 아니다" >&2; exit 1; }
+                  echo "$digests"
+                ''').trim()
+                echo "빌드한 이미지 다이제스트: ${env.IMAGE_DIGEST}"
+              }
             }
           }
         }
@@ -205,9 +217,10 @@ pipeline {
           steps {
             container('trivy') {
               sh '''
-                trivy image --input "$WORKSPACE/image.tar" --scanners vuln \
+                # 캐시는 공유 작업 폴더 밖에 둔다 — 앞 단계의 외부 코드가 스캔 DB를 미리 심을 수 없게
+                trivy image --input /image-out/image --scanners vuln \
                   --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
-                  --no-progress --cache-dir "$WORKSPACE/.trivy-cache"
+                  --no-progress --cache-dir /tmp/.trivy-cache
               '''
             }
           }
@@ -223,12 +236,15 @@ pipeline {
                 printf '{"auths":{"%s":{"auth":"%s"}}}' "$ECR_REGISTRY" "$AUTH" > /docker-config/config.json
               '''
             }
-            container('buildkit') {
-              // 같은 데몬의 캐시를 쓰므로 다시 빌드하지 않고 올리기만 한다
+            // crane 이미지는 /bin/sh가 없다(busybox는 /busybox)
+            container(name: 'crane', shell: '/busybox/sh') {
+              // 스캔한 산출물을 변환 없이, 빌드 때 기록한 다이제스트를 지정해 올린다. 내용이 그 다이제스트와 다르면
+              // 레지스트리가 거부한다(DIGEST_INVALID). 태그는 그 다이제스트에만 붙이므로, 스캔한 것과 다른 이미지가
+              // 태그를 얻는 경로가 없다. 태그 없이 남은 이미지는 ECR 수명 주기 정책이 하루 뒤 지운다.
               sh '''
-                buildctl build --frontend dockerfile.v0 \
-                  --local context=apps/api --local dockerfile=apps/api \
-                  --output type=image,name="$ECR_REGISTRY/$ECR_REPO:$TAG",push=true
+                set -eu
+                crane push /image-out/image "$ECR_REGISTRY/$ECR_REPO@$IMAGE_DIGEST"
+                crane tag "$ECR_REGISTRY/$ECR_REPO@$IMAGE_DIGEST" "$TAG"
               '''
             }
           }
