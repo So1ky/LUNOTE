@@ -6,7 +6,7 @@ metadata:
   namespace: jenkins
 spec:
   hard:
-    # 컨트롤러(1Gi, limit 1.5Gi) + 빌드 Pod 1개(requests ≈5.7Gi, limits ≈11.5Gi) + 변경 확인 Pod
+    # 컨트롤러(1Gi, limit 1.5Gi) + 빌드 Pod 1개(requests ≈5.7Gi, limits ≈11.7Gi) + 변경 확인 Pod
     requests.cpu: "4"
     requests.memory: 10Gi
     limits.memory: 20Gi

@@ -34,8 +34,8 @@ Trivy 스캔 → ECR push를 하고, `workloads/api/overlays/staging/kustomizati
 (`chore(deploy): staging API 이미지 <SHA>`, 작성자 lunote-ci). ArgoCD가 그 커밋을 보고 ExternalSecret →
 마이그레이션 Job → Deployment 순으로 동기화한다. 마이그레이션이 실패하면 롤아웃하지 않는다.
 
-파이프라인은 저장소 루트 `Jenkinsfile`, 빌드 Pod는 `ci/api-build-pod.yaml`. 어느 단계든 실패하면 이미지는
-ECR에 올라가지 않는다. `apps/api/` 밖만 바뀐 커밋은 "변경 확인" 단계에서 끝난다.
+파이프라인은 저장소 루트 `Jenkinsfile`, 빌드 Pod는 `ci/api-build-pod.yaml`. 한 번 빌드한 산출물을 스캔하고 그대로
+올리며, 어느 단계든 실패하면 ECR에 그 SHA 태그가 붙지 않는다. `apps/api/` 밖만 바뀐 커밋은 "변경 확인" 단계에서 끝난다.
 
 ### prod 승격 (Phase 5-1에서 overlay 추가 후)
 
