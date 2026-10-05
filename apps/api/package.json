@@ -43,7 +43,7 @@
     "dotenv": "^17.4.2",
     "helmet": "^8.3.0",
     "nestjs-pino": "^4.6.1",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^10.0.14",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pino-http": "^11.0.0",
@@ -78,6 +78,12 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.0",
+    "find-my-way": "^9.7.0",
+    "multer": "^2.4.0",
+    "mysql2": "^3.22.0"
   },
   "jest": {
     "moduleFileExtensions": [
