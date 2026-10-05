@@ -8,7 +8,14 @@ import {
 } from 'class-validator';
 
 /** 앱이 지원하는 언어 (표시 문구 i18n은 별도 트랙) */
-export const SUPPORTED_LANGUAGES = ['ko', 'en', 'ja', 'zh', 'es', 'de'] as const;
+export const SUPPORTED_LANGUAGES = [
+  'ko',
+  'en',
+  'ja',
+  'zh',
+  'es',
+  'de',
+] as const;
 
 export class UpdateMeDto {
   @ApiPropertyOptional({ example: 'Mina', maxLength: 50 })
