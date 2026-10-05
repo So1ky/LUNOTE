@@ -33,6 +33,8 @@ const ICONS = {
   key: { sf: 'key', ion: 'key-outline' },
   checkCircle: { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
   mailUnread: { sf: 'envelope.badge', ion: 'mail-unread-outline' },
+  warning: { sf: 'exclamationmark.triangle', ion: 'warning-outline' },
+  clock: { sf: 'clock', ion: 'time-outline' },
 } as const;
 
 export type AppIconName = keyof typeof ICONS;

@@ -8,7 +8,7 @@
 ## 확정 스택 (대안 제안 불필요)
 
 NestJS + Prisma + PostgreSQL, Redis/BullMQ, Passport / Expo RN /
-EKS(Spot+Karpenter) + Terraform + Jenkins/ArgoCD + Prometheus·Grafana·Loki / PortOne
+EKS(Spot+Karpenter) + Terraform + Jenkins/ArgoCD(PR 검사는 GitHub Actions) + Prometheus·Grafana·Loki / PortOne
 infra/k8s/가 ArgoCD GitOps 소스다.
 
 **현재 배포 환경은 staging(`api-staging.lunoteapp.com`, EKS)뿐이다.** prod는 아직 미구축.

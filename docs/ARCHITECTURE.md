@@ -25,7 +25,7 @@
 | 인증 | Passport — Google/Apple OAuth **+ 이메일/비밀번호** + JWT | 비밀번호는 argon2 해싱, 재설정은 이메일 링크 방식 |
 | 결제 | PortOne (페이팔 SPB) + 수동 계좌이체 | 웹훅 서명 검증 + 멱등성 필수, 계좌이체는 관리자 확인 흐름 |
 | 컨테이너 오케스트레이션 | AWS EKS | 코어 노드그룹 On-Demand + 워커 Spot(Karpenter) |
-| CI/CD | Jenkins(동적 에이전트 Pod) + ArgoCD | GitOps 무중단 배포 |
+| CI/CD | Jenkins(동적 에이전트 Pod) + ArgoCD, PR 검사는 GitHub Actions | GitOps 무중단 배포. PR 검사에는 배포 권한이 없다 |
 | IaC | Terraform | 콘솔 수동 조작 금지 |
 | 관측성 | Prometheus + Grafana + Loki + Alertmanager | kube-prometheus-stack Helm 차트 |
 | 시크릿 | AWS Secrets Manager + External Secrets Operator | 앱 Pod에는 IRSA로 최소권한 부여 |
@@ -162,6 +162,7 @@ graph TB
 ## 9. CI/CD 파이프라인
 
 ```
+PR(develop·main 대상) → GitHub Actions: 세 앱 lint·타입 검사 + api 단위 테스트 (시크릿·배포 권한 없음)
 develop push → GitHub 웹훅 → Jenkins (웹훅 경로만 공개: GitHub 발신 IP + HMAC 서명 검증)
   → 에이전트 Pod(Spot): lint → test → e2e → BuildKit rootless 빌드 → Trivy 스캔 → ECR push (git SHA)
   → overlays/staging의 newTag 커밋 (deploy key)
@@ -175,6 +176,10 @@ prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 태
   돌지 않는 전용 최소 Pod에서만 쓰고, 빌드 Pod에는 내려보내지 않는다. ECR 권한(IRSA)도 빌드 Pod의 aws 컨테이너에만.
 - Jenkins 에이전트는 상시 띄우지 않고 빌드 시에만 Pod로 생성 (Kubernetes 플러그인).
 - `apps/api/`가 바뀐 커밋만 이미지를 만든다. fork PR은 빌드하지 않는다(public 저장소).
+- **PR 검사는 GitHub Actions (2026-10-05 결정)**: public 저장소라 fork PR의 코드를 Jenkins 빌드 Pod(ECR 권한)에서
+  실행하지 않는다. Actions는 fork PR을 시크릿 없이 격리 실행한다. 역할 분리 — PR 검사 = Actions(`contents: read`만),
+  배포 파이프라인 = Jenkins + ArgoCD. `pull_request_target`은 쓰지 않는다.
+- Actions의 서드파티 액션은 태그가 아니라 **커밋 SHA로 고정**한다(태그는 변조될 수 있다 — 2026-03 trivy-action 사고).
 - 이미지 태그는 git SHA 기반. `latest` 태그 사용 금지 (롤백 가능성 확보).
 
 ## 10. 비용 전략
