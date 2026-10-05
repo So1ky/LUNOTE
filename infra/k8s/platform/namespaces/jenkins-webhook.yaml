@@ -1,0 +1,66 @@
+# GitHub 웹훅 수신 — Jenkins에서 인터넷에 열리는 유일한 경로. UI·API는 열지 않는다(port-forward).
+# 공유 ALB(group lunote)에 "호스트 + 정확한 경로 + GitHub 발신 IP" 규칙만 추가한다.
+# 요청은 Jenkins가 HMAC-SHA256 서명까지 검증한다(platform/jenkins/values.yaml의 hookSecretConfigs).
+#
+# ALB 규칙당 조건 값이 5개까지라(호스트 1 + 경로 1 + IP 3) GitHub IPv4 대역 4개를 Ingress 2개로 나눈다.
+# 대역 원본: https://api.github.com/meta 의 hooks. 바뀌면 여기를 고친다
+# (증상: 저장소 Settings → Webhooks → Recent Deliveries에 404).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: github-webhook-a
+  namespace: jenkins
+  annotations:
+    alb.ingress.kubernetes.io/group.name: lunote
+    alb.ingress.kubernetes.io/load-balancer-name: lunote
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/healthcheck-path: /login
+    alb.ingress.kubernetes.io/conditions.jenkins: >-
+      [{"field":"source-ip","sourceIpConfig":{"values":["192.30.252.0/22","185.199.108.0/22","140.82.112.0/20"]}}]
+spec:
+  ingressClassName: alb
+  rules:
+    - host: ci-hooks.lunoteapp.com
+      http:
+        paths:
+          - path: /github-webhook/
+            pathType: Exact
+            backend:
+              service:
+                name: jenkins
+                port:
+                  number: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: github-webhook-b
+  namespace: jenkins
+  annotations:
+    alb.ingress.kubernetes.io/group.name: lunote
+    alb.ingress.kubernetes.io/load-balancer-name: lunote
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/healthcheck-path: /login
+    alb.ingress.kubernetes.io/conditions.jenkins: >-
+      [{"field":"source-ip","sourceIpConfig":{"values":["143.55.64.0/20"]}}]
+spec:
+  ingressClassName: alb
+  rules:
+    - host: ci-hooks.lunoteapp.com
+      http:
+        paths:
+          - path: /github-webhook/
+            pathType: Exact
+            backend:
+              service:
+                name: jenkins
+                port:
+                  number: 8080

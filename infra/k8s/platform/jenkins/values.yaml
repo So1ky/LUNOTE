@@ -1,0 +1,105 @@
+# jenkins 차트 5.9.65 (Jenkins 2.568.3 LTS) — ArgoCD Application(infra/k8s/apps/jenkins.yaml)이 관리.
+# 설정은 전부 여기(JCasC + Job DSL)에 둔다. UI에서 바꾼 설정은 재시작 시 사라진다.
+# UI는 외부에 열지 않는다 — 접속은 kubectl port-forward (infra/k8s/README.md).
+# 인터넷에 열리는 것은 웹훅 경로 하나뿐이며 차트가 아니라 platform/namespaces/jenkins-webhook.yaml이 정의한다.
+# 시크릿·네임스페이스·에이전트 SA·NetworkPolicy는 infra/k8s/platform/namespaces/jenkins*.yaml.
+controller:
+  # 빌드는 에이전트 Pod만 한다 — 컨트롤러에서 빌드 코드가 실행되지 않게 0
+  numExecutors: 0
+  # helm test용 Pod — ArgoCD 관리에서는 쓰지 않고, 기본 거부 네임스페이스에서 실패만 한다
+  testEnabled: false
+  admin:
+    createSecret: false
+    existingSecret: jenkins-secrets
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "2" # 차트 기본값을 명시
+      memory: 1536Mi # 코어 노드 1대(4GiB)에 맞춘 상한 — 실측 근거는 ARCHITECTURE.md §12
+  javaOpts: "-XX:MaxRAMPercentage=60"
+  # 플랫폼 컴포넌트는 코어 노드그룹에만 — Karpenter(Spot) 노드는 회수 대상이라 회피한다
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
+  # 차트 기본 4종(kubernetes, workflow-aggregator, git, configuration-as-code)에 더한다
+  # 하위 의존성을 재시작 때마다 최신으로 다시 받지 않는다 — 고정한 플러그인이 요구하는 최소 버전을 쓴다
+  installLatestPlugins: false
+  additionalPlugins:
+    - job-dsl:3732.v9a_c49a_61a_313
+    - credentials-binding:728.v902a_273b_8947
+    - ssh-credentials:372.va_250881b_08cd
+    - pipeline-stage-view:2.41
+    - github:1.47.0 # 웹훅 수신(/github-webhook/)과 서명 검증
+    - plain-credentials:199.v9f8e1f741799
+  # JCasC에서 ${jenkins-secrets-<키>}로 참조된다
+  additionalExistingSecrets:
+    - name: jenkins-secrets
+      keyName: deploy-key
+    - name: jenkins-secrets
+      keyName: webhook-secret
+  JCasC:
+    configScripts:
+      credentials: |
+        credentials:
+          system:
+            domainCredentials:
+              - credentials:
+                  - basicSSHUserPrivateKey:
+                      scope: GLOBAL
+                      id: github-deploy-key
+                      username: git
+                      description: "So1ky/LUNOTE deploy key — staging 태그 커밋 push 전용"
+                      privateKeySource:
+                        directEntry:
+                          privateKey: "${jenkins-secrets-deploy-key}"
+                  - string:
+                      scope: GLOBAL
+                      id: github-webhook-secret
+                      description: "GitHub 웹훅 HMAC 서명 검증용 공유 시크릿"
+                      secret: "${jenkins-secrets-webhook-secret}"
+      # 서명이 없거나 틀린 웹훅은 거부한다. 훅 자동 관리는 쓰지 않는다(GitHub API 토큰을 주지 않음)
+      github: |
+        unclassified:
+          gitHubPluginConfig:
+            hookSecretConfigs:
+              - credentialsId: github-webhook-secret
+      api-job: |
+        jobs:
+          - script: |
+              pipelineJob('api') {
+                description('develop의 apps/api 변경을 검증·빌드해 staging 이미지 태그를 갱신한다. 정의: 저장소 루트 Jenkinsfile')
+                parameters {
+                  booleanParam('FORCE_BUILD', false, 'apps/api 변경이 없어도 빌드한다 (파이프라인 자체를 고쳤을 때)')
+                }
+                properties {
+                  disableConcurrentBuilds()
+                  pipelineTriggers {
+                    triggers {
+                      githubPush()
+                    }
+                  }
+                }
+                definition {
+                  cpsScm {
+                    scm {
+                      git {
+                        remote { url('https://github.com/So1ky/LUNOTE.git') }
+                        branch('*/develop')
+                      }
+                    }
+                    scriptPath('Jenkinsfile')
+                    lightweight(true)
+                  }
+                }
+              }
+agent:
+  # 에이전트가 컨트롤러 8080에 WebSocket으로 붙는다 — JNLP 50000 포트를 쓰지 않는다
+  websocket: true
+persistence:
+  size: 8Gi # 기본 StorageClass gp3(암호화). 빌드 기록·플러그인 보관

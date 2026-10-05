@@ -162,13 +162,19 @@ graph TB
 ## 9. CI/CD 파이프라인
 
 ```
-git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
-        → 매니페스트 레포의 이미지 태그 업데이트 (커밋)
-        → ArgoCD가 감지 → EKS에 동기화 (RollingUpdate 무중단)
+develop push → GitHub 웹훅 → Jenkins (웹훅 경로만 공개: GitHub 발신 IP + HMAC 서명 검증)
+  → 에이전트 Pod(Spot): lint → test → e2e → BuildKit rootless 빌드 → Trivy 스캔 → ECR push (git SHA)
+  → overlays/staging의 newTag 커밋 (deploy key)
+  → ArgoCD가 감지 → EKS에 동기화 (RollingUpdate 무중단)
+prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 태그 커밋 revert.
 ```
 
 - 앱 코드 레포와 K8s 매니페스트(GitOps) 디렉토리를 분리: `infra/k8s/`가 ArgoCD의 소스.
+- Jenkins는 git에 태그 커밋만 남기고 배포는 ArgoCD만 한다. Jenkins에는 클러스터 자격 증명이 없다. 단, develop에
+  쓸 수 있는 deploy key는 ArgoCD를 거치는 **간접 배포 권한**이다 — 그래서 키는 외부 코드(npm 의존성, Dockerfile)가
+  돌지 않는 전용 최소 Pod에서만 쓰고, 빌드 Pod에는 내려보내지 않는다. ECR 권한(IRSA)도 빌드 Pod의 aws 컨테이너에만.
 - Jenkins 에이전트는 상시 띄우지 않고 빌드 시에만 Pod로 생성 (Kubernetes 플러그인).
+- `apps/api/`가 바뀐 커밋만 이미지를 만든다. fork PR은 빌드하지 않는다(public 저장소).
 - 이미지 태그는 git SHA 기반. `latest` 태그 사용 금지 (롤백 가능성 확보).
 
 ## 10. 비용 전략
@@ -257,7 +263,7 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
   **환경별 IRSA 롤**(`lunote-eso-{staging,prod}` — `lunote/<env>/*` + `lunote/shared/redis` 읽기 전용)을
   맡는다. 네임스페이스 `SecretStore`만 쓰므로 staging에서 prod 시크릿은 읽을 수 없다(AccessDenied 검증).
   Redis 논리 DB: prod `/0`, staging `/1`. 코어 노드는 1대 유지(설치 후 메모리 requests ≈55%) —
-  Jenkins·Prometheus 도입 시 재측정.
+  Jenkins 도입 시 실측으로 재확인(아래 CI 항목), Prometheus 도입 시 재측정.
 - **staging 배포 (2026-10-04)**: `https://api-staging.lunoteapp.com`. 워크로드는
   `infra/k8s/workloads/api/`의 Kustomize base + `overlays/staging`(prod overlay는 prod 배포 때 추가),
   ArgoCD Application `api-staging`이 동기화한다(워크로드 앱은 prune 켬 — 해시 ConfigMap 정리).
@@ -280,6 +286,16 @@ git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
     `/payments/portone/webhook`(발신 IP allowlist는 미적용 — 서명 검증 + 조회 교차검증으로 방어).
   - **권한**: API IRSA 롤 `lunote-api-{staging,prod}` — 자기 환경 첨부 버킷의 객체 Put/Get만.
   - 첫 이미지는 로컬 수동 빌드(arm64, git SHA 태그). CI 자동화는 A3. 신규 비용 ≈$30/월(ALB + Spot 노드 1대).
+- **CI (2026-10-05 결정)**: Jenkins(차트 5.9.65) 컨트롤러 1개를 코어 노드에 둔다. **코어 노드는 1대 유지** —
+  실측(설치 전 노드 실사용 1447Mi/3.8GiB, 설치·빌드 후 가용 1341Mi)상 컨트롤러(requests 1Gi, limit 1.5Gi)가
+  들어간다. 단 스케줄링 기준인 requests는 2964Mi/3288Mi(90%)라 남은 예약 여유는 ≈320Mi — 코어 노드에 컴포넌트를
+  더 올리려면 증설이 먼저다. t4g는 가격이 메모리에
+  정비례해 scale up(t4g.large)과 2대 증설의 비용이 같으므로(≈+$30/월) 증설은 Phase 5로 미룬다. 설정은 JCasC + Job DSL로 `infra/k8s/platform/jenkins/values.yaml`에 둔다.
+  트리거는 **GitHub 웹훅** — 공유 ALB에 `ci-hooks.lunoteapp.com/github-webhook/` 규칙 하나만 열고(GitHub 발신
+  IP 조건 + HMAC-SHA256 서명 검증), UI는 노출하지 않는다(port-forward). 빌더는 **BuildKit rootless**
+  (기존 구상 Kaniko는 2025-06 아카이브). GitHub 쓰기는 deploy key(태그 커밋 전용), ECR push는 에이전트 SA의
+  IRSA(`lunote-jenkins-agent`). 시크릿은 `lunote/shared/jenkins` → ESO(`lunote-eso-jenkins`).
+  e2e 의존 서비스는 빌드 Pod 사이드카(S3는 S3Mock — MinIO 공개 이미지 배포 중단).
 - **출시 전 비용 절감 (2026-10-04)**: 실사용자가 생기기 전까지 작업하지 않는 시간에는
   `scripts/infra-power.sh sleep`으로 Karpenter 노드·코어 노드그룹(0대)·NAT Gateway·RDS(정지)를 내리고
   `wake`로 올린다(≈$100/월분 정지). EKS 컨트롤 플레인·ALB·ElastiCache는 정지 기능이 없거나 번거로워 유지.

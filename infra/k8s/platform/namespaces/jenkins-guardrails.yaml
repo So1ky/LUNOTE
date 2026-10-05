@@ -1,0 +1,120 @@
+# jenkins 네임스페이스 가드레일 — 빌드가 클러스터 자원을 독점하지 못하게 하고, 통신은 기본 거부.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute
+  namespace: jenkins
+spec:
+  hard:
+    # 컨트롤러(1Gi, limit 1.5Gi) + 빌드 Pod 1개(requests ≈5.7Gi, limits ≈11.5Gi) + 변경 확인 Pod
+    requests.cpu: "4"
+    requests.memory: 10Gi
+    limits.memory: 20Gi
+    pods: "10"
+---
+# requests/limits를 빠뜨린 컨테이너의 기본값 (Quota가 limits.memory를 요구하므로 필수)
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: jenkins
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      default:
+        memory: 512Mi
+---
+# 기본 거부 — 허용은 아래 정책이 명시한다
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: jenkins
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# DNS는 모든 파드에 허용
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: jenkins
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# 컨트롤러 — 들어오는 것은 에이전트의 WebSocket과 ALB(웹훅 경로)뿐. UI는 port-forward.
+# ALB는 "호스트 + /github-webhook/ + GitHub 발신 IP" 규칙만 전달한다(jenkins-webhook.yaml) — 여기서는 ALB 서브넷을 연다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jenkins-controller
+  namespace: jenkins
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: jenkins-controller
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: jenkins-agent
+        # ALB(퍼블릭 서브넷) — target-type ip라 ALB가 파드 IP로 직접 보낸다. 헬스체크도 여기서 온다
+        - ipBlock:
+            cidr: 10.0.0.0/20
+        - ipBlock:
+            cidr: 10.0.16.0/20
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # K8s API(에이전트 Pod 생성), GitHub 저장소 조회, 플러그인 내려받기
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# 에이전트 — 컨트롤러 접속, 외부 HTTPS(GitHub·npm·ECR·STS·Docker Hub·Trivy DB), GitHub SSH push
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jenkins-agent
+  namespace: jenkins
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: jenkins-agent
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: jenkins-controller
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 22

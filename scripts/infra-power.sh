@@ -54,6 +54,8 @@ status() {
   echo "노드: $(node_count)대 (Karpenter 인스턴스 $(karpenter_instances)대)"
   echo "NAT Gateway: $(nat_count)개"
   echo "RDS: $(rds_status)"
+  # Jenkins 디스크는 한 AZ에 묶여 있다 — 코어 노드가 다른 AZ에 뜨면 Pending으로 남는다 (infra/k8s/README.md)
+  echo "Jenkins: $(k get pod jenkins-0 -n jenkins -o jsonpath='{.status.phase}' 2>/dev/null || echo 없음)"
 }
 
 sleep_infra() {
@@ -66,6 +68,10 @@ sleep_infra() {
       k scale deployment --all -n "$ns" --replicas=0
     fi
   done
+  # Jenkins도 내린다 — 내리는 도중 웹훅이 오면 빌드 Pod가 새 Spot 노드를 띄운다 (wake 때 ArgoCD selfHeal이 복원)
+  if [ -n "$(k get statefulset jenkins -n jenkins -o name --ignore-not-found)" ]; then
+    k scale statefulset jenkins -n jenkins --replicas=0
+  fi
   # 3. Karpenter 노드를 먼저 지운다 — 코어 노드를 먼저 내리면 Karpenter가 죽어 Spot 노드가 주인 없이 남는다
   k delete nodeclaims --all --wait=true --timeout=10m
   wait_for "Karpenter 인스턴스 종료" no_karpenter_instances
