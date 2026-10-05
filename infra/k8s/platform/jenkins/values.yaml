@@ -54,7 +54,7 @@ controller:
                       scope: GLOBAL
                       id: github-deploy-key
                       username: git
-                      description: "So1ky/LUNOTE deploy key — staging 태그 커밋 push 전용"
+                      description: "So1ky/lunote-deploy deploy key — 배포 저장소 push 전용 (앱 저장소에는 등록하지 않는다)"
                       privateKeySource:
                         directEntry:
                           privateKey: "${jenkins-secrets-deploy-key}"

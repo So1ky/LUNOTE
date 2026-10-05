@@ -3,7 +3,6 @@ kind: Kustomization
 resources:
   - serviceaccount.yaml
   - deployment.yaml
-  - service.yaml
   - migrate-job.yaml
   - networkpolicy.yaml
 configMapGenerator:

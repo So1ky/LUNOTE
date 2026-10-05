@@ -1,0 +1,17 @@
+# staging API의 Service. 워크로드 오버레이가 아니라 여기(develop이 관리하는 namespaces 앱)에 둔다 —
+# 배포 저장소(CI의 deploy key로 쓸 수 있다)에서 Service를 만들 수 있으면 externalIPs로 다른 네임스페이스의
+# 트래픽을 가로채거나(kube-proxy가 모든 노드에 규칙을 깐다) type=LoadBalancer로 NLB를 만들 수 있다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: staging
+  labels:
+    app.kubernetes.io/part-of: api
+spec:
+  selector:
+    app.kubernetes.io/name: api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
