@@ -86,7 +86,10 @@ describe('Profile settings (e2e)', () => {
     await request(app.getHttpServer())
       .post('/auth/change-password')
       .set('Authorization', `Bearer ${token}`)
-      .send({ currentPassword: 'wrong-password', newPassword: 'next-password-1' })
+      .send({
+        currentPassword: 'wrong-password',
+        newPassword: 'next-password-1',
+      })
       .expect(400);
 
     await request(app.getHttpServer())

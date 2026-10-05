@@ -36,7 +36,9 @@ export class MailService {
   async send(to: string, subject: string, text: string) {
     if (!this.transporter) {
       // 제목·본문은 기록하지 않는다 — 인증 코드 등 민감정보 포함 가능 (로그 규칙)
-      this.logger.log(`[메일 폴백] to=${maskEmail(to)} (SMTP 미설정, 발송 생략)`);
+      this.logger.log(
+        `[메일 폴백] to=${maskEmail(to)} (SMTP 미설정, 발송 생략)`,
+      );
       return;
     }
     await this.transporter.sendMail({ from: this.from, to, subject, text });

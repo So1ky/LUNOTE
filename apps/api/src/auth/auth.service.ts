@@ -126,7 +126,8 @@ export class AuthService {
     }
 
     if (user.verificationCodeExpiresAt) {
-      const lastSentAt = user.verificationCodeExpiresAt.getTime() - this.CODE_TTL_MS;
+      const lastSentAt =
+        user.verificationCodeExpiresAt.getTime() - this.CODE_TTL_MS;
       if (Date.now() - lastSentAt < this.RESEND_COOLDOWN_MS) {
         throw new BadRequestException('Please wait before requesting again');
       }

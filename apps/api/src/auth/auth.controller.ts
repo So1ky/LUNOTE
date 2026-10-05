@@ -63,7 +63,9 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
-  @ApiOperation({ summary: '토큰 갱신 — refresh token 회전 (재사용 탐지 시 전 세션 폐기)' })
+  @ApiOperation({
+    summary: '토큰 갱신 — refresh token 회전 (재사용 탐지 시 전 세션 폐기)',
+  })
   @ApiResponse({ status: 200, description: '새 accessToken + refreshToken 쌍' })
   @ApiResponse({ status: 401, description: '무효/만료/재사용된 refresh token' })
   refresh(@Body() dto: RefreshDto) {
@@ -80,7 +82,9 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '내 정보 조회 (JWT 필요) — 아바타 URL 등 프로필 포함' })
+  @ApiOperation({
+    summary: '내 정보 조회 (JWT 필요) — 아바타 URL 등 프로필 포함',
+  })
   @ApiResponse({ status: 401, description: '토큰 없음/무효' })
   me(@CurrentUser() user: AuthUser) {
     return this.users.getMe(user.id);
@@ -93,8 +97,15 @@ export class AuthController {
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @ApiOperation({ summary: '비밀번호 변경 — 현재 비밀번호 확인 후' })
   @ApiResponse({ status: 400, description: '현재 비밀번호 불일치' })
-  changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
-    return this.auth.changePassword(user.id, dto.currentPassword, dto.newPassword);
+  changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.auth.changePassword(
+      user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 
   @Post('verify-email')
@@ -123,7 +134,10 @@ export class AuthController {
   @HttpCode(200)
   @Throttle({ default: { ttl: 3_600_000, limit: 5 } })
   @ApiOperation({ summary: '비밀번호 재설정 코드 발송 (IP당 1시간 5회)' })
-  @ApiResponse({ status: 200, description: '항상 { sent: true } (존재 비노출)' })
+  @ApiResponse({
+    status: 200,
+    description: '항상 { sent: true } (존재 비노출)',
+  })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.auth.forgotPassword(dto.email);
   }
