@@ -165,15 +165,31 @@ graph TB
 PR(develop·main 대상) → GitHub Actions: 세 앱 lint·타입 검사 + api 단위 테스트 (시크릿·배포 권한 없음)
 develop push → GitHub 웹훅 → Jenkins (웹훅 경로만 공개: GitHub 발신 IP + HMAC 서명 검증)
   → 에이전트 Pod(Spot): lint → test → e2e → BuildKit rootless 빌드 → Trivy 스캔 → ECR push (git SHA)
-  → overlays/staging의 newTag 커밋 (deploy key)
+  → 배포 저장소(So1ky/lunote-deploy)에 커밋: 그 커밋의 workloads/api 매니페스트 + newTag (deploy key)
   → ArgoCD가 감지 → EKS에 동기화 (RollingUpdate 무중단)
-prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 태그 커밋 revert.
+prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 배포 저장소의 그 커밋 revert.
 ```
 
 - 앱 코드 레포와 K8s 매니페스트(GitOps) 디렉토리를 분리: `infra/k8s/`가 ArgoCD의 소스.
-- Jenkins는 git에 태그 커밋만 남기고 배포는 ArgoCD만 한다. Jenkins에는 클러스터 자격 증명이 없다. 단, develop에
-  쓸 수 있는 deploy key는 ArgoCD를 거치는 **간접 배포 권한**이다 — 그래서 키는 외부 코드(npm 의존성, Dockerfile)가
+- Jenkins는 git에 태그 커밋만 남기고 배포는 ArgoCD만 한다. Jenkins에는 클러스터 자격 증명이 없다. 단, deploy key는
+  ArgoCD를 거치는 **간접 배포 권한**이다 — 그래서 키는 외부 코드(npm 의존성, Dockerfile)가
   돌지 않는 전용 최소 Pod에서만 쓰고, 빌드 Pod에는 내려보내지 않는다. ECR 권한(IRSA)도 빌드 Pod의 aws 컨테이너에만.
+- **deploy key가 닿는 범위 = staging 네임스페이스 (2026-10-05 결정)**: CI의 deploy key는 배포 전용 저장소
+  `So1ky/lunote-deploy`(public, Actions 끔)에만 등록한다 — 이 저장소(앱·플랫폼 매니페스트)에는 쓸 수 없다.
+  CI는 빌드한 커밋의 `infra/k8s/workloads/api`를 배포 저장소에 통째로 복사하고 `newTag`만 바꿔 커밋한다(병합 없음,
+  매니페스트만 바뀐 커밋은 이미지 태그를 유지한 채 옮긴다). 이 저장소의 `newTag`는 자리표시다. 울타리는 세 겹:
+  ① `api-staging` 앱만 배포 저장소를 보며 AppProject `staging-api`(staging 네임스페이스, 오버레이가 만드는 리소스
+  종류만, 클러스터 범위 금지)에 묶인다. `root`와 플랫폼 앱은 develop(PR 필수 + PR 검사 3종 필수)을 본다.
+  ② staging 네임스페이스는 Pod Security `restricted` — 프로젝트는 리소스의 종류만 막고 Pod의 내용(hostPath,
+  privileged)은 못 막기 때문이다. ③ staging API의 Service와 Ingress는 배포 저장소가 아니라 `namespaces` 앱에 두고
+  프로젝트 허용 목록에서 뺀다 — Service의 `externalIPs`(다른 네임스페이스의 트래픽 가로채기)·type=LoadBalancer,
+  Ingress의 공유 ALB 규칙으로 네임스페이스 밖에 닿을 수 없게. 같은 저장소의 배포 브랜치 방식은 버렸다: 그 브랜치에
+  워크플로 파일을 넣으면 GitHub Actions가 실행돼 저장소 쓰기 토큰을 얻는다.
+  **prod 앱은 CI 키로 쓸 수 있는 저장소를 읽지 않는다** — prod 승격은 사람이 머지하는 PR로만 한다(CI가 배포 저장소에
+  복사하는 `workloads/api`에 prod 오버레이가 섞여 있어도 prod 앱의 소스가 아니다).
+  남는 위험: staging 안에서는 (restricted 범위의) 임의 워크로드를 띄울 수 있고 staging 시크릿·공용 Redis 시크릿에 닿는다.
+  `nodeName`·높은 PriorityClass로 코어 노드의 플랫폼 Pod를 압박할 수 있다(가용성). Jenkins 컨트롤러가 탈취되면 키는
+  여전히 샌다 — 줄어든 것은 키로 할 수 있는 일의 범위다.
 - Jenkins 에이전트는 상시 띄우지 않고 빌드 시에만 Pod로 생성 (Kubernetes 플러그인).
 - `apps/api/`가 바뀐 커밋만 이미지를 만든다. fork PR은 빌드하지 않는다(public 저장소).
 - **PR 검사는 GitHub Actions (2026-10-05 결정)**: public 저장소라 fork PR의 코드를 Jenkins 빌드 Pod(ECR 권한)에서
@@ -303,7 +319,7 @@ prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 태
   정비례해 scale up(t4g.large)과 2대 증설의 비용이 같으므로(≈+$30/월) 증설은 Phase 5로 미룬다. 설정은 JCasC + Job DSL로 `infra/k8s/platform/jenkins/values.yaml`에 둔다.
   트리거는 **GitHub 웹훅** — 공유 ALB에 `ci-hooks.lunoteapp.com/github-webhook/` 규칙 하나만 열고(GitHub 발신
   IP 조건 + HMAC-SHA256 서명 검증), UI는 노출하지 않는다(port-forward). 빌더는 **BuildKit rootless**
-  (기존 구상 Kaniko는 2025-06 아카이브). GitHub 쓰기는 deploy key(태그 커밋 전용), ECR push는 에이전트 SA의
+  (기존 구상 Kaniko는 2025-06 아카이브). GitHub 쓰기는 deploy key(배포 저장소 `So1ky/lunote-deploy` 전용), ECR push는 에이전트 SA의
   IRSA(`lunote-jenkins-agent`). 시크릿은 `lunote/shared/jenkins` → ESO(`lunote-eso-jenkins`).
   e2e 의존 서비스는 빌드 Pod 사이드카(S3는 S3Mock — MinIO 공개 이미지 배포 중단).
 - **코어 노드그룹 AZ 고정 (2026-10-05 결정)**: 코어 노드그룹은 `ap-northeast-2c` 서브넷 하나에만 둔다.
