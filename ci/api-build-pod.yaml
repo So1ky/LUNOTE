@@ -1,5 +1,8 @@
 # API 빌드 에이전트 Pod — Jenkinsfile이 빌드마다 하나 띄우고 끝나면 지운다.
 # 모든 컨테이너가 작업 폴더(/home/jenkins/agent)와 localhost를 공유한다.
+# 이미지는 태그가 아니라 다이제스트(@sha256)로 고정한다 — 태그는 배포자가 다른 내용으로 바꿀 수 있고(2026-03 Trivy
+# 공급망 사고), 이 Pod의 컨테이너는 ECR push 권한을 갖는다. 버전을 올릴 때는 다이제스트도 함께 바꾼다:
+#   docker buildx imagetools inspect <이미지:태그> --format '{{.Manifest.Digest}}'
 apiVersion: v1
 kind: Pod
 metadata:
@@ -16,7 +19,7 @@ spec:
   containers:
     # Jenkins 컨트롤러와 통신 + git 작업
     - name: jnlp
-      image: jenkins/inbound-agent:3391.va_37fa_a_305d6d-4-jdk21
+      image: jenkins/inbound-agent:3391.va_37fa_a_305d6d-4-jdk21@sha256:c5d50ca09a7de45999983c69e0527499ca667efe00a85cf1ce5ed968b5b21719
       resources:
         requests:
           cpu: 100m
@@ -25,7 +28,7 @@ spec:
           memory: 512Mi
     # lint · 단위 테스트 · e2e
     - name: node
-      image: node:22.23.3-alpine
+      image: node:22.23.3-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
       command: ["sleep", "infinity"]
       securityContext:
         runAsUser: 1000
@@ -60,7 +63,7 @@ spec:
           memory: 3Gi
     # --- e2e 의존 서비스 (로컬 docker-compose.yml과 같은 역할) ---
     - name: postgres
-      image: postgres:16-alpine
+      image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
       env:
         - name: POSTGRES_USER
           value: lunote
@@ -75,7 +78,7 @@ spec:
         limits:
           memory: 512Mi
     - name: redis
-      image: redis:7-alpine
+      image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
       resources:
         requests:
           cpu: 50m
@@ -84,7 +87,7 @@ spec:
           memory: 256Mi
     # S3 호환 저장소 — MinIO 공개 이미지가 더 배포되지 않아 CI는 S3Mock을 쓴다
     - name: s3mock
-      image: adobe/s3mock:5.2.3
+      image: adobe/s3mock:5.2.3@sha256:ab01a6946750f451ca215a47e91030695b260e4003b8a5a6201d25029b8fca92
       env:
         - name: COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS
           value: lunote-attachments
@@ -95,7 +98,7 @@ spec:
         limits:
           memory: 768Mi
     - name: mailpit
-      image: axllent/mailpit:v1.31.4
+      image: axllent/mailpit:v1.31.4@sha256:b68349e3a014b90c5610bfb26b2ae36f3892d7b8cf25ee140c6c71c98d2fcf48
       resources:
         requests:
           cpu: 20m
@@ -105,7 +108,7 @@ spec:
     # --- 이미지 빌드·스캔·push ---
     # 특권 없이 동작하는 빌더. seccomp/AppArmor만 풀어 준다(사용자 네임스페이스 생성에 필요).
     - name: buildkit
-      image: moby/buildkit:v0.33.1-rootless
+      image: moby/buildkit:v0.33.1-rootless@sha256:f8a833b2de9d68e27f0815e4a737abdfaf8a2e4c615650557df11025101557b4
       args: ["--oci-worker-no-process-sandbox"]
       securityContext:
         seccompProfile:
@@ -129,7 +132,7 @@ spec:
         - name: docker-config
           mountPath: /docker-config
     - name: trivy
-      image: aquasec/trivy:0.75.0
+      image: aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
       command: ["sleep", "infinity"]
       securityContext:
         runAsUser: 1000
@@ -145,7 +148,7 @@ spec:
           memory: 2Gi
     # ECR 로그인 토큰 발급(IRSA)과 이미지 존재 확인
     - name: aws
-      image: public.ecr.aws/aws-cli/aws-cli:2.37.9
+      image: public.ecr.aws/aws-cli/aws-cli:2.37.9@sha256:92de75724b6a746951f0e8b915d86bbccd7cb55aff96cd0cb4f7017272160780
       command: ["sleep", "infinity"]
       securityContext:
         runAsUser: 1000

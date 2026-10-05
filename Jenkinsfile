@@ -44,7 +44,7 @@ spec:
     karpenter.sh/nodepool: default
   containers:
     - name: jnlp
-      image: jenkins/inbound-agent:3391.va_37fa_a_305d6d-4-jdk21
+      image: jenkins/inbound-agent:3391.va_37fa_a_305d6d-4-jdk21@sha256:c5d50ca09a7de45999983c69e0527499ca667efe00a85cf1ce5ed968b5b21719
       resources:
         requests:
           cpu: 100m
