@@ -44,6 +44,8 @@ module "eks" {
       # 플랫폼 컴포넌트 전용 (스펙 §인프라) — 앱/CI는 Karpenter Spot
       ami_type       = "AL2023_ARM_64_STANDARD"
       instance_types = [var.core_instance_type]
+      # Jenkins·Prometheus PV(EBS)와 같은 AZ에만 뜨게 한다 — 다른 AZ에 뜨면 Pod가 Pending (ARCHITECTURE §12)
+      subnet_ids = var.core_subnet_ids
 
       min_size     = 0 # 출시 전 비용 절감용으로 0대까지 허용 (scripts/infra-power.sh) — 평소 desired는 1
       max_size     = 2
