@@ -8,7 +8,7 @@ resources:
 images:
   - name: lunote-api
     newName: 695019457880.dkr.ecr.ap-northeast-2.amazonaws.com/lunote/api
-    newTag: 02645632bef1 # git SHA — CI(Jenkinsfile)가 이 줄을 갱신한다. 손으로 바꾸는 것은 롤백 때만
+    newTag: 204cd30efb5b # git SHA — CI(Jenkinsfile)가 이 줄을 갱신한다. 손으로 바꾸는 것은 롤백 때만
 configMapGenerator:
   - name: api-config
     options:
