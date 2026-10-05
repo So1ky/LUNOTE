@@ -40,5 +40,4 @@ COPY --from=build /app/prisma.config.ts ./
 COPY --from=build /app/package.json ./
 
 EXPOSE 3000
-# 실제 시작 명령은 compose가 덮어쓴다 (migrate deploy && node ...)
 CMD ["node", "dist/src/main.js"]
