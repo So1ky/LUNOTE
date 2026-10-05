@@ -14,7 +14,7 @@ export type Attachment = AttachmentInput & {
 
 /**
  * presign → 스토리지에 직접 PUT 업로드.
- * 파일 바이트는 API 서버를 거치지 않고 S3(MinIO)로 바로 올라간다.
+ * 파일 바이트는 API 서버를 거치지 않고 S3(로컬은 S3Mock)로 바로 올라간다.
  */
 export async function uploadAttachment(
   token: string,

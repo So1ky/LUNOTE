@@ -1,5 +1,4 @@
 # admin-web — 멀티스테이지: node로 빌드하고, 결과물(정적 파일)만 caddy로 서빙.
-# apps/api/Dockerfile을 직접 작성할 때 이 파일이 참고 예시다 (infra/demo/README.md 3단계).
 
 # ---- 1단계: 빌드 ----
 FROM node:22-alpine AS build

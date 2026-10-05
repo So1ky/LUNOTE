@@ -21,11 +21,11 @@ export class StorageService {
     this.downloadTtlSec = Number(config.getOrThrow('PRESIGN_DOWNLOAD_TTL_SEC'));
     this.client = new S3Client({
       region: config.getOrThrow<string>('S3_REGION'),
-      // 로컬 MinIO용 설정. 프로덕션(S3 + IRSA)에서는 endpoint/credentials를 지정하지 않는다.
+      // 로컬 S3Mock용 설정. 프로덕션(S3 + IRSA)에서는 endpoint/credentials를 지정하지 않는다.
       ...(endpoint
         ? {
             endpoint,
-            forcePathStyle: true, // MinIO는 path-style URL 필요
+            forcePathStyle: true, // S3Mock은 path-style URL 필요
             credentials: {
               accessKeyId: config.getOrThrow<string>('S3_ACCESS_KEY'),
               secretAccessKey: config.getOrThrow<string>('S3_SECRET_KEY'),

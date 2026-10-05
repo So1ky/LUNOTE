@@ -87,7 +87,7 @@ describe('Attachments (e2e)', () => {
       .expect(400);
   });
 
-  it('전체 루프: presign → MinIO 업로드 → 문의 첨부 → 상세에서 다운로드', async () => {
+  it('전체 루프: presign → S3Mock 업로드 → 문의 첨부 → 상세에서 다운로드', async () => {
     // 1) presign
     const presign = await request(app.getHttpServer())
       .post('/attachments/presign')
@@ -100,7 +100,7 @@ describe('Attachments (e2e)', () => {
     };
     expect(s3Key).toMatch(/^uploads\//);
 
-    // 2) presigned URL로 직접 PUT (실제 MinIO)
+    // 2) presigned URL로 직접 PUT (실제 S3Mock)
     const bytes = Buffer.from('PNGDATA!');
     const putRes = await fetch(uploadUrl, {
       method: 'PUT',
