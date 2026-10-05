@@ -1,10 +1,11 @@
 // LUNOTE API CI — develop의 apps/api 변경을 검증·빌드해 staging 이미지 태그를 갱신한다.
-// 배포는 하지 않는다: 마지막 단계가 overlays/staging의 newTag를 커밋하면 ArgoCD가 반영한다.
+// 배포는 하지 않는다: 마지막 단계가 배포 저장소(So1ky/lunote-deploy)에 커밋하면 ArgoCD가 반영한다.
 // 잡 정의는 infra/k8s/platform/jenkins/values.yaml, 빌드 Pod는 ci/api-build-pod.yaml.
 //
 // Pod를 셋으로 나눈다: 변경 확인(최소) → 빌드(npm·Dockerfile 등 외부 코드가 돈다) → 태그 커밋(최소).
-// deploy key는 develop에 쓸 수 있어 ArgoCD를 거쳐 클러스터를 바꿀 수 있는 권한이다.
-// 그래서 외부 코드가 도는 빌드 Pod에는 절대 내려보내지 않는다.
+// deploy key는 배포 저장소에만 등록돼 있다(이 저장소에는 쓸 수 없다). 그래도 ArgoCD를 거쳐 staging
+// 네임스페이스를 바꿀 수 있는 권한이므로 외부 코드가 도는 빌드 Pod에는 절대 내려보내지 않는다.
+// 배포 저장소를 읽는 api-staging 앱은 staging만 허용하는 AppProject(staging-api)에 묶여 있다.
 
 // 서드파티 코드가 돌지 않는 최소 Pod — 변경 확인과 태그 커밋에 쓴다.
 // AWS 권한(IRSA)도 K8s 토큰도 없고, 빌드 Pod와 작업 폴더를 공유하지 않는다.
@@ -52,11 +53,14 @@ pipeline {
     AWS_REGION   = 'ap-northeast-2'
     ECR_REGISTRY = '695019457880.dkr.ecr.ap-northeast-2.amazonaws.com'
     ECR_REPO     = 'lunote/api'
-    OVERLAY      = 'infra/k8s/workloads/api/overlays/staging/kustomization.yaml'
+    // CI가 쓸 수 있는 유일한 곳. 내용 = 이 저장소 그 커밋의 infra/k8s/workloads/api + newTag만 바꾼 것
+    DEPLOY_REPO    = 'git@github.com:So1ky/lunote-deploy.git'
+    DEPLOY_BRANCH  = 'staging'
+    DEPLOY_OVERLAY = 'workloads/api/overlays/staging/kustomization.yaml'
   }
 
   stages {
-    // 작은 Pod로 "빌드할 필요가 있는가"만 본다. 태그 커밋·문서 커밋은 여기서 끝난다.
+    // 작은 Pod로 "빌드할 필요가 있는가"만 본다. 문서 커밋 등은 여기서 끝난다.
     stage('변경 확인') {
       agent {
         kubernetes {
@@ -74,7 +78,11 @@ pipeline {
           def unchanged = base && sh(returnStatus: true,
             script: "git cat-file -e ${base}^{commit} && git diff --quiet ${base} HEAD -- apps/api") == 0
           env.SHOULD_BUILD = (params.FORCE_BUILD || !unchanged) ? 'true' : 'false'
-          echo "브랜치 ${env.SOURCE_BRANCH}, 커밋 ${env.TAG}, 기준 ${base ?: '없음'} → 빌드 ${env.SHOULD_BUILD}"
+          // 매니페스트만 바뀐 커밋도 배포 저장소로 옮겨야 한다(이미지는 그대로 두고 매니페스트만 갱신)
+          def manifestsUnchanged = base && sh(returnStatus: true,
+            script: "git cat-file -e ${base}^{commit} && git diff --quiet ${base} HEAD -- infra/k8s/workloads/api") == 0
+          env.SHOULD_SYNC = (env.SHOULD_BUILD == 'true' || !manifestsUnchanged) ? 'true' : 'false'
+          echo "브랜치 ${env.SOURCE_BRANCH}, 커밋 ${env.TAG}, 기준 ${base ?: '없음'} → 빌드 ${env.SHOULD_BUILD}, 배포 저장소 갱신 ${env.SHOULD_SYNC}"
         }
       }
     }
@@ -256,7 +264,7 @@ pipeline {
     stage('staging 태그 커밋') {
       when {
         beforeAgent true
-        environment name: 'SHOULD_BUILD', value: 'true'
+        environment name: 'SHOULD_SYNC', value: 'true'
       }
       agent {
         kubernetes {
@@ -271,28 +279,45 @@ pipeline {
               # GitHub SSH 호스트 키 (https://api.github.com/meta 의 ssh_keys) — 처음 보는 키를 믿지 않는다
               echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$WORKSPACE/known_hosts"
               export GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$WORKSPACE/known_hosts"
-              rm -rf "$WORKSPACE/deploy"
-              git clone -q --depth 1 --branch develop git@github.com:So1ky/LUNOTE.git "$WORKSPACE/deploy"
+              rm -rf "$WORKSPACE/deploy" "$WORKSPACE/src"
+              git clone -q --depth 1 --branch "$DEPLOY_BRANCH" "$DEPLOY_REPO" "$WORKSPACE/deploy"
+              # 이 저장소에서는 확인 단계가 본 바로 그 커밋만, 자격 증명 없이(https) 받는다
+              git init -q "$WORKSPACE/src"
+              git -C "$WORKSPACE/src" fetch -q --depth 1 https://github.com/So1ky/LUNOTE.git "$COMMIT"
+              git -C "$WORKSPACE/src" checkout -q --detach FETCH_HEAD
               cd "$WORKSPACE/deploy"
 
-              current() { sed -n -E 's/^ +newTag: ([^ ]+).*/\\1/p' "$OVERLAY"; }
-              if [ "$(current)" = "$TAG" ]; then
-                echo "staging은 이미 $TAG"
-                exit 0
-              fi
-              sed -i -E "s|^( +newTag: )[^ ]+|\\1$TAG|" "$OVERLAY"
-              # 치환이 안 맞았거나 newTag 줄이 여러 개면 조용히 넘어가지 않고 실패시킨다
-              if [ "$(current)" != "$TAG" ]; then
-                echo "newTag 치환 실패 — $OVERLAY 형식을 확인할 것"
+              current() { sed -n -E 's/^ +newTag: ([^ ]+).*/\\1/p' "$DEPLOY_OVERLAY"; }
+              PREV=$(current)
+              # 매니페스트를 그 커밋의 것으로 통째로 바꾼다(병합하지 않는다 — 충돌이 생길 수 없다)
+              rm -rf workloads/api
+              mkdir -p workloads
+              cp -R "$WORKSPACE/src/infra/k8s/workloads/api" workloads/api
+              # 이미지를 새로 만들었으면 그 태그, 매니페스트만 바뀌었으면 지금 배포된 태그를 유지한다
+              if [ "$SHOULD_BUILD" = "true" ]; then NEW="$TAG"; else NEW="$PREV"; fi
+              # 배포 저장소에 있던 값을 그대로 믿지 않는다 — 태그는 git SHA 앞 12자리만
+              if ! echo "$NEW" | grep -Eq '^[0-9a-f]{12}$'; then
+                echo "이미지 태그 형식이 아니다: '$NEW' — 배포 저장소의 $DEPLOY_OVERLAY 를 확인할 것"
                 exit 1
               fi
+              sed -i -E "s|^( +newTag: )[^ ]+|\\1$NEW|" "$DEPLOY_OVERLAY"
+              # 치환이 안 맞았거나 newTag 줄이 여러 개면 조용히 넘어가지 않고 실패시킨다
+              if [ "$(current)" != "$NEW" ]; then
+                echo "newTag 치환 실패 — $DEPLOY_OVERLAY 형식을 확인할 것"
+                exit 1
+              fi
+              git add -A
+              if git diff --cached --quiet; then
+                echo "배포 저장소는 이미 최신 (이미지 $NEW, 소스 $TAG)"
+                exit 0
+              fi
               git -c user.name=lunote-ci -c user.email=ci@lunoteapp.com \
-                commit -q -am "chore(deploy): staging API 이미지 $TAG"
+                commit -q -m "chore(deploy): staging API 이미지 $NEW (소스 $TAG)"
               if [ "$SOURCE_BRANCH" = "origin/develop" ]; then
-                git push -q origin HEAD:develop
-                echo "develop에 태그 커밋 push — ArgoCD가 staging에 반영한다"
+                git push -q origin "HEAD:$DEPLOY_BRANCH"
+                echo "배포 저장소($DEPLOY_BRANCH)에 push — ArgoCD가 staging에 반영한다"
               else
-                git push --dry-run origin HEAD:develop
+                git push --dry-run origin "HEAD:$DEPLOY_BRANCH"
                 echo "develop이 아닌 브랜치($SOURCE_BRANCH) — push는 dry-run만"
               fi
             '''
