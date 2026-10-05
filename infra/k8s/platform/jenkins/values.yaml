@@ -6,6 +6,8 @@
 controller:
   # 빌드는 에이전트 Pod만 한다 — 컨트롤러에서 빌드 코드가 실행되지 않게 0
   numExecutors: 0
+  # helm test용 Pod — ArgoCD 관리에서는 쓰지 않고, 기본 거부 네임스페이스에서 실패만 한다
+  testEnabled: false
   admin:
     createSecret: false
     existingSecret: jenkins-secrets
@@ -14,6 +16,7 @@ controller:
       cpu: 250m
       memory: 1Gi
     limits:
+      cpu: "2" # 차트 기본값을 명시
       memory: 1536Mi # 코어 노드 1대(4GiB)에 맞춘 상한 — 실측 근거는 ARCHITECTURE.md §12
   javaOpts: "-XX:MaxRAMPercentage=60"
   # 플랫폼 컴포넌트는 코어 노드그룹에만 — Karpenter(Spot) 노드는 회수 대상이라 회피한다
@@ -25,6 +28,8 @@ controller:
               - key: karpenter.sh/nodepool
                 operator: DoesNotExist
   # 차트 기본 4종(kubernetes, workflow-aggregator, git, configuration-as-code)에 더한다
+  # 하위 의존성을 재시작 때마다 최신으로 다시 받지 않는다 — 고정한 플러그인이 요구하는 최소 버전을 쓴다
+  installLatestPlugins: false
   additionalPlugins:
     - job-dsl:3732.v9a_c49a_61a_313
     - credentials-binding:728.v902a_273b_8947
@@ -69,6 +74,9 @@ controller:
           - script: |
               pipelineJob('api') {
                 description('develop의 apps/api 변경을 검증·빌드해 staging 이미지 태그를 갱신한다. 정의: 저장소 루트 Jenkinsfile')
+                parameters {
+                  booleanParam('FORCE_BUILD', false, 'apps/api 변경이 없어도 빌드한다 (파이프라인 자체를 고쳤을 때)')
+                }
                 properties {
                   disableConcurrentBuilds()
                   pipelineTriggers {

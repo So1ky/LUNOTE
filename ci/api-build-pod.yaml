@@ -1,5 +1,6 @@
 # API 빌드 에이전트 Pod — Jenkinsfile이 빌드마다 하나 띄우고 끝나면 지운다.
-# 모든 컨테이너가 작업 폴더(/home/jenkins/agent)와 localhost를 공유한다.
+# 모든 컨테이너가 작업 폴더(/home/jenkins/agent)와 localhost를 공유한다. 외부 코드(npm 의존성, Dockerfile RUN)가
+# 도는 Pod이므로 deploy key는 여기로 내려보내지 않는다(Jenkinsfile의 태그 커밋 단계는 별도 Pod).
 # 이미지는 태그가 아니라 다이제스트(@sha256)로 고정한다 — 태그는 배포자가 다른 내용으로 바꿀 수 있고(2026-03 Trivy
 # 공급망 사고), 이 Pod의 컨테이너는 ECR push 권한을 갖는다. 버전을 올릴 때는 다이제스트도 함께 바꾼다:
 #   docker buildx imagetools inspect <이미지:태그> --format '{{.Manifest.Digest}}'
@@ -10,8 +11,10 @@ metadata:
     app.kubernetes.io/component: jenkins-agent # NetworkPolicy jenkins-agent가 고른다
   annotations:
     karpenter.sh/do-not-disrupt: "true" # 빌드 중 노드 통합으로 Pod가 옮겨지지 않게
+    # AWS 권한(IRSA)은 aws 컨테이너에만 넣는다 — npm·테스트·Dockerfile RUN이 도는 컨테이너는 ECR 권한이 없다
+    eks.amazonaws.com/skip-containers: jnlp,node,postgres,redis,s3mock,mailpit,buildkit,trivy
 spec:
-  serviceAccountName: jenkins-agent # IRSA — lunote/api ECR push만
+  serviceAccountName: jenkins-agent # IRSA — lunote/api ECR push만 (위 주석으로 aws 컨테이너에만 주입)
   nodeSelector:
     karpenter.sh/nodepool: default
   securityContext:

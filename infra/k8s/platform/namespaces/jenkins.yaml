@@ -64,6 +64,7 @@ spec:
         property: webhook-secret
 ---
 # 빌드 Pod가 쓰는 SA — lunote-jenkins-agent 롤(lunote/api ECR push만). 컨트롤러 SA에는 AWS 권한이 없다.
+# K8s API 토큰은 마운트하지 않는다(빌드는 K8s API를 쓰지 않는다). IRSA 토큰은 별도 투영이라 영향 없음.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -71,3 +72,4 @@ metadata:
   namespace: jenkins
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-jenkins-agent
+automountServiceAccountToken: false
