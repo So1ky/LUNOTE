@@ -4,6 +4,8 @@ kind: Ingress
 metadata:
   name: api
   annotations:
+    # 이 리소스를 다른 ArgoCD 앱으로 옮기는 동안 지워지지 않게 한다 (#114 전환용 — 옮긴 뒤 사라진다)
+    argocd.argoproj.io/sync-options: Prune=false
     alb.ingress.kubernetes.io/group.name: lunote
     alb.ingress.kubernetes.io/load-balancer-name: lunote # Terraform이 이 이름으로 조회해 DNS를 건다
     alb.ingress.kubernetes.io/scheme: internet-facing
