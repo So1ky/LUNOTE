@@ -130,19 +130,19 @@ export default function PayScreen() {
 
         {phase === 'error' && (
           <EmptyState
-            emoji="⚠️"
+            icon="warning"
             message={error ?? t('common.somethingWrong')}
             action={{ label: t('pay.backToRequest'), onPress: goToRequest }}
           />
         )}
 
         {phase === 'confirming' && (
-          <EmptyState emoji="⏳" message={t('pay.confirming')} />
+          <EmptyState icon="clock" message={t('pay.confirming')} />
         )}
 
         {phase === 'done' && (
           <EmptyState
-            emoji="🎉"
+            icon="checkCircle"
             title={t('pay.success')}
             message={t('pay.successBody')}
             action={{ label: t('pay.backToRequest'), onPress: goToRequest }}
@@ -151,7 +151,7 @@ export default function PayScreen() {
 
         {phase === 'ready' && intent && !PaymentUI && (
           <EmptyState
-            emoji="🔧"
+            icon="card"
             message={Platform.OS === 'web' ? t('pay.webUnsupported') : t('pay.sdkUnavailable')}
             action={{ label: t('pay.backToRequest'), onPress: goToRequest }}
           />
