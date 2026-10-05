@@ -40,7 +40,9 @@ data "aws_lb" "api" {
 }
 
 resource "aws_route53_record" "api" {
-  for_each = toset(["api-staging"])
+  # api-staging: staging API. ci-hooks: Jenkins 웹훅 수신 경로
+  # (경로·발신 IP 제한은 Ingress — infra/k8s/platform/namespaces/jenkins-webhook.yaml)
+  for_each = toset(["api-staging", "ci-hooks"])
 
   zone_id = aws_route53_zone.main.zone_id
   name    = "${each.key}.${local.domain}"
