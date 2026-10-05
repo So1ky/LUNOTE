@@ -54,7 +54,7 @@ status() {
   echo "노드: $(node_count)대 (Karpenter 인스턴스 $(karpenter_instances)대)"
   echo "NAT Gateway: $(nat_count)개"
   echo "RDS: $(rds_status)"
-  # Jenkins 디스크는 한 AZ에 묶여 있다 — 코어 노드가 다른 AZ에 뜨면 Pending으로 남는다 (infra/k8s/README.md)
+  # Jenkins 디스크는 한 AZ에 묶여 있다 — 코어 노드그룹을 그 AZ에 고정했지만 wake 후 상태는 여기서 확인한다
   echo "Jenkins: $(k get pod jenkins-0 -n jenkins -o jsonpath='{.status.phase}' 2>/dev/null || echo 없음)"
 }
 

@@ -301,6 +301,13 @@ prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 태
   (기존 구상 Kaniko는 2025-06 아카이브). GitHub 쓰기는 deploy key(태그 커밋 전용), ECR push는 에이전트 SA의
   IRSA(`lunote-jenkins-agent`). 시크릿은 `lunote/shared/jenkins` → ESO(`lunote-eso-jenkins`).
   e2e 의존 서비스는 빌드 Pod 사이드카(S3는 S3Mock — MinIO 공개 이미지 배포 중단).
+- **코어 노드그룹 AZ 고정 (2026-10-05 결정)**: 코어 노드그룹은 `ap-northeast-2c` 서브넷 하나에만 둔다.
+  Jenkins(이후 Prometheus)의 PV는 EBS라 한 AZ에 묶이는데, 노드그룹이 2 AZ에 걸쳐 있으면 노드 교체나 wake 때
+  노드가 다른 AZ에 떠 Pod가 Pending으로 남는다. 평상시 가용성은 같다. 잃는 것: 2c 장애 시 노드그룹이 2a에
+  노드를 자동으로 띄우지 못한다 — 수동 복구는 `envs/prod/eks.tf`의 AZ 이름을 2a로 바꿔 apply(Jenkins는
+  2c가 돌아올 때까지 Pending). 다만 RDS(Single-AZ)가 2c, NAT·Redis가 2a에 있어 지금은 어느 AZ가 죽어도
+  서비스가 멈추므로 결과는 달라지지 않는다. 2대로 늘려도 둘 다 2c에 뜬다(앱 워커는 Karpenter라 2 AZ 유지).
+  **RDS Multi-AZ 전환(누적 실결제 10건) 때 코어 노드·NAT·CoreDNS 분산·PV 배치를 함께 다시 정한다.**
 - **출시 전 비용 절감 (2026-10-04)**: 실사용자가 생기기 전까지 작업하지 않는 시간에는
   `scripts/infra-power.sh sleep`으로 Karpenter 노드·코어 노드그룹(0대)·NAT Gateway·RDS(정지)를 내리고
   `wake`로 올린다(≈$100/월분 정지). EKS 컨트롤 플레인·ALB·ElastiCache는 정지 기능이 없거나 번거로워 유지.

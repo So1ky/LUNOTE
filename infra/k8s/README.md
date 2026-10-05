@@ -69,7 +69,7 @@ UI는 외부에 열지 않는다. 인터넷에 열린 것은 웹훅 수신 경�
 
 설정(플러그인·자격 증명·잡)은 `platform/jenkins/values.yaml`의 JCasC가 기준이다. UI에서 바꾼 설정은
 재시작 때 사라진다. 컨트롤러는 코어 노드에, 빌드 Pod는 Karpenter 노드에 뜬다. 빌드 기록은 PVC(gp3 8Gi,
-한 AZ에 묶임)에 있다 — 코어 노드가 다른 AZ에 뜨면 컨트롤러가 Pending이 된다.
+한 AZ에 묶임)에 있다 — 그래서 코어 노드그룹을 같은 AZ(ap-northeast-2c)에 고정했다(`infra/terraform/envs/prod/eks.tf`).
 
 이미지는 다이제스트(@sha256)로 고정돼 있다 — 버전을 올릴 때 `ci/api-build-pod.yaml`의 다이제스트도 함께 바꾼다.
 

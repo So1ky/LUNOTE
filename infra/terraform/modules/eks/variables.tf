@@ -17,6 +17,11 @@ variable "subnet_ids" {
   type        = list(string)
 }
 
+variable "core_subnet_ids" {
+  description = "코어 노드그룹 서브넷 — PV(EBS)가 한 AZ에 묶이므로 그 AZ의 서브넷 하나만 준다"
+  type        = list(string)
+}
+
 variable "core_instance_type" {
   type    = string
   default = "t4g.medium"
