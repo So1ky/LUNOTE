@@ -31,6 +31,10 @@ spec:
         || object.spec.priorityClassName == ''
         || object.spec.priorityClassName == 'lunote-' + request.namespace
       message: "priorityClassName은 비우거나 lunote-<네임스페이스>여야 한다"
+    # ArgoCD가 가장하는 sync SA(<ns>-sync-rbac.yaml)를 Pod에 붙여 토큰을 받는 우회 금지 —
+    # SA의 automountServiceAccountToken: false는 기본값일 뿐 Pod spec이 덮어쓴다
+    - expression: "!has(object.spec.serviceAccountName) || object.spec.serviceAccountName != 'argocd-sync'"
+      message: "워크로드 Pod는 argocd-sync ServiceAccount를 쓸 수 없다"
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
@@ -71,3 +75,36 @@ metadata:
 spec:
   policyName: lunote-deny-service-externalips
   validationActions: [Deny]
+---
+# staging·prod에서 ServiceAccount 토큰 Secret 생성 금지 — ExternalSecret의 target.template로 ESO가
+# type: kubernetes.io/service-account-token Secret(argocd-sync 주석)을 만들게 하면 sync SA의 토큰을 얻을 수 있다.
+# 워크로드는 투영 토큰(projected volume)을 쓰므로 이 타입의 Secret이 필요한 곳은 없다.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: lunote-workload-deny-sa-token-secret
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["secrets"]
+  validations:
+    - expression: "!has(object.type) || object.type != 'kubernetes.io/service-account-token'"
+      message: "워크로드 네임스페이스에서는 ServiceAccount 토큰 Secret을 만들 수 없다"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: lunote-workload-deny-sa-token-secret
+spec:
+  policyName: lunote-workload-deny-sa-token-secret
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [staging, prod]

@@ -203,10 +203,14 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   정책은 전체 허용(접속은 port-forward 전제), metrics 포트는 모든 네임스페이스에 열려 있다.
   ⑦ **sync impersonation(#128 마지막 항목)**: ArgoCD의 sync(apply·hook·prune)는 원래 컨트롤러 SA(ClusterRole `*`)로
   돈다 — 프로젝트 허용 목록은 리소스 "종류"만 막고 권한 자체는 그대로였다. `application.sync.impersonation.enabled`를 켜고
-  워크로드 프로젝트에 `destinationServiceAccounts`(네임스페이스의 `argocd-sync` SA, 오버레이가 만드는 종류만 가진 Role)를
-  달아 sync 권한을 Role 범위로 묶었다. `enforced: false` — SA가 없는 플랫폼 앱(`default` 프로젝트, argocd 자기 관리 포함)은
-  컨트롤러 SA로 폴백한다. Role이 틀려 sync가 Forbidden이 나도 Role은 `namespaces` 앱(폴백 대상)이 관리하므로 git으로
-  항상 고칠 수 있다(잠금 없음). diff·health 캐시는 계속 컨트롤러 SA. staging 먼저, 검증 후 prod.
+  워크로드 프로젝트에 `destinationServiceAccounts`(네임스페이스의 `argocd-sync` SA, 오버레이가 만드는 종류의 쓰기 +
+  Pod·ReplicaSet·로그·이벤트 읽기만 가진 Role)를 달아 권한을 Role 범위로 묶었다. 가장은 sync만이 아니라 **앱 cascade 삭제와
+  UI의 리소스 조회·조작**(로그·이벤트·live manifest·액션)에도 적용된다 — argocd-server ClusterRole에는 `impersonate`가 없어
+  네임스페이스 Role로 `argocd-sync` 하나만 가장하게 줬다. UI에서 Pod 삭제는 안 된다(쓰기 권한 없음 → kubectl). `enforced: false`
+  — SA가 없는 플랫폼 앱(`default` 프로젝트, argocd 자기 관리 포함)은 컨트롤러 SA로 폴백한다. Role이 틀려 sync가 Forbidden이
+  나도 Role은 `namespaces` 앱(폴백 대상)이 관리하므로 git으로 항상 고칠 수 있다(잠금 없음). diff·health 캐시는 계속 컨트롤러 SA.
+  SA 토큰 우회(Pod spec의 `serviceAccountName: argocd-sync`, ESO 템플릿으로 SA 토큰 Secret 생성)는 ValidatingAdmissionPolicy로
+  막았다. staging 먼저, 검증 후 prod.
 - **prod는 base를 커밋 SHA로 고정한다 (2026-10-06 결정)**: `api-prod` 앱은 이 저장소 develop의
   `workloads/api/overlays/prod`를 자동 동기화하지만, 오버레이는 base를 로컬 경로가 아니라
   `https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=<커밋 SHA>`로 가져온다. base는 staging과
