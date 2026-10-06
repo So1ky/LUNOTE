@@ -1,0 +1,67 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: prod
+resources:
+  # base를 커밋 SHA로 고정한다(로컬 ../../base 아님). base는 staging과 공유하므로, 로컬 경로면 base 변경이 staging
+  # 검증 전에 prod에 바로 들어간다. 승격 = 아래 ref와 newTag를 바꾸는 PR (절차: infra/k8s/README.md "prod 승격").
+  - https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=e0bb7d8d0a547970a5497d7387ae68012a4e517d
+  - externalsecret.yaml
+  - hpa.yaml
+  - pdb.yaml
+images:
+  - name: lunote-api
+    newName: 695019457880.dkr.ecr.ap-northeast-2.amazonaws.com/lunote/api
+    newTag: e0bb7d8d0a54 # staging이 실제로 돌린 태그만 — 사람이 승격 PR로 바꾼다(CI는 건드리지 않는다)
+configMapGenerator:
+  - name: api-config
+    options:
+      annotations:
+        argocd.argoproj.io/sync-wave: "-2"
+    literals:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+      - LOG_LEVEL=info
+      - S3_BUCKET=lunote-attachments-prod-695019457880
+      - S3_REGION=ap-northeast-2
+      - CORS_ORIGINS=https://admin.lunoteapp.com
+      - SMTP_HOST=smtp-relay.brevo.com
+      - SMTP_PORT=587
+patches:
+  - target:
+      kind: ServiceAccount
+      name: api
+    patch: |-
+      - op: add
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::695019457880:role/lunote-api-prod
+  - target:
+      kind: Deployment
+      name: api
+    patch: |-
+      - op: add
+        path: /spec/template/spec/priorityClassName
+        value: lunote-prod
+      # Pod 수는 HPA가 정한다 — 필드가 git에 있으면 ArgoCD selfHeal과 HPA가 서로 되돌린다
+      - op: remove
+        path: /spec/replicas
+      # HPA의 CPU 70% 기준이 유휴 변동에 흔들리지 않게 (base 100m)
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 250m
+      # Spot 노드 1대 회수로 전부 내려가지 않게: 노드는 반드시 나누고, AZ는 가능하면 나눈다
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints
+        value:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: api
+          - maxSkew: 1
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: api
