@@ -111,6 +111,8 @@ wake_infra() {
   # HPA도 0에서는 동작하지 않으므로 직접 올린다 (이후는 HPA가 맡는다)
   if [ -n "$(k get deployment api -n prod -o name --ignore-not-found)" ]; then
     k scale deployment api -n prod --replicas=2
+  else
+    echo "prod API Deployment 없음 — replicas 복원 건너뜀"
   fi
   wait_for "staging API 응답" staging_healthy
   staging_healthy

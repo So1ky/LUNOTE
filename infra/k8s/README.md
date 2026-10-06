@@ -65,14 +65,16 @@ prod는 `workloads/api/overlays/prod/kustomization.yaml`의 **두 줄**로 정�
 base를 로컬 경로가 아니라 커밋 SHA로 가져오므로, develop에 base 변경이 머지돼도 이 줄을 바꾸기 전에는 prod에 닿지 않는다.
 승격할 값은 staging이 실제로 돌린 것 — 배포 저장소 최신 커밋의 제목 `staging API 이미지 <IMG> (소스 <SRC>)`에서 읽는다
 (매니페스트만 바뀐 커밋은 이미지를 다시 만들지 않으므로 두 값이 다를 수 있다).
+빈 ref면 kustomize가 기본 브랜치를 받아 렌더링에 성공해 버리므로, sed 전에 아래 길이 검사로 값을 막아야 한다.
 
 ```bash
 git switch develop && git pull && git switch -c chore/promote-prod-$(date +%m%d-%H%M)
 SUBJECT=$(git ls-remote https://github.com/So1ky/lunote-deploy.git refs/heads/staging | cut -f1 \
   | xargs -I{} gh api repos/So1ky/lunote-deploy/commits/{} --jq '.commit.message' | head -1)
 IMG=$(echo "$SUBJECT" | sed -n -E 's/.*이미지 ([0-9a-f]{12}) .*/\1/p')
-SRC=$(git rev-parse "$(echo "$SUBJECT" | sed -n -E 's/.*소스 ([0-9a-f]{12})\).*/\1/p')")
-echo "이미지 $IMG / 매니페스트 $SRC"   # 둘 다 비어 있지 않아야 한다
+SRC=$(git rev-parse --verify "$(echo "$SUBJECT" | sed -n -E 's/.*소스 ([0-9a-f]{12})\).*/\1/p')^{commit}")
+echo "이미지 $IMG / 매니페스트 $SRC"
+[ ${#IMG} -eq 12 ] && [ ${#SRC} -eq 40 ] || { echo "값 확인 실패 — 배포 저장소 커밋 제목과 로컬 develop(fetch 여부)을 확인할 것"; false; }
 F=infra/k8s/workloads/api/overlays/prod/kustomization.yaml
 sed -i '' -E "s|(base\?ref=)[0-9a-f]{40}|\1$SRC|; s|^( +newTag: )[0-9a-f]{12}|\1$IMG|" "$F"
 git diff --stat                      # 1 file changed, 2 insertions(+), 2 deletions(-) (이미지만 같으면 1줄)
@@ -91,6 +93,7 @@ CI는 prod를 건드리지 않는다. 이미지는 다시 빌드하지 않는다
 
 prod: 승격 PR을 revert하는 PR을 만들어 머지한다(`gh pr revert`는 없다 — GitHub의 PR 화면에서 Revert, 또는
 `git revert <머지 커밋>` 후 PR). develop은 직접 push할 수 없어 PR 검사를 기다려야 한다. DB 마이그레이션 주의는 아래와 같다.
+롤백도 SHA 두 줄 PR이다. base를 SHA로 받아오므로 ArgoCD repo-server가 GitHub에 닿지 못하면 prod 동기화 자체가 막힌다(앱 상태 `ComparisonError`) — 그때는 `kubectl --context lunote logs -n argocd deploy/argocd-repo-server`를 본다.
 
 staging: 배포 저장소의 최신 커밋을 revert해 직접 push한다 → ArgoCD가 이전 이미지와 매니페스트로 되돌린다.
 
