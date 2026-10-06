@@ -29,6 +29,11 @@ values·매니페스트·차트 버전(`apps/*.yaml`의 `targetRevision`)을 고
 직접 실행하지 않는다(ArgoCD selfHeal이 되돌린다). 자동 prune은 꺼져 있다 — 리소스를 지우려면 git에서
 제거한 뒤 ArgoCD UI에서 해당 리소스를 수동 삭제한다. 예외: 워크로드 앱(api-staging·api-prod)은 prune이 켜져 있다(해시 접미사가 바뀐 옛 ConfigMap 정리 — hook Job은 prune이 아니라 `hook-delete-policy`가 지운다).
 
+워크로드 앱의 sync는 네임스페이스 전용 SA(`argocd-sync`, `platform/namespaces/<ns>-sync-rbac.yaml`)로 가장한다.
+오버레이에 새 종류를 넣을 때는 **AppProject 허용 목록과 그 Role 둘 다** 고쳐야 한다. sync가
+`forbidden: User "system:serviceaccount:<ns>:argocd-sync"`로 실패하면 Role에 빠진 종류/verb를 추가하는 PR — Role은
+`namespaces` 앱(default 프로젝트, 컨트롤러 SA로 동기화)이 관리하므로 잠기지 않는다.
+
 ## 배포 (staging은 자동)
 
 `apps/api/`가 바뀐 커밋이 develop에 들어가면 GitHub 웹훅이 Jenkins를 깨워 lint → test → e2e → 이미지 빌드 →

@@ -200,8 +200,13 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   Unconfined라 baseline enforce가 빌드를 막는다(EKS는 PSA 예외 설정이 없다). 등급을 올리려면 빌드 Pod 네임스페이스
   분리가 선행(#125와 함께). argocd repo-server NetworkPolicy는 차트 기본값(`global.networkPolicy.create`)이
   이미 만들어 둔 것을 확인했다 — repo-server gRPC는 server·controller만, redis는 세 컴포넌트만 허용하고, server
-  정책은 전체 허용(접속은 port-forward 전제), metrics 포트는 모든 네임스페이스에 열려 있다. #128에 남긴 것:
-  ArgoCD sync impersonation.
+  정책은 전체 허용(접속은 port-forward 전제), metrics 포트는 모든 네임스페이스에 열려 있다.
+  ⑦ **sync impersonation(#128 마지막 항목)**: ArgoCD의 sync(apply·hook·prune)는 원래 컨트롤러 SA(ClusterRole `*`)로
+  돈다 — 프로젝트 허용 목록은 리소스 "종류"만 막고 권한 자체는 그대로였다. `application.sync.impersonation.enabled`를 켜고
+  워크로드 프로젝트에 `destinationServiceAccounts`(네임스페이스의 `argocd-sync` SA, 오버레이가 만드는 종류만 가진 Role)를
+  달아 sync 권한을 Role 범위로 묶었다. `enforced: false` — SA가 없는 플랫폼 앱(`default` 프로젝트, argocd 자기 관리 포함)은
+  컨트롤러 SA로 폴백한다. Role이 틀려 sync가 Forbidden이 나도 Role은 `namespaces` 앱(폴백 대상)이 관리하므로 git으로
+  항상 고칠 수 있다(잠금 없음). diff·health 캐시는 계속 컨트롤러 SA. staging 먼저, 검증 후 prod.
 - **prod는 base를 커밋 SHA로 고정한다 (2026-10-06 결정)**: `api-prod` 앱은 이 저장소 develop의
   `workloads/api/overlays/prod`를 자동 동기화하지만, 오버레이는 base를 로컬 경로가 아니라
   `https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=<커밋 SHA>`로 가져온다. base는 staging과

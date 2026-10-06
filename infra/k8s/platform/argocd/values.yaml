@@ -18,6 +18,13 @@ notifications:
 # ApplicationSet은 미사용 — 필요해지면 1로
 applicationSet:
   replicas: 0
+configs:
+  cm:
+    # sync(apply·hook·prune)를 AppProject의 destinationServiceAccounts에 적은 SA로 가장(impersonate)한다 —
+    # 컨트롤러 SA(ClusterRole *) 대신 대상 네임스페이스의 Role 범위로 sync 권한을 묶는다(워크로드 프로젝트).
+    # enforced=false: SA가 없는 프로젝트(플랫폼 앱의 default)는 컨트롤러 SA로 폴백한다 — 모든 프로젝트에 SA를 달면 true로.
+    application.sync.impersonation.enabled: "true"
+    application.sync.impersonation.enforced: "false"
 controller:
   resources:
     requests:

@@ -1,0 +1,50 @@
+# ArgoCD가 api-staging 앱을 sync할 때 가장(impersonate)하는 SA — sync 권한을 이 네임스페이스의 Role로 묶는다.
+# 컨트롤러 SA는 ClusterRole *라서, AppProject 허용 목록(리소스 종류)만으로는 "종류 밖"을 막을 뿐 권한 자체는 그대로였다.
+# 스위치는 platform/argocd/values.yaml(configs.cm application.sync.impersonation.*), 연결은 apps/project-staging-api.yaml의
+# destinationServiceAccounts. diff·health 캐시(list/watch)는 계속 컨트롤러 SA — 여기 권한은 apply·hook·prune에만 쓰인다.
+# 오버레이에 새 종류를 넣으면 AppProject 허용 목록과 이 Role 둘 다 고쳐야 sync된다(README "변경 방법").
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-sync
+  namespace: staging
+automountServiceAccountToken: false # Pod가 쓰는 계정이 아니다 — 토큰을 만들 이유가 없다
+---
+# 오버레이(workloads/api/overlays/staging)가 실제로 만드는 종류만. Pod·ReplicaSet·Secret 없음 —
+# 프로젝트 허용 목록의 Pod·ReplicaSet은 UI 트리 표시용이고, 이 Role 때문에 매니페스트로 넣어도 만들 수 없다.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-sync
+  namespace: staging
+rules:
+  # apply = get + patch/create, prune·hook(BeforeHookCreation) = delete
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps", "serviceaccounts"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: ["external-secrets.io"]
+    resources: ["externalsecrets"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-sync
+  namespace: staging
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-sync
+subjects:
+  - kind: ServiceAccount
+    name: argocd-sync
+    namespace: staging
