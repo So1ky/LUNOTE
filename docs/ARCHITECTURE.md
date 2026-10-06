@@ -349,7 +349,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   ArgoCD selfHeal이 서로 되돌리지 않게) — 그래서 `infra-power.sh` wake가 prod API를 2로 직접 올린다(HPA는 0에서
   동작하지 않는다). Service·Ingress는 staging처럼 `namespaces` 앱, `api-prod`는 AppProject `prod-api`(prod
   네임스페이스, 오버레이가 만드는 8종). HPA용 metrics-server는 EKS 애드온(replicas 1, 코어 노드, requests 100Mi) —
-  적용 후 코어 메모리 requests ≈93%라 **Prometheus 도입 전에 코어 증설이 필요하다**.
+  적용 후 코어 메모리 requests 실측 2924Mi/3288Mi(88%)라 **Prometheus 도입 전에 코어 증설이 필요하다**.
   Redis는 ElastiCache 논리 DB `/0`. BullMQ 워커는 Pod마다 돈다(경쟁 소비).
 - **rate limit 저장소 (2026-10-06 결정)**: 프로덕션은 카운터를 Redis에 둔다(`@nest-lab/throttler-storage-redis`) —
   Pod마다 메모리에 세면 한도가 Pod 수만큼 느슨해진다. Redis 장애 시에는 통과(fail-open)시키고 요청이 대기하지 않게
