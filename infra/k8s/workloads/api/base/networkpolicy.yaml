@@ -30,6 +30,15 @@ spec:
           port: 5432
         - protocol: TCP
           port: 6379
+    # 클러스터 내 Redis(staging — platform/namespaces/staging-redis.yaml). Service ClusterIP(172.20.0.0/16)는 위 ipBlock에
+    # 없고, VPC CNI는 ipBlock을 DNAT 전에 평가하므로 셀렉터 규칙이 필요하다(allow-dns와 같은 방식). prod에는 매칭 Pod가 없다.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
     # 외부 HTTPS(PortOne·S3·STS·Sentry)와 SMTP
     - to:
         - ipBlock:
