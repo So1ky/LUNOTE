@@ -5,6 +5,14 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: jenkins
+  labels:
+    # enforce는 privileged로 명시한다 — 빌드 Pod(ci/api-build-pod.yaml)의 BuildKit rootless가 사용자 네임스페이스
+    # 생성을 위해 seccomp/AppArmor Unconfined를 써서 baseline조차 통과하지 못한다(EKS는 PSA 예외 설정이 없다).
+    # 대신 baseline 위반을 경고·감사 로그로 남겨 빌드 Pod 외의 위반이 생기면 보이게 한다.
+    # 등급을 올리려면 빌드 Pod를 별도 네임스페이스로 분리해야 한다(#125와 함께 판단).
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/audit: baseline
 ---
 # ESO가 이 SA의 토큰으로 lunote-eso-jenkins 롤을 맡는다 (lunote/shared/jenkins 읽기 전용)
 apiVersion: v1

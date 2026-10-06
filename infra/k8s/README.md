@@ -27,7 +27,7 @@ AWS 리소스(IAM 롤 등)는 `infra/terraform/`.
 
 values·매니페스트·차트 버전(`apps/*.yaml`의 `targetRevision`)을 고쳐 PR → develop 머지. `helm upgrade`를
 직접 실행하지 않는다(ArgoCD selfHeal이 되돌린다). 자동 prune은 꺼져 있다 — 리소스를 지우려면 git에서
-제거한 뒤 ArgoCD UI에서 해당 리소스를 수동 삭제한다. 예외: 워크로드 앱(api-staging·api-prod)은 prune이 켜져 있다(해시 ConfigMap·hook Job 정리).
+제거한 뒤 ArgoCD UI에서 해당 리소스를 수동 삭제한다. 예외: 워크로드 앱(api-staging·api-prod)은 prune이 켜져 있다(해시 접미사가 바뀐 옛 ConfigMap 정리 — hook Job은 prune이 아니라 `hook-delete-policy`가 지운다).
 
 ## 배포 (staging은 자동)
 
