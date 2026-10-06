@@ -51,17 +51,20 @@ patches:
         value: 250m
       # Spot 노드 1대 회수로 전부 내려가지 않게: 노드는 반드시 나누고, AZ는 가능하면 나눈다.
       # minDomains 2 — 노드가 1대뿐이면 편차가 0이라 같은 노드에 몰린다(2026-10-06 첫 배포에서 확인). 없는 도메인을 0개로 셈해 Pending → Karpenter가 노드를 띄운다.
+      # matchLabelKeys — 롤링 중 옛 세대 Pod를 빼고 센다. 안 빼면 새 Pod가 모두 빈 노드로 가 롤링 후 한 노드에 모인다(2026-10-06 확인).
       - op: add
         path: /spec/template/spec/topologySpreadConstraints
         value:
           - maxSkew: 1
             minDomains: 2
+            matchLabelKeys: [pod-template-hash]
             topologyKey: kubernetes.io/hostname
             whenUnsatisfiable: DoNotSchedule
             labelSelector:
               matchLabels:
                 app.kubernetes.io/name: api
           - maxSkew: 1
+            matchLabelKeys: [pod-template-hash]
             topologyKey: topology.kubernetes.io/zone
             whenUnsatisfiable: ScheduleAnyway
             labelSelector:
