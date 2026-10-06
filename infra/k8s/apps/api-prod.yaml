@@ -1,0 +1,21 @@
+# prod API 워크로드. 소스는 이 저장소의 overlays/prod — 배포 저장소(CI 키로 쓸 수 있다)를 읽지 않는다.
+# 오버레이가 base를 커밋 SHA로 고정하므로, develop에 base 변경이 머지돼도 승격 PR 전에는 prod에 닿지 않는다.
+# 승격·롤백 절차는 infra/k8s/README.md. Service와 Ingress는 platform/namespaces/prod-api-{service,ingress}.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: api-prod
+  namespace: argocd
+spec:
+  project: prod-api
+  source:
+    repoURL: https://github.com/So1ky/LUNOTE.git
+    targetRevision: develop
+    path: infra/k8s/workloads/api/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true # 설정 변경마다 생기는 해시 ConfigMap의 이전 버전을 정리한다

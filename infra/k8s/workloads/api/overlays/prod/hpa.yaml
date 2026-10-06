@@ -1,0 +1,20 @@
+# 최소 2개(노드 1대가 회수돼도 하나는 남는다), CPU 사용률 70%를 넘으면 최대 4개까지.
+# 수치는 부하 테스트(체크리스트 5-4)에서 다시 정한다. 사용률은 metrics-server(EKS 애드온)가 제공한다.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

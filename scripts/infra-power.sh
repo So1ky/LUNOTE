@@ -107,6 +107,11 @@ wake_infra() {
   wait_for "RDS available" rds_available
   # 4. ArgoCD 재개 — selfHeal이 워크로드 replicas를 git 상태로 되돌리고 Karpenter가 노드를 만든다
   k scale statefulset argocd-application-controller -n argocd --replicas=1
+  # prod API는 HPA가 Pod 수를 관리해 git에 replicas가 없다 — selfHeal이 0에서 되돌리지 못하고
+  # HPA도 0에서는 동작하지 않으므로 직접 올린다 (이후는 HPA가 맡는다)
+  if [ -n "$(k get deployment api -n prod -o name --ignore-not-found)" ]; then
+    k scale deployment api -n prod --replicas=2
+  fi
   wait_for "staging API 응답" staging_healthy
   staging_healthy
   echo

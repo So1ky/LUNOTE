@@ -20,6 +20,7 @@ AWS 리소스(IAM 롤 등)는 `infra/terraform/`.
 | storage | platform/storage/ | — |
 | namespaces | platform/namespaces/ | — |
 | api-staging | 배포 저장소 `So1ky/lunote-deploy`의 workloads/api/overlays/staging (프로젝트 `staging-api`) | — |
+| api-prod | 이 저장소 develop의 workloads/api/overlays/prod — base는 커밋 SHA 고정 (프로젝트 `prod-api`) | — |
 | jenkins | jenkins/jenkins + platform/jenkins/values.yaml | 5.9.65 |
 
 ## 변경 방법
@@ -54,13 +55,42 @@ ExternalSecret → 마이그레이션 Job → Deployment 순으로 동기화한�
 파이프라인은 저장소 루트 `Jenkinsfile`, 빌드 Pod는 `ci/api-build-pod.yaml`. 한 번 빌드한 산출물을 스캔하고 그대로
 올리며, 어느 단계든 실패하면 ECR에 그 SHA 태그가 붙지 않는다. `apps/api/`와 `infra/k8s/workloads/api/` 밖만 바뀐 커밋은 "변경 확인" 단계에서 끝난다.
 
-### prod 승격 (Phase 5-1에서 overlay 추가 후)
+### prod 승격
 
-staging에서 확인한 SHA를 `workloads/api/overlays/prod/kustomization.yaml`의 `newTag`에 넣는 PR을 만들고
-사람이 머지한다. CI는 prod 태그를 건드리지 않는다. 승격할 SHA는 staging의 현재 값을 그대로 쓴다
-(같은 이미지를 다시 빌드하지 않는다).
+prod는 `workloads/api/overlays/prod/kustomization.yaml`의 **두 줄**로 정해진다.
+
+    - https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=<소스 커밋 40자>   # 매니페스트
+    newTag: <이미지 태그 12자>                                                            # 이미지
+
+base를 로컬 경로가 아니라 커밋 SHA로 가져오므로, develop에 base 변경이 머지돼도 이 줄을 바꾸기 전에는 prod에 닿지 않는다.
+승격할 값은 staging이 실제로 돌린 것 — 배포 저장소 최신 커밋의 제목 `staging API 이미지 <IMG> (소스 <SRC>)`에서 읽는다
+(매니페스트만 바뀐 커밋은 이미지를 다시 만들지 않으므로 두 값이 다를 수 있다).
+
+```bash
+git switch develop && git pull && git switch -c chore/promote-prod-$(date +%m%d-%H%M)
+SUBJECT=$(git ls-remote https://github.com/So1ky/lunote-deploy.git refs/heads/staging | cut -f1 \
+  | xargs -I{} gh api repos/So1ky/lunote-deploy/commits/{} --jq '.commit.message' | head -1)
+IMG=$(echo "$SUBJECT" | sed -n -E 's/.*이미지 ([0-9a-f]{12}) .*/\1/p')
+SRC=$(git rev-parse "$(echo "$SUBJECT" | sed -n -E 's/.*소스 ([0-9a-f]{12})\).*/\1/p')")
+echo "이미지 $IMG / 매니페스트 $SRC"   # 둘 다 비어 있지 않아야 한다
+F=infra/k8s/workloads/api/overlays/prod/kustomization.yaml
+sed -i '' -E "s|(base\?ref=)[0-9a-f]{40}|\1$SRC|; s|^( +newTag: )[0-9a-f]{12}|\1$IMG|" "$F"
+git diff --stat                      # 1 file changed, 2 insertions(+), 2 deletions(-) (이미지만 같으면 1줄)
+kubectl kustomize "$(dirname "$F")" | grep image:   # 렌더링되는지, 태그가 맞는지
+```
+
+커밋 → PR → 사람이 머지하면 ArgoCD `api-prod`가 ExternalSecret → 마이그레이션 Job → Deployment 순으로 동기화한다(3분 안팎).
+CI는 prod를 건드리지 않는다. 이미지는 다시 빌드하지 않는다.
+
+- prod 전용 설정(오버레이의 설정값·HPA·PDB·패치)은 SHA 고정 대상이 아니다 — 머지 즉시 prod에 반영된다.
+- Pod 수는 HPA(2~4)가 정한다. 오버레이가 Deployment의 `replicas`를 지우므로 `kubectl scale`로 바꿔도 HPA가 되돌린다.
+- prod API의 Service와 Ingress는 `platform/namespaces/prod-api-{service,ingress}.yaml`.
+- 오버레이에 새 종류의 리소스를 추가하면 `apps/project-prod-api.yaml`의 허용 목록에도 넣어야 동기화된다.
 
 ### 롤백
+
+prod: 승격 PR을 revert하는 PR을 만들어 머지한다(`gh pr revert`는 없다 — GitHub의 PR 화면에서 Revert, 또는
+`git revert <머지 커밋>` 후 PR). develop은 직접 push할 수 없어 PR 검사를 기다려야 한다. DB 마이그레이션 주의는 아래와 같다.
 
 staging: 배포 저장소의 최신 커밋을 revert해 직접 push한다 → ArgoCD가 이전 이미지와 매니페스트로 되돌린다.
 

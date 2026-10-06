@@ -1,0 +1,16 @@
+# prod API의 Service. staging과 같은 이유로 워크로드 오버레이가 아니라 여기 둔다 — 오버레이가 만들 수 있는 종류를
+# 네임스페이스 안에서 끝나는 것으로 한정한다(apps/project-prod-api.yaml).
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: prod
+  labels:
+    app.kubernetes.io/part-of: api
+spec:
+  selector:
+    app.kubernetes.io/name: api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

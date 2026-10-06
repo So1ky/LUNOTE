@@ -1,0 +1,36 @@
+# api-prod 전용 프로젝트. 소스는 이 저장소(develop — PR 필수 + 검사 3종)이고 CI 키로는 쓸 수 없다.
+# 그래도 오버레이 실수가 네임스페이스 밖(클러스터 범위 리소스, 공유 ALB 규칙)으로 번지지 않게 종류를 묶는다.
+# Service와 Ingress는 platform/namespaces/prod-api-{service,ingress}.yaml.
+# 종류를 늘릴 때는 오버레이가 실제로 만드는 것만: kubectl kustomize <overlay> | grep kind
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: prod-api
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1" # 이 프로젝트를 쓰는 Application보다 먼저
+spec:
+  description: prod API 워크로드
+  sourceRepos:
+    - https://github.com/So1ky/LUNOTE.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: prod
+  clusterResourceWhitelist: [] # 클러스터 범위 리소스 금지
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: batch
+      kind: Job
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: ServiceAccount
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: external-secrets.io
+      kind: ExternalSecret
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: policy
+      kind: PodDisruptionBudget
