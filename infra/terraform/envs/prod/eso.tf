@@ -35,10 +35,11 @@ data "aws_iam_policy_document" "eso_read" {
 
   statement {
     actions = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
-    resources = [
-      "arn:aws:secretsmanager:ap-northeast-2:${data.aws_caller_identity.current.account_id}:secret:lunote/${each.key}/*",
-      aws_secretsmanager_secret.redis.arn, # staging/prod 공용 (논리 DB 번호로 분리)
-    ]
+    resources = concat(
+      ["arn:aws:secretsmanager:ap-northeast-2:${data.aws_caller_identity.current.account_id}:secret:lunote/${each.key}/*"],
+      # ElastiCache는 prod 전용 — staging은 클러스터 내 Redis를 쓴다 (ARCHITECTURE §12)
+      each.key == "prod" ? [aws_secretsmanager_secret.redis.arn] : [],
+    )
   }
 }
 
