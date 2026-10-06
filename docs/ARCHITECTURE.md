@@ -199,7 +199,9 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   jenkins는 `privileged` 명시 + `warn/audit: baseline` — 빌드 Pod의 BuildKit rootless가 seccomp/AppArmor
   Unconfined라 baseline enforce가 빌드를 막는다(EKS는 PSA 예외 설정이 없다). 등급을 올리려면 빌드 Pod 네임스페이스
   분리가 선행(#125와 함께). argocd repo-server NetworkPolicy는 차트 기본값(`global.networkPolicy.create`)이
-  4개 컴포넌트 전부에 ingress 정책을 만들어 둔 것을 확인했다. #128에 남긴 것: ArgoCD sync impersonation.
+  이미 만들어 둔 것을 확인했다 — repo-server gRPC는 server·controller만, redis는 세 컴포넌트만 허용하고, server
+  정책은 전체 허용(접속은 port-forward 전제), metrics 포트는 모든 네임스페이스에 열려 있다. #128에 남긴 것:
+  ArgoCD sync impersonation.
 - **prod는 base를 커밋 SHA로 고정한다 (2026-10-06 결정)**: `api-prod` 앱은 이 저장소 develop의
   `workloads/api/overlays/prod`를 자동 동기화하지만, 오버레이는 base를 로컬 경로가 아니라
   `https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=<커밋 SHA>`로 가져온다. base는 staging과
