@@ -266,12 +266,14 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
 
 - [x] RDS 저장 시 암호화(KMS), S3 SSE + 퍼블릭 액세스 차단 — RDS는 aws/rds 관리형 키,
       첨부 S3(staging/prod 2개)는 SSE-S3 + 퍼블릭 전면 차단 (2026-09-29, `infra/terraform/modules/rds`, `s3`)
-- [ ] 전 구간 TLS (ACM + ALB), HSTS
+- [x] 전 구간 TLS (ACM + ALB), HSTS — ALB가 80→443 리다이렉트·TLS 1.2+ 정책, API가 HSTS 헤더, RDS는 CA 검증,
+      Redis는 TLS(prod ElastiCache) (2026-10-06 prod 확인)
 - [x] RDS/Redis 프라이빗 서브넷, 보안그룹 SG 참조 최소권한 (§4) — RDS Single-AZ(db.t4g.micro, §12) +
       Redis 7.1(TLS+AUTH, cache.t4g.micro)까지 SG 참조 인그레스로 구축 완료. ECR(`lunote/api`)은
       IMMUTABLE 태그로 latest 금지 규칙을 레지스트리 단에서 강제 (2026-09-29, `infra/terraform/modules/{rds,elasticache,ecr}`)
 - [x] K8s: 비root 컨테이너, RBAC 최소권한, NetworkPolicy (2026-10-04 staging 적용 — 워크로드 SA는 K8s API 권한 없음)
-- [ ] 이미지 취약점 스캔 (CI에 trivy 등), `npm audit` 정기 확인
+- [x] 이미지 취약점 스캔 — CI가 Trivy(HIGH/CRITICAL, 수정본 있는 것만)로 차단, `npm audit`은 경고 (2026-10-05 Phase 4).
+      한계: `apps/api` 변경이 있는 커밋만 스캔한다 — 배포된 이미지의 신규 CVE는 잡지 못한다(2026-10-06 proxy-addr 사례), 주기 스캔은 Phase 5-2 후보
 - [ ] 감사 로그: 결제 상태 전이·관리자 행위 기록 (분쟁 대응 근거)
 
 ### 법적 요구사항 (출시 전 필수)
