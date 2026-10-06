@@ -16,6 +16,7 @@ import { AuthModule } from './auth/auth.module';
 import { StorageModule } from './storage/storage.module';
 import { validateEnv } from './config/env.validation';
 import { redisConnectionFromUrl } from './config/redis-connection';
+import { FailOpenThrottlerStorage } from './config/throttler-storage';
 import { HealthController } from './health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
@@ -44,8 +45,20 @@ import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
       }),
     }),
     // 전역 기본 제한. 인증 엔드포인트는 컨트롤러에서 @Throttle로 더 강하게 건다.
-    // TODO: Pod을 여러 개 띄우면 인스턴스별 카운트가 되므로 Redis 스토리지로 교체 (A3)
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
+    // 프로덕션은 카운터를 Redis에 둔다 — Pod마다 따로 세면 한도가 Pod 수만큼 느슨해진다.
+    // 로컬·테스트는 인메모리: 테스트는 스위트마다 앱을 새로 만들어 카운터가 초기화되는 것에 의존한다.
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [{ name: 'default', ttl: 60_000, limit: 100 }],
+        storage:
+          config.get('NODE_ENV') === 'production'
+            ? new FailOpenThrottlerStorage(
+                config.getOrThrow<string>('REDIS_URL'),
+              )
+            : undefined,
+      }),
+    }),
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
