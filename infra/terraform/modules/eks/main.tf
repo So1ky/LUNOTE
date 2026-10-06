@@ -37,6 +37,29 @@ module "eks" {
     aws-ebs-csi-driver = {
       service_account_role_arn = aws_iam_role.ebs_csi.arn
     }
+
+    # HPA가 CPU 사용률을 읽는 곳. 기본 replicas 2는 코어 노드 1대의 예약 여유에 들어가지 않는다.
+    # Spot에 두면 회수 때 HPA가 잠시 판단을 못 하므로 코어 노드에 고정한다.
+    metrics-server = {
+      addon_version = "v0.9.0-eksbuild.11"
+      configuration_values = jsonencode({
+        replicas            = 1
+        podDisruptionBudget = { enabled = false }
+        resources = {
+          requests = { cpu = "50m", memory = "100Mi" }
+          limits   = { memory = "200Mi" }
+        }
+        affinity = {
+          nodeAffinity = {
+            requiredDuringSchedulingIgnoredDuringExecution = {
+              nodeSelectorTerms = [{
+                matchExpressions = [{ key = "karpenter.sh/nodepool", operator = "DoesNotExist" }]
+              }]
+            }
+          }
+        }
+      })
+    }
   }
 
   eks_managed_node_groups = {
