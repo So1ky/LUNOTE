@@ -1,0 +1,15 @@
+# argocd 네임스페이스 — 부트스트랩의 `helm install --create-namespace`가 만들지만 Pod Security 라벨은 여기서 관리한다.
+# ArgoCD 컴포넌트는 차트 기본 securityContext가 restricted를 만족한다(2026-10-06 서버 dry-run 위반 0건,
+# 차트 10.9.6 렌더링 기준 Pod 템플릿·initContainer·redis-secret-init Job 전부 확인). 차트를 올리거나 dex·notifications를
+# 켤 때는 다시 확인한다 — enforce만 있으면 위반 시 Deployment는 적용되고 Pod 생성만 조용히 거부되므로 warn도 둔다.
+# argocd는 클러스터 관리자 권한을 가진 네임스페이스라 Pod 하나가 노드에 닿는 설정(hostPath·privileged)을 막는 가치가 크다.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    # namespaces 앱을 cascade 삭제해도 이 네임스페이스(= ArgoCD 자신)는 남긴다. 지워지면 부트스트랩부터 다시 해야 한다.
+    argocd.argoproj.io/sync-options: Delete=false
