@@ -188,12 +188,31 @@ resource "aws_route53_record" "apex_txt" {
   records = [
     "v=spf1 include:spf.improvmx.com ~all",
     "google-site-verification=-L2k8Mm6RSslUp7N82-zj7xMX2j-ZzQDKKe3byzKdnA",
+    "brevo-code:24668a1c0fc9c662f2cd2815bb8d3f5c", # Brevo 도메인 소유 확인 (2026-10-06)
   ]
 }
 
+# Brevo(앱 메일 발송) 도메인 인증 — 2026-10-06. DKIM 2개는 From(noreply@lunoteapp.com)과 정렬돼 DMARC를 통과시키고,
+# mail.* 3개는 branded subdomain(반송 주소·링크/이미지 추적)이라 수신 측에 보이는 도메인이 전부 lunoteapp.com이 된다.
+# SPF는 반송 주소(mail.lunoteapp.com)에 대해 평가되므로 apex SPF에 Brevo를 넣지 않는다(CNAME 대상이 제공).
+resource "aws_route53_record" "brevo" {
+  for_each = {
+    "brevo1._domainkey" = "b1.lunoteapp-com.dkim.brevo.com"
+    "brevo2._domainkey" = "b2.lunoteapp-com.dkim.brevo.com"
+    "mail"              = "mail-lunoteapp-com.brand.brevosend.com"
+    "r.mail"            = "mail-lunoteapp-com.r.brand.brevosend.com"
+    "img.mail"          = "mail-lunoteapp-com.img.brand.brevosend.com"
+  }
+
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "${each.key}.${local.domain}"
+  type    = "CNAME"
+  ttl     = 3600
+  records = [each.value]
+}
+
 # DMARC — 이 도메인을 발신자로 위조한 메일을 수신 측이 거부하게 한다 (2026-10-04, 주소 도용 스팸 대응).
-# 현재 lunoteapp.com에서 발송하는 메일이 없어 reject가 안전하다. 앱 메일(noreply@ 등) 발송을 도입할 때는
-# 발송 서비스의 DKIM을 이 도메인으로 서명(정렬)하도록 먼저 설정해야 한다 — 안 하면 우리 메일이 거부된다.
+# 앱 메일은 Brevo가 위 DKIM으로 이 도메인에 정렬 서명하므로 reject를 유지한다(Brevo가 제안하는 p=none보다 강함).
 resource "aws_route53_record" "dmarc" {
   zone_id = aws_route53_zone.main.zone_id
   name    = "_dmarc.${local.domain}"
