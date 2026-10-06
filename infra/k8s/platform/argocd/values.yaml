@@ -18,6 +18,14 @@ notifications:
 # ApplicationSet은 미사용 — 필요해지면 1로
 applicationSet:
   replicas: 0
+configs:
+  cm:
+    # sync(apply·hook·prune)·앱 cascade 삭제·UI 리소스 조회(로그·이벤트·manifest)를 AppProject의 destinationServiceAccounts에
+    # 적은 SA로 가장(impersonate)한다 — 컨트롤러 SA(ClusterRole *) 대신 대상 네임스페이스의 Role 범위로 권한을 묶는다.
+    # argocd-server는 impersonate 권한이 없으므로 네임스페이스마다 Role로 준다(platform/namespaces/<ns>-sync-rbac.yaml).
+    # enforced=false: SA가 없는 프로젝트(플랫폼 앱의 default)는 컨트롤러 SA로 폴백한다 — 모든 프로젝트에 SA를 달면 true로.
+    application.sync.impersonation.enabled: "true"
+    application.sync.impersonation.enforced: "false"
 controller:
   resources:
     requests:
