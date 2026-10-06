@@ -1,10 +1,14 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @ApiTags('health')
 @Controller('health')
+// 프로브(kubelet startup/readiness)와 ALB 헬스체크는 rate limit 대상이 아니다 — 호출마다 Redis를 왕복할
+// 이유가 없고, 기동 직후 Redis 연결 전에는 fail-open 장애·복구 로그 쌍을 남긴다.
+@SkipThrottle()
 export class HealthController {
   constructor(
     private readonly prisma: PrismaService,
