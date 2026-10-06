@@ -42,6 +42,13 @@ describe('API (e2e)', () => {
       .expect({ status: 'ok', db: 'up', queue: 'up' });
   });
 
+  it('GET /health — rate limit 대상이 아니다 (프로브·헬스체크)', async () => {
+    // 전역 기본 한도(100/분)를 넘겨도 429가 없어야 한다. 카운터 키는 핸들러 단위라 다른 테스트와 섞이지 않는다.
+    for (let i = 0; i < 101; i++) {
+      await request(app.getHttpServer()).get('/health').expect(200);
+    }
+  });
+
   it('POST /auth/signup — 가입하면 토큰 발급', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
