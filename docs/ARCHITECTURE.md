@@ -210,7 +210,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   — SA가 없는 플랫폼 앱(`default` 프로젝트, argocd 자기 관리 포함)은 컨트롤러 SA로 폴백한다. Role이 틀려 sync가 Forbidden이
   나도 Role은 `namespaces` 앱(폴백 대상)이 관리하므로 git으로 항상 고칠 수 있다(잠금 없음). diff·health 캐시는 계속 컨트롤러 SA.
   SA 토큰 우회(Pod spec의 `serviceAccountName: argocd-sync`, ESO 템플릿으로 SA 토큰 Secret 생성)는 ValidatingAdmissionPolicy로
-  막았다. staging 먼저, 검증 후 prod.
+  막았다. staging(PR #146)에서 수동 sync·권한 매트릭스로 검증한 뒤 prod에도 같은 구조(+HPA·PDB)를 적용했다.
 - **prod는 base를 커밋 SHA로 고정한다 (2026-10-06 결정)**: `api-prod` 앱은 이 저장소 develop의
   `workloads/api/overlays/prod`를 자동 동기화하지만, 오버레이는 base를 로컬 경로가 아니라
   `https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=<커밋 SHA>`로 가져온다. base는 staging과
