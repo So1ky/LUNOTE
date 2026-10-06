@@ -49,11 +49,13 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/resources/requests/cpu
         value: 250m
-      # Spot 노드 1대 회수로 전부 내려가지 않게: 노드는 반드시 나누고, AZ는 가능하면 나눈다
+      # Spot 노드 1대 회수로 전부 내려가지 않게: 노드는 반드시 나누고, AZ는 가능하면 나눈다.
+      # minDomains 2 — 노드가 1대뿐이면 편차가 0이라 같은 노드에 몰린다(2026-10-06 첫 배포에서 확인). 없는 도메인을 0개로 셈해 Pending → Karpenter가 노드를 띄운다.
       - op: add
         path: /spec/template/spec/topologySpreadConstraints
         value:
           - maxSkew: 1
+            minDomains: 2
             topologyKey: kubernetes.io/hostname
             whenUnsatisfiable: DoNotSchedule
             labelSelector:
