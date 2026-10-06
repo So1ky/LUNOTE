@@ -4,7 +4,7 @@ namespace: prod
 resources:
   # base를 커밋 SHA로 고정한다(로컬 ../../base 아님). base는 staging과 공유하므로, 로컬 경로면 base 변경이 staging
   # 검증 전에 prod에 바로 들어간다. 승격 = 아래 ref와 newTag를 바꾸는 PR (절차: infra/k8s/README.md "prod 승격").
-  - https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=e0bb7d8d0a547970a5497d7387ae68012a4e517d
+  - https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=2c70460d39b16b4eb090dcd86f73354bf701f1a9
   - externalsecret.yaml
   - hpa.yaml
   - pdb.yaml

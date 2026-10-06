@@ -3,6 +3,9 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: api
+  annotations:
+    # 마이그레이션 Job(wave -1)보다 먼저 — 네임스페이스는 기본 거부라 정책 없이는 Job이 RDS에 닿지 못한다(첫 배포에서 드러남)
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   podSelector:
     matchLabels:
