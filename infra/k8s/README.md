@@ -27,7 +27,7 @@ AWS 리소스(IAM 롤 등)는 `infra/terraform/`.
 
 values·매니페스트·차트 버전(`apps/*.yaml`의 `targetRevision`)을 고쳐 PR → develop 머지. `helm upgrade`를
 직접 실행하지 않는다(ArgoCD selfHeal이 되돌린다). 자동 prune은 꺼져 있다 — 리소스를 지우려면 git에서
-제거한 뒤 ArgoCD UI에서 해당 리소스를 수동 삭제한다.
+제거한 뒤 ArgoCD UI에서 해당 리소스를 수동 삭제한다. 예외: 워크로드 앱(api-staging·api-prod)은 prune이 켜져 있다(해시 ConfigMap·hook Job 정리).
 
 ## 배포 (staging은 자동)
 
@@ -74,9 +74,10 @@ SUBJECT=$(git ls-remote https://github.com/So1ky/lunote-deploy.git refs/heads/st
 IMG=$(echo "$SUBJECT" | sed -n -E 's/.*이미지 ([0-9a-f]{12}) .*/\1/p')
 SRC=$(git rev-parse --verify "$(echo "$SUBJECT" | sed -n -E 's/.*소스 ([0-9a-f]{12})\).*/\1/p')^{commit}")
 echo "이미지 $IMG / 매니페스트 $SRC"
-[ ${#IMG} -eq 12 ] && [ ${#SRC} -eq 40 ] || { echo "값 확인 실패 — 배포 저장소 커밋 제목과 로컬 develop(fetch 여부)을 확인할 것"; false; }
 F=infra/k8s/workloads/api/overlays/prod/kustomization.yaml
-sed -i '' -E "s|(base\?ref=)[0-9a-f]{40}|\1$SRC|; s|^( +newTag: )[0-9a-f]{12}|\1$IMG|" "$F"
+[ ${#IMG} -eq 12 ] && [ ${#SRC} -eq 40 ] \
+  && sed -i '' -E "s|(base\?ref=)[0-9a-f]{40}|\1$SRC|; s|^( +newTag: )[0-9a-f]{12}|\1$IMG|" "$F" \
+  || { echo "중단: 값 확인 실패 — 배포 저장소 커밋 제목과 로컬 develop(fetch 여부)을 확인할 것"; false; }
 git diff --stat                      # 1 file changed, 2 insertions(+), 2 deletions(-) (이미지만 같으면 1줄)
 kubectl kustomize "$(dirname "$F")" | grep image:   # 렌더링되는지, 태그가 맞는지
 ```

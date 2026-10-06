@@ -32,7 +32,7 @@ spec:
       kind: NetworkPolicy
     - group: external-secrets.io
       kind: ExternalSecret
-    # 아래 둘은 git에 없는 자식 리소스(Deployment·Job이 만든다) — 허용 목록에 없으면 ArgoCD UI 트리에서 숨겨진다. 동기화 대상은 아니다.
+    # 아래 둘은 UI 트리 표시용 — 허용 목록에 없으면 Deployment 아래 Pod가 숨겨진다. git에 매니페스트가 없어 동기화되지 않을 뿐, 넣으면 만들 수 있다(PSA·배치 정책은 그대로 적용).
     - group: apps
       kind: ReplicaSet
     - group: ""
