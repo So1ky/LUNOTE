@@ -347,10 +347,10 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   잃는 것: staging이 ElastiCache(TLS+AUTH) 접속 경로를 검증하지 않는다 — URL 변환은 단위 테스트가 본다.
   위의 "Redis 논리 DB: prod `/0`, staging `/1`"은 prod `/0`만 유효하다.
 - **prod 배포 (2026-10-06)**: `https://api.lunoteapp.com`. `overlays/prod` = HPA(2~4, CPU 70%) + PDB(minAvailable 1)
-  + 노드 분산(hostname 강제, AZ는 가능하면) + CPU request 250m. Deployment의 `replicas`는 오버레이가 지운다(HPA와
+  + 노드 분산(hostname 강제 — `minDomains: 2`로 노드가 1대뿐이면 Pending, `matchLabelKeys: [pod-template-hash]`로 롤링 중 옛 세대 제외; AZ는 가능하면) + CPU request 250m. Deployment의 `replicas`는 오버레이가 지운다(HPA와
   ArgoCD selfHeal이 서로 되돌리지 않게) — 그래서 `infra-power.sh` wake가 prod API를 2로 직접 올린다(HPA는 0에서
   동작하지 않는다). Service·Ingress는 staging처럼 `namespaces` 앱, `api-prod`는 AppProject `prod-api`(prod
-  네임스페이스, 오버레이가 만드는 8종). HPA용 metrics-server는 EKS 애드온(replicas 1, 코어 노드, requests 100Mi) —
+  네임스페이스, 오버레이가 만드는 8종 + 표시용 Pod·ReplicaSet). HPA용 metrics-server는 EKS 애드온(replicas 1, 코어 노드, requests 100Mi) —
   적용 후 코어 메모리 requests 실측 2924Mi/3288Mi(89%)라 **Prometheus 도입 전에 코어 증설이 필요하다**.
   Redis는 ElastiCache 논리 DB `/0`. BullMQ 워커는 Pod마다 돈다(경쟁 소비).
 - **rate limit 저장소 (2026-10-06 결정)**: 프로덕션은 카운터를 Redis에 둔다(`@nest-lab/throttler-storage-redis`) —
