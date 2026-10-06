@@ -167,7 +167,8 @@ develop push → GitHub 웹훅 → Jenkins (웹훅 경로만 공개: GitHub 발�
   → 에이전트 Pod(Spot): lint → test → e2e → BuildKit rootless 빌드 → Trivy 스캔 → ECR push (git SHA)
   → 배포 저장소(So1ky/lunote-deploy)에 커밋: 그 커밋의 workloads/api 매니페스트 + newTag (deploy key)
   → ArgoCD가 감지 → EKS에 동기화 (RollingUpdate 무중단)
-prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 배포 저장소의 그 커밋 revert.
+prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사람이 머지 → ArgoCD(api-prod)가 동기화.
+롤백 = staging은 배포 저장소의 그 커밋 revert, prod는 승격 PR revert.
 ```
 
 - 앱 코드 레포와 K8s 매니페스트(GitOps) 디렉토리를 분리: `infra/k8s/`가 ArgoCD의 소스.
@@ -196,6 +197,14 @@ prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 배
   네임스페이스도 Pod Security `restricted`. ⑤ 공용 Redis 분리 — staging은 클러스터 내 Redis, ElastiCache와 그
   시크릿은 prod 전용(§12). #128에 남긴 것: argocd repo-server NetworkPolicy, ArgoCD sync impersonation,
   jenkins·argocd 네임스페이스의 Pod Security 등급.
+- **prod는 base를 커밋 SHA로 고정한다 (2026-10-06 결정)**: `api-prod` 앱은 이 저장소 develop의
+  `workloads/api/overlays/prod`를 자동 동기화하지만, 오버레이는 base를 로컬 경로가 아니라
+  `https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=<커밋 SHA>`로 가져온다. base는 staging과
+  공유하므로 로컬 경로로 참조하면 base 변경이 staging 검증 전에 prod에 바로 들어간다. 승격 PR은 두 줄을 바꾼다 —
+  base ref(매니페스트를 가져올 커밋)와 `newTag`(이미지). 값은 배포 저장소 최신 커밋(staging이 실제로 돌린 것)에서
+  읽는다. 매니페스트만 바뀐 커밋은 이미지를 다시 만들지 않으므로 두 SHA는 다를 수 있다. 이미지는 다시 빌드하지 않는다.
+  prod 전용 설정(오버레이의 설정값·HPA·PDB·패치)은 SHA 고정 대상이 아니다 — 머지 즉시 prod에 반영된다.
+  main 브랜치 추적(승격마다 PR 2개, main 보호 규칙 정비 필요)과 수동 Sync(PR 머지가 승인이 아니게 됨)는 버렸다.
 - Jenkins 에이전트는 상시 띄우지 않고 빌드 시에만 Pod로 생성 (Kubernetes 플러그인).
 - `apps/api/`가 바뀐 커밋만 이미지를 만든다. fork PR은 빌드하지 않는다(public 저장소).
 - **PR 검사는 GitHub Actions (2026-10-05 결정)**: public 저장소라 fork PR의 코드를 Jenkins 빌드 Pod(ECR 권한)에서
@@ -219,6 +228,8 @@ prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 배
   누적 실결제 10건 도달 시 `multi_az = true` 복원 (§12 가용성 방침).
 - **(2026-10-04) EKS 구축분**: 컨트롤플레인 $73 + NAT 재개 ≈$44 + 코어 노드 t4g.medium×1 ≈$30 +
   EBS·KMS ≈$3 ≈ **$150/월** (추정치). Spot 노드는 워크로드가 있을 때만 과금. 전체 합계 ≈$190/월.
+- **(2026-10-06) prod 워크로드**: API Pod 2개를 서로 다른 노드에 두기 위한 Spot 노드 1대 ≈ +$10~15/월(추정치).
+  metrics-server·staging Redis는 기존 노드에 얹어 추가 비용 없음.
 - 전체 스택은 Terraform만으로 재현 가능해야 한다 — 리전 장애 등 최악의 상황에서 RDS 백업 + `terraform apply`로 복구하는 것이 DR 전략의 기본이다.
 
 ## 11. 보안 체크리스트
@@ -333,6 +344,16 @@ prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 배
   서로 접속할 수 있어 권한 경계가 아니었다. `lunote-eso-staging` 롤에서 `lunote/shared/redis` 읽기를 뺐다.
   잃는 것: staging이 ElastiCache(TLS+AUTH) 접속 경로를 검증하지 않는다 — URL 변환은 단위 테스트가 본다.
   위의 "Redis 논리 DB: prod `/0`, staging `/1`"은 prod `/0`만 유효하다.
+- **prod 배포 (2026-10-06)**: `https://api.lunoteapp.com`. `overlays/prod` = HPA(2~4, CPU 70%) + PDB(minAvailable 1)
+  + 노드 분산(hostname 강제, AZ는 가능하면) + CPU request 250m. Deployment의 `replicas`는 오버레이가 지운다(HPA와
+  ArgoCD selfHeal이 서로 되돌리지 않게) — 그래서 `infra-power.sh` wake가 prod API를 2로 직접 올린다(HPA는 0에서
+  동작하지 않는다). Service·Ingress는 staging처럼 `namespaces` 앱, `api-prod`는 AppProject `prod-api`(prod
+  네임스페이스, 오버레이가 만드는 8종). HPA용 metrics-server는 EKS 애드온(replicas 1, 코어 노드, requests 100Mi) —
+  적용 후 코어 메모리 requests ≈93%라 **Prometheus 도입 전에 코어 증설이 필요하다**.
+  Redis는 ElastiCache 논리 DB `/0`. BullMQ 워커는 Pod마다 돈다(경쟁 소비).
+- **rate limit 저장소 (2026-10-06 결정)**: 프로덕션은 카운터를 Redis에 둔다(`@nest-lab/throttler-storage-redis`) —
+  Pod마다 메모리에 세면 한도가 Pod 수만큼 느슨해진다. Redis 장애 시에는 통과(fail-open)시키고 요청이 대기하지 않게
+  오프라인 큐를 끈다. 로컬·테스트는 인메모리.
 - **코어 노드그룹 AZ 고정 (2026-10-05 결정)**: 코어 노드그룹은 `ap-northeast-2c` 서브넷 하나에만 둔다.
   Jenkins(이후 Prometheus)의 PV는 EBS라 한 AZ에 묶이는데, 노드그룹이 2 AZ에 걸쳐 있으면 노드 교체나 wake 때
   노드가 다른 AZ에 떠 Pod가 Pending으로 남는다. 평상시 가용성은 같다. 잃는 것: 2c 장애 시 노드그룹이 2a에
