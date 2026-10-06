@@ -7,6 +7,8 @@ metadata:
   labels:
     # ALB 타깃 등록이 끝나야 파드가 Ready — 롤링 업데이트 중 502 방지
     elbv2.k8s.aws/pod-readiness-gate-inject: enabled
+    # hostPath·privileged·hostNetwork 등 노드에 닿는 Pod 설정을 거부한다 (staging과 같은 등급)
+    pod-security.kubernetes.io/enforce: restricted
 ---
 # ESO가 이 SA의 토큰으로 lunote-eso-prod 롤을 맡는다 (lunote/prod/* + lunote/shared/redis 읽기 전용)
 apiVersion: v1
