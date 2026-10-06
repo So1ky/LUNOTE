@@ -47,8 +47,9 @@ ExternalSecret → 마이그레이션 Job → Deployment 순으로 동기화한�
   ElastiCache는 prod 전용이고 staging은 그 시크릿을 읽을 수 없다.
 - staging·prod의 Pod는 `nodeSelector karpenter.sh/nodepool: default`가 없으면 생성이 거부된다. `nodeName` 직접 지정,
   다른 환경의 PriorityClass, Service `externalIPs`(전 네임스페이스)도 거부된다 — `platform/namespaces/admission-policies.yaml`.
-- 정책이 잘못돼 Pod 생성이 막히면: `namespaces` 앱은 prune이 꺼져 있어 git에서 파일을 지워도 클러스터의 정책은 남는다 —
-  표현식을 고쳐 커밋하거나(selfHeal 반영), 긴급 시 `kubectl delete validatingadmissionpolicybinding <이름>`으로 바인딩만 지운다(ArgoCD 관리 원칙의 예외).
+- 정책이 잘못돼 Pod 생성이 막히면 git으로 푼다: `admission-policies.yaml`에서 바인딩의 `validationActions`를 `[Warn]`으로 바꾸거나
+  표현식을 고쳐 PR → 머지(selfHeal 반영). `kubectl delete`로 바인딩을 지워도 selfHeal이 되살리므로 소용없다. PR을 기다릴 수 없는 최후 수단은
+  root·namespaces 앱의 automated 동기화를 잠시 끄고(`kubectl --context lunote -n argocd patch application root --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'`, namespaces에도 동일) 바인딩을 지운 뒤, 복구되면 git과 맞춰 다시 켜는 것이다.
 
 파이프라인은 저장소 루트 `Jenkinsfile`, 빌드 Pod는 `ci/api-build-pod.yaml`. 한 번 빌드한 산출물을 스캔하고 그대로
 올리며, 어느 단계든 실패하면 ECR에 그 SHA 태그가 붙지 않는다. `apps/api/`와 `infra/k8s/workloads/api/` 밖만 바뀐 커밋은 "변경 확인" 단계에서 끝난다.
