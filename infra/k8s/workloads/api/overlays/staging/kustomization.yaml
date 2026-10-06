@@ -23,6 +23,7 @@ configMapGenerator:
       - CORS_ORIGINS=https://admin-staging.lunoteapp.com
       - SMTP_HOST=smtp-relay.brevo.com
       - SMTP_PORT=587
+      - REDIS_URL=redis://redis:6379 # staging 전용 클러스터 내 Redis(platform/namespaces/staging-redis.yaml) — 비밀이 아니다
 patches:
   - target:
       kind: ServiceAccount

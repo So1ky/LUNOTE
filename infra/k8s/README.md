@@ -43,6 +43,13 @@ ExternalSecret → 마이그레이션 Job → Deployment 순으로 동기화한�
 - staging 네임스페이스는 Pod Security `restricted`다 — 이를 어기는 Pod 설정은 생성이 거부된다.
 - staging API의 Service와 Ingress는 `platform/namespaces/staging-api-{service,ingress}.yaml`에 있다. 네임스페이스
   밖에 영향을 줄 수 있는 종류라 배포 저장소에 두지 않고 프로젝트 허용 목록에서도 뺐다.
+- staging의 Redis는 네임스페이스 안의 Pod다(`platform/namespaces/staging-redis.yaml`, 비영속·인증 없음, api Pod만 접속).
+  ElastiCache는 prod 전용이고 staging은 그 시크릿을 읽을 수 없다.
+- staging·prod의 Pod는 `nodeSelector karpenter.sh/nodepool: default`가 없으면 생성이 거부된다. `nodeName` 직접 지정,
+  다른 환경의 PriorityClass, Service `externalIPs`(전 네임스페이스)도 거부된다 — `platform/namespaces/admission-policies.yaml`.
+- 정책이 잘못돼 Pod 생성이 막히면 git으로 푼다: `admission-policies.yaml`에서 바인딩의 `validationActions`를 `[Warn]`으로 바꾸거나
+  표현식을 고쳐 PR → 머지(selfHeal 반영). `kubectl delete`로 바인딩을 지워도 selfHeal이 되살리므로 소용없다. PR을 기다릴 수 없는 최후 수단은
+  root·namespaces 앱의 automated 동기화를 잠시 끄고(`kubectl --context lunote -n argocd patch application root --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'`, namespaces에도 동일) 바인딩을 지운 뒤, 복구되면 git과 맞춰 다시 켜는 것이다.
 
 파이프라인은 저장소 루트 `Jenkinsfile`, 빌드 Pod는 `ci/api-build-pod.yaml`. 한 번 빌드한 산출물을 스캔하고 그대로
 올리며, 어느 단계든 실패하면 ECR에 그 SHA 태그가 붙지 않는다. `apps/api/`와 `infra/k8s/workloads/api/` 밖만 바뀐 커밋은 "변경 확인" 단계에서 끝난다.
@@ -109,3 +116,5 @@ UI는 외부에 열지 않는다. 인터넷에 열린 것은 웹훅 수신 경�
 - 파드는 코어 노드에 고정: `nodeAffinity karpenter.sh/nodepool DoesNotExist`.
 - 코어 노드에는 `lunote-app` SG가 없다 — RDS/Redis에 접속해야 하는 파드는 Karpenter 노드에 둔다.
 - 차트 기반이면 `syncOptions: [ServerSideApply=true]`.
+- ALB(Ingress)가 필요한 네임스페이스는 `platform/aws-load-balancer-controller/values.yaml`의
+  `ingressClassParams.spec.namespaceSelector`에 추가해야 한다.

@@ -1,0 +1,73 @@
+# API 서버가 직접 평가하는 생성 규칙(ValidatingAdmissionPolicy) — 별도 컨트롤러가 없다.
+# 네임스페이스의 Pod Security(restricted)는 Pod의 권한을 막고, 여기서는 "어디에 뜨는가"와 Service 필드를 막는다.
+---
+# staging·prod의 Pod는 Karpenter 노드에만 뜬다. 코어 노드에는 taint가 없고 ArgoCD·Karpenter·LBC·Jenkins가
+# 올라가 있어, 워크로드 네임스페이스에 Pod를 만들 수 있는 쪽이 nodeName이나 높은 PriorityClass로 플랫폼을 밀어낼 수 있었다.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: lunote-workload-pod-placement
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+  validations:
+    # 스케줄러를 건너뛰는 직접 지정 금지
+    - expression: "!has(object.spec.nodeName) || object.spec.nodeName == ''"
+      message: "워크로드 네임스페이스에서는 spec.nodeName을 지정할 수 없다"
+    # nodeName만 막으면 nodeSelector(kubernetes.io/hostname)로 우회된다 — Karpenter 노드 선택을 필수로 한다
+    - expression: >-
+        has(object.spec.nodeSelector)
+        && 'karpenter.sh/nodepool' in object.spec.nodeSelector
+        && object.spec.nodeSelector['karpenter.sh/nodepool'] == 'default'
+      message: "워크로드 Pod는 nodeSelector karpenter.sh/nodepool=default가 있어야 한다(코어 노드 사용 금지)"
+    # 자기 환경의 PriorityClass만 (lunote-staging / lunote-prod). system-node-critical 등 금지
+    - expression: >-
+        !has(object.spec.priorityClassName)
+        || object.spec.priorityClassName == ''
+        || object.spec.priorityClassName == 'lunote-' + request.namespace
+      message: "priorityClassName은 비우거나 lunote-<네임스페이스>여야 한다"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: lunote-workload-pod-placement
+spec:
+  policyName: lunote-workload-pod-placement
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [staging, prod]
+---
+# Service externalIPs 금지(클러스터 전역). kube-proxy가 모든 노드에 그 IP의 규칙을 깔기 때문에,
+# Service를 만들 수 있는 네임스페이스가 다른 네임스페이스·외부로 가는 트래픽을 가로챌 수 있다.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: lunote-deny-service-externalips
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["services"]
+  validations:
+    - expression: "!has(object.spec.externalIPs) || size(object.spec.externalIPs) == 0"
+      message: "Service externalIPs는 사용할 수 없다"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: lunote-deny-service-externalips
+spec:
+  policyName: lunote-deny-service-externalips
+  validationActions: [Deny]

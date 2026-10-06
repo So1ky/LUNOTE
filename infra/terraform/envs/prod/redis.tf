@@ -14,8 +14,8 @@ module "redis" {
   auth_token                 = random_password.redis_auth.result
 }
 
-# staging/prod 공용 — 환경 분리는 논리 DB 번호 + BullMQ prefix (스펙 §데이터).
-# ESO(Phase 3-3)가 환경별 ExternalSecret 템플릿에서 DB 번호를 붙인다 (예: prod=/0, staging=/1).
+# prod 전용 (2026-10-06 — staging은 클러스터 내 Redis). 이름의 shared는 생성 당시의 것이다.
+# prod ExternalSecret 템플릿이 논리 DB 번호 /0을 붙인다.
 resource "aws_secretsmanager_secret" "redis" {
   name = "lunote/shared/redis"
 }

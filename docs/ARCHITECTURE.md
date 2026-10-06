@@ -187,9 +187,15 @@ prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 배
   워크플로 파일을 넣으면 GitHub Actions가 실행돼 저장소 쓰기 토큰을 얻는다.
   **prod 앱은 CI 키로 쓸 수 있는 저장소를 읽지 않는다** — prod 승격은 사람이 머지하는 PR로만 한다(CI가 배포 저장소에
   복사하는 `workloads/api`에 prod 오버레이가 섞여 있어도 prod 앱의 소스가 아니다).
-  남는 위험: staging 안에서는 (restricted 범위의) 임의 워크로드를 띄울 수 있고 staging 시크릿·공용 Redis 시크릿에 닿는다.
-  `nodeName`·높은 PriorityClass로 코어 노드의 플랫폼 Pod를 압박할 수 있다(가용성). Jenkins 컨트롤러가 탈취되면 키는
-  여전히 샌다 — 줄어든 것은 키로 할 수 있는 일의 범위다.
+  남는 위험: staging 안에서는 (restricted 범위의) 임의 워크로드를 띄울 수 있고 staging 시크릿에 닿는다.
+  Jenkins 컨트롤러가 탈취되면 키는 여전히 샌다 — 줄어든 것은 키로 할 수 있는 일의 범위다.
+  **2026-10-06 보강(#128 일부, prod 구축 전)**: ① staging·prod의 Pod는 Karpenter 노드에만 뜬다 —
+  ValidatingAdmissionPolicy가 `nodeName` 직접 지정을 막고 `karpenter.sh/nodepool: default` nodeSelector를 요구하며,
+  PriorityClass는 자기 환경 것만 허용한다(코어 노드의 플랫폼 Pod를 압박하던 경로). ② Service `externalIPs`는 클러스터
+  전역에서 금지. ③ IngressClass `alb`는 그룹 `lunote`·허용 네임스페이스(staging·prod·jenkins)로 고정. ④ prod
+  네임스페이스도 Pod Security `restricted`. ⑤ 공용 Redis 분리 — staging은 클러스터 내 Redis, ElastiCache와 그
+  시크릿은 prod 전용(§12). #128에 남긴 것: argocd repo-server NetworkPolicy, ArgoCD sync impersonation,
+  jenkins·argocd 네임스페이스의 Pod Security 등급.
 - Jenkins 에이전트는 상시 띄우지 않고 빌드 시에만 Pod로 생성 (Kubernetes 플러그인).
 - `apps/api/`가 바뀐 커밋만 이미지를 만든다. fork PR은 빌드하지 않는다(public 저장소).
 - **PR 검사는 GitHub Actions (2026-10-05 결정)**: public 저장소라 fork PR의 코드를 Jenkins 빌드 Pod(ECR 권한)에서
@@ -322,6 +328,11 @@ prod 승격 = overlays/prod 태그 변경 PR → 사람이 머지.  롤백 = 배
   (기존 구상 Kaniko는 2025-06 아카이브). GitHub 쓰기는 deploy key(배포 저장소 `So1ky/lunote-deploy` 전용), ECR push는 에이전트 SA의
   IRSA(`lunote-jenkins-agent`). 시크릿은 `lunote/shared/jenkins` → ESO(`lunote-eso-jenkins`).
   e2e 의존 서비스는 빌드 Pod 사이드카(S3는 S3Mock — MinIO 공개 이미지 배포 중단).
+- **staging Redis 분리 (2026-10-06 결정)**: staging은 네임스페이스 안의 Redis Pod(`redis:7.4-alpine`, 비영속,
+  NetworkPolicy로 api Pod만 접속)를 쓰고 ElastiCache는 prod 전용이다. 논리 DB 번호(`/0`·`/1`)는 같은 비밀번호로
+  서로 접속할 수 있어 권한 경계가 아니었다. `lunote-eso-staging` 롤에서 `lunote/shared/redis` 읽기를 뺐다.
+  잃는 것: staging이 ElastiCache(TLS+AUTH) 접속 경로를 검증하지 않는다 — URL 변환은 단위 테스트가 본다.
+  위의 "Redis 논리 DB: prod `/0`, staging `/1`"은 prod `/0`만 유효하다.
 - **코어 노드그룹 AZ 고정 (2026-10-05 결정)**: 코어 노드그룹은 `ap-northeast-2c` 서브넷 하나에만 둔다.
   Jenkins(이후 Prometheus)의 PV는 EBS라 한 AZ에 묶이는데, 노드그룹이 2 AZ에 걸쳐 있으면 노드 교체나 wake 때
   노드가 다른 AZ에 떠 Pod가 Pending으로 남는다. 평상시 가용성은 같다. 잃는 것: 2c 장애 시 노드그룹이 2a에

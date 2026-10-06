@@ -16,3 +16,19 @@ affinity:
         - matchExpressions:
             - key: karpenter.sh/nodepool
               operator: DoesNotExist
+# 옛 방식 주석(kubernetes.io/ingress.class)을 끈다 — 이 경로는 IngressClass를 거치지 않아 아래 IngressClassParams의
+# 허용 네임스페이스·그룹 고정이 적용되지 않는다. 기존 Ingress는 모두 ingressClassName을 쓴다.
+disableIngressClassAnnotation: true
+# IngressClass `alb`의 파라미터를 고정한다. 비워 두면 Ingress를 만들 수 있는 네임스페이스가 주석으로 공유 ALB의
+# 그룹·스킴을 마음대로 정한다. 여기 적힌 group·scheme은 Ingress 주석보다 우선한다(그 외 주석은 허용 네임스페이스에서 유효).
+ingressClassParams:
+  spec:
+    group:
+      name: lunote
+    scheme: internet-facing
+    # 이 클래스를 쓸 수 있는 네임스페이스. 새 네임스페이스에서 ALB가 필요하면 여기에 추가한다.
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [staging, prod, jenkins]
