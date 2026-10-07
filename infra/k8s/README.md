@@ -23,6 +23,8 @@ AWS 리소스(IAM 롤 등)는 `infra/terraform/`.
 | api-prod | 이 저장소 develop의 workloads/api/overlays/prod — base는 커밋 SHA 고정 (프로젝트 `prod-api`) | — |
 | jenkins | jenkins/jenkins + platform/jenkins/values.yaml | 5.9.65 |
 | kube-prometheus-stack | prometheus-community/kube-prometheus-stack + platform/kube-prometheus-stack/values.yaml | 92.0.0 |
+| loki | grafana-community/loki + platform/loki/values.yaml | 18.13.8 |
+| alloy | grafana/alloy + platform/alloy/values.yaml | 1.13.0 |
 
 ## 변경 방법
 

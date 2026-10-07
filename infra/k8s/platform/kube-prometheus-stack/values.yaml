@@ -218,3 +218,10 @@ grafana:
         sslmode: require
         postgresVersion: 1700
         timescaledb: false
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc:3100
+      jsonData:
+        maxLines: 1000
