@@ -42,4 +42,16 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
       days_after_initiation = 7
     }
   }
+
+  dynamic "rule" {
+    for_each = var.expiration_days == null ? [] : [var.expiration_days]
+    content {
+      id     = "expire-objects"
+      status = "Enabled"
+      filter {}
+      expiration {
+        days = rule.value
+      }
+    }
+  }
 }

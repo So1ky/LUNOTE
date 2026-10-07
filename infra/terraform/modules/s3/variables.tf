@@ -7,3 +7,9 @@ variable "cors_allowed_origins" {
   type        = list(string)
   default     = []
 }
+
+variable "expiration_days" {
+  description = "객체 만료 일수. null이면 만료 규칙 없음 (Loki·Tempo처럼 보존 기간이 있는 버킷의 안전망)"
+  type        = number
+  default     = null
+}
