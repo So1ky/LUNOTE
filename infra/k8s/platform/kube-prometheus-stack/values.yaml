@@ -219,6 +219,11 @@ grafana:
         sslmode: require
         postgresVersion: 1700
         timescaledb: false
+        # prod RDS(t4g.micro, 커넥션 알림 80) 보호 — 기본값은 최대 100개·idle을 최대 4시간 유지. 대시보드 SQL은 ms 단위라 2개면 충분
+        maxOpenConns: 2
+        maxIdleConnsAuto: false
+        maxIdleConns: 1
+        connMaxLifetime: 14400
     - name: Loki
       uid: loki
       type: loki
