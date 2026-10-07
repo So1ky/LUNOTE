@@ -1,0 +1,48 @@
+groups:
+- name: lunote-api.rules
+  rules:
+  - expr: sum by (namespace) (rate(http_server_request_duration_count{job="api"}[5m]))
+    record: lunote:http_requests:rate5m
+  - expr: sum by (namespace) (rate(http_server_request_duration_count{job="api", http_response_status_code=~"5.."}[5m]))
+    record: lunote:http_5xx:rate5m
+- name: lunote-api.alerts
+  rules:
+  - alert: ApiHigh5xxRatio
+    annotations:
+      description: 5분 평균 {{ $value | humanizePercentage }}
+      summary: API 5xx 비율 1% 초과 ({{ $labels.namespace }})
+    expr: "lunote:http_5xx:rate5m / lunote:http_requests:rate5m > 0.01\n  and lunote:http_5xx:rate5m\
+      \ >= (5 / 300)\n"
+    for: 5m
+    labels:
+      severity: critical
+  - alert: ApiHighLatency
+    annotations:
+      description: P95 {{ $value | humanizeDuration }}
+      summary: API P95 지연 1초 초과 ({{ $labels.namespace }})
+    expr: "histogram_quantile(0.95, sum by (le, namespace) (rate(http_server_request_duration_bucket{job=\"\
+      api\"}[5m]))) > 1\n  and on (namespace) lunote:http_requests:rate5m > (10 /\
+      \ 60)\n"
+    for: 5m
+    labels:
+      severity: warning
+  - alert: PaymentAmountMismatch
+    annotations:
+      description: 10분 내 {{ $value | printf "%.0f" }}건 — 관리자 알림·Sentry·DB failReason
+        확인. RESOLVED는 10분 집계 창이 지났다는 뜻(해결 아님)
+      summary: 결제 불일치 감지 ({{ $labels.namespace }}, {{ $labels.reason }})
+    expr: sum by (namespace, reason) (increase(lunote_payment_mismatch_total[10m]))
+      > 0
+    labels:
+      severity: critical
+  - alert: PortOneWebhookFailure
+    annotations:
+      description: 10분 내 {{ $value | printf "%.0f" }}건. signature는 시크릿 불일치, exception은
+        500(재전송 중), unknown_payment는 DB에 없는 결제(콘솔 테스트 웹훅 또는 레코드 누락). RESOLVED는 10분
+        집계 창이 지났다는 뜻(해결 아님)
+      summary: PortOne 웹훅 처리 실패 ({{ $labels.namespace }}, {{ $labels.reason }})
+    expr: sum by (namespace, reason) (increase(lunote_portone_webhook_failures_total[10m]))
+      > 0
+    for: 1m
+    labels:
+      severity: warning

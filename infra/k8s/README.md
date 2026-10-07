@@ -25,12 +25,13 @@ AWS 리소스(IAM 롤 등)는 `infra/terraform/`.
 | kube-prometheus-stack | prometheus-community/kube-prometheus-stack + platform/kube-prometheus-stack/values.yaml | 92.0.0 |
 | loki | grafana-community/loki + platform/loki/values.yaml | 18.13.8 |
 | alloy | grafana/alloy + platform/alloy/values.yaml | 1.13.0 |
+| monitoring-config | platform/monitoring-config/ (ServiceMonitor·PrometheusRule·Grafana 규칙 ConfigMap, `tests/` 제외) | — |
 
 ## 변경 방법
 
 values·매니페스트·차트 버전(`apps/*.yaml`의 `targetRevision`)을 고쳐 PR → develop 머지. `helm upgrade`를
 직접 실행하지 않는다(ArgoCD selfHeal이 되돌린다). 자동 prune은 꺼져 있다 — 리소스를 지우려면 git에서
-제거한 뒤 ArgoCD UI에서 해당 리소스를 수동 삭제한다. 예외: 워크로드 앱(api-staging·api-prod)은 prune이 켜져 있다(해시 접미사가 바뀐 옛 ConfigMap 정리 — hook Job은 prune이 아니라 `hook-delete-policy`가 지운다).
+제거한 뒤 ArgoCD UI에서 해당 리소스를 수동 삭제한다. 예외: 워크로드 앱(api-staging·api-prod)은 prune이 켜져 있다(해시 접미사가 바뀐 옛 ConfigMap 정리 — hook Job은 prune이 아니라 `hook-delete-policy`가 지운다). monitoring-config도 prune이 켜져 있다(규칙 파일 삭제 = 규칙 삭제). 이 앱의 PrometheusRule을 고치면 `tests/api-rules.test.yml` 머리 주석의 promtool 명령으로 테스트한다.
 
 워크로드 앱의 sync·앱 삭제·UI 리소스 조회(로그·이벤트)는 네임스페이스 전용 SA(`argocd-sync`,
 `platform/namespaces/<ns>-sync-rbac.yaml`)로 가장한다 — UI에서 Pod 삭제는 안 된다(kubectl로).
