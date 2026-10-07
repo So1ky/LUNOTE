@@ -190,8 +190,9 @@ grafana:
       enabled: true
       # 차트가 Prometheus(uid prometheus)·Alertmanager(uid alertmanager) 데이터소스를 만든다 — 나머지는 아래 additionalDataSources
       alertmanager:
-        # Grafana 규칙(RDS·CloudWatch)을 이 Alertmanager로 전달 — 디스코드 경로를 하나로 유지
-        handleGrafanaManagedAlerts: true
+        # Grafana 규칙(RDS)은 프로비저닝 contact point로만 이 Alertmanager에 보낸다(platform/monitoring-config/grafana-alert-rules-rds.yaml).
+        # 이 경로까지 켜면 같은 알림이 두 번 갈 수 있다 — 실측(2026-10-07)으로도 이 설정만으로는 전달되지 않았다
+        handleGrafanaManagedAlerts: false
     alerts:
       enabled: true
       label: grafana_alert

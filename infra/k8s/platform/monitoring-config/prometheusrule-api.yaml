@@ -1,0 +1,63 @@
+# LUNOTE API 알림 규칙. 임계치 근거는 ARCHITECTURE §8. severity: critical은 즉시·4시간 반복, warning은 묶어서·12시간 반복(Alertmanager 라우팅).
+# 규칙을 바꾸면 tests/api-rules.rendered.yml을 재생성하고 promtool 테스트를 돌린다(명령은 tests/api-rules.test.yml 머리 주석).
+# 메트릭 이름은 OTel Prometheus exporter 실측 — 히스토그램에 단위 접미사(_seconds)가 붙지 않는다(# UNIT s).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: lunote-api
+  namespace: monitoring
+spec:
+  groups:
+    - name: lunote-api.rules
+      rules:
+        # 알림 식에서 재사용하는 집계 — 환경(namespace)별 요청률. job="api"(Service 이름)로 좁힌다 — 나중에 OTel 계측 컴포넌트를 수집해도 섞이지 않게
+        - record: lunote:http_requests:rate5m
+          expr: sum by (namespace) (rate(http_server_request_duration_count{job="api"}[5m]))
+        - record: lunote:http_5xx:rate5m
+          expr: sum by (namespace) (rate(http_server_request_duration_count{job="api", http_response_status_code=~"5.."}[5m]))
+
+    - name: lunote-api.alerts
+      rules:
+        - alert: ApiHigh5xxRatio
+          # 5xx가 5분에 5건 이상일 때만 — 요청 몇 건 실패로 100%가 되는 오탐은 막고, 저트래픽 전면 장애는 잡는다
+          # (전체 요청률로 막으면 지금 트래픽에서는 전부 500이어도 발화하지 않는다 — 리뷰 실측)
+          expr: |
+            lunote:http_5xx:rate5m / lunote:http_requests:rate5m > 0.01
+              and lunote:http_5xx:rate5m >= (5 / 300)
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "API 5xx 비율 1% 초과 ({{ $labels.namespace }})"
+            description: "5분 평균 {{ $value | humanizePercentage }}"
+
+        - alert: ApiHighLatency
+          # 분당 10건 이상일 때만 — 저트래픽에서 느린 요청 몇 건이 P95를 차지하는 오탐 방지
+          expr: |
+            histogram_quantile(0.95, sum by (le, namespace) (rate(http_server_request_duration_bucket{job="api"}[5m]))) > 1
+              and on (namespace) lunote:http_requests:rate5m > (10 / 60)
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "API P95 지연 1초 초과 ({{ $labels.namespace }})"
+            description: "P95 {{ $value | humanizeDuration }}"
+
+        - alert: PaymentAmountMismatch
+          # 돈은 들어왔는데 청구와 다르다 — 즉시 사람이 봐야 한다. 카운터 증가분이 0보다 크면 발화(사유: amount/currency/request_status)
+          expr: sum by (namespace, reason) (increase(lunote_payment_mismatch_total[10m])) > 0
+          labels:
+            severity: critical
+          annotations:
+            summary: "결제 불일치 감지 ({{ $labels.namespace }}, {{ $labels.reason }})"
+            description: "10분 내 {{ $value | printf \"%.0f\" }}건 — 관리자 알림·Sentry·DB failReason 확인. RESOLVED는 10분 집계 창이 지났다는 뜻(해결 아님)"
+
+        - alert: PortOneWebhookFailure
+          # unknown_payment도 포함(사용자 결정) — 콘솔 테스트 웹훅 오탐보다 결제 레코드 누락을 놓치는 비용이 크다
+          expr: sum by (namespace, reason) (increase(lunote_portone_webhook_failures_total[10m])) > 0
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PortOne 웹훅 처리 실패 ({{ $labels.namespace }}, {{ $labels.reason }})"
+            description: "10분 내 {{ $value | printf \"%.0f\" }}건. signature는 시크릿 불일치, exception은 500(재전송 중), unknown_payment는 DB에 없는 결제(콘솔 테스트 웹훅 또는 레코드 누락). RESOLVED는 10분 집계 창이 지났다는 뜻(해결 아님)"
