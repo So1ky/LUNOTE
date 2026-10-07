@@ -1,0 +1,123 @@
+# tailscale 네임스페이스 가드레일. 프록시는 tailnet 트래픽을 자기가 연 UDP 터널로 받으므로 ingress 규칙이 필요 없다.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute
+  namespace: tailscale
+spec:
+  hard:
+    requests.cpu: "500m"
+    requests.memory: 512Mi
+    limits.memory: 1Gi
+    pods: "8"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: tailscale
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 20m
+        memory: 50Mi
+      default:
+        memory: 128Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: tailscale
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: tailscale
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Operator·프록시 공통 — Tailscale 제어 서버(443), DERP/직접 연결(UDP 41641·3478), kube-apiserver(443)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tailscale-egress
+  namespace: tailscale
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: UDP
+          port: 41641
+        - protocol: UDP
+          port: 3478
+---
+# Ingress 프록시 → 백엔드 Service: argocd-server 80→8080(평문, Task 8에서 insecure), grafana 80→3000, jenkins 8080.
+# VPC CNI가 Service DNAT 전에 평가하는 경우를 대비해 Service 포트(80)도 함께 연다
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: proxy-to-backends
+  namespace: tailscale
+spec:
+  podSelector:
+    matchLabels:
+      tailscale.com/parent-resource-type: ingress
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argocd
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-server
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 80
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 80
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: jenkins
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: jenkins-controller
+      ports:
+        - protocol: TCP
+          port: 8080

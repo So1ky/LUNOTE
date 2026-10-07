@@ -74,6 +74,10 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: jenkins-agent
+        # Tailscale Ingress 프록시(Plan 8) — UI 접속
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tailscale
         # ALB(퍼블릭 서브넷) — target-type ip라 ALB가 파드 IP로 직접 보낸다. 헬스체크도 여기서 온다
         - ipBlock:
             cidr: 10.0.0.0/20

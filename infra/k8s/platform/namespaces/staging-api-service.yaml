@@ -15,3 +15,7 @@ spec:
     - name: http
       port: 80
       targetPort: http
+    # OTel Prometheus exporter(Plan 8) — ServiceMonitor가 이 포트 이름으로 긁는다. ALB Ingress는 http만 본다
+    - name: metrics
+      port: 9464
+      targetPort: metrics
