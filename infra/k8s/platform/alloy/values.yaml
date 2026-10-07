@@ -1,0 +1,109 @@
+# Alloy — Deployment 1개(코어 노드). Pod 로그를 Kubernetes API로 받아 Loki로 보낸다(노드 로컬 파일을 읽지 않으므로 DaemonSet·hostPath 불필요).
+# Task 9에서 OTLP 수신(4317) → Tempo 전달 블록이 추가된다.
+fullnameOverride: alloy
+
+controller:
+  type: deployment
+  replicas: 1
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
+  volumes:
+    extra:
+      # storagePath(/tmp/alloy) — 루트 FS 읽기 전용이라 쓰기 공간이 따로 필요. 로그 읽기 위치(positions)가 여기 남는다
+      - name: storage
+        emptyDir:
+          sizeLimit: 1Gi
+
+# 차트 기본 ClusterRole은 전 클러스터 secrets·configmaps 읽기까지 포함 — 쓰는 컴포넌트(discovery.kubernetes role=pod, loki.source.kubernetes)의 권한만 남긴다
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: [pods, pods/log]
+      verbs: [get, list, watch]
+  # 차트 템플릿은 두 목록 다 비어 있지 않아야 렌더링된다 — 클러스터 범위 리소스인 namespaces를 여기에
+  clusterRules:
+    - apiGroups: [""]
+      resources: [namespaces]
+      verbs: [get, list, watch]
+
+serviceAccount:
+  create: true
+
+alloy:
+  enableReporting: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 384Mi
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 473
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
+  # 노드 로그 파일을 읽지 않는다
+  mounts:
+    varlog: false
+    dockercontainers: false
+    extra:
+      - name: storage
+        mountPath: /tmp/alloy
+  configMap:
+    create: true
+    content: |
+      // ---- 1. 대상 발견: 클러스터의 모든 Pod (K8s API) ----
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // ---- 2. 라벨 정리: 저장할 라벨은 namespace·app·pod·container 4개뿐 (pino JSON 필드는 조회 시 파싱) ----
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        // 아직 뜨지 않은/끝난 컨테이너는 제외
+        rule {
+          source_labels = ["__meta_kubernetes_pod_phase"]
+          regex         = "Pending|Succeeded|Failed|Unknown"
+          action        = "drop"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+      }
+
+      // ---- 3. 수집: Kubernetes API의 로그 스트림(kubelet이 중계) → Loki ----
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // ---- 4. 전송 ----
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc:3100/loki/api/v1/push"
+        }
+      }
