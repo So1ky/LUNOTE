@@ -97,7 +97,7 @@ resource "aws_iam_role_policy" "bucket_rw" {
   policy = each.value.json
 }
 
-# ---- 권한: Grafana는 CloudWatch 지표 읽기만 (RDS 대시보드·알림) ----
+# ---- 권한: Grafana는 CloudWatch 지표 읽기 + 메타데이터 조회만 (RDS 대시보드·알림) ----
 data "aws_iam_policy_document" "grafana_cloudwatch" {
   statement {
     actions = [
@@ -107,6 +107,10 @@ data "aws_iam_policy_document" "grafana_cloudwatch" {
       "cloudwatch:DescribeAlarms",
       "ec2:DescribeRegions",
       "tag:GetResources",
+      # Grafana CloudWatch 데이터소스 상태 검사·화면이 호출 — 로그 그룹 이름·교차 계정 목록만, 로그 내용은 못 읽는다
+      "logs:DescribeLogGroups",
+      "oam:ListSinks",
+      "oam:ListAttachedLinks",
     ]
     resources = ["*"] # 읽기 전용 조회 API — 리소스 지정 불가
   }
