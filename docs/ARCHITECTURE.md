@@ -316,7 +316,9 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
 - **EKS 구성 (2026-10-04 구축)**: 클러스터 `lunote`, K8s **1.36**(Karpenter 1.14 지원 상한에 맞춤),
   코어 노드그룹 AL2023 arm64 `t4g.medium` 1대(→ 2026-10-06 `t4g.large` 교체 결정, min 1/max 2, taint 없음), vpc-cni prefix delegation,
   EBS CSI + gp3 기본 StorageClass. Karpenter NodePool `default`는 Spot 우선(on-demand 폴백)·arm64 전용·
-  c/m/r 5세대+·한도 16 vCPU/32Gi. 권한은 전부 IRSA(Karpenter·LBC·EBS CSI).
+  c/m/r 5세대+·한도 16 vCPU/32Gi. Karpenter 노드 maxPods 20(2026-10-07 — EC2NodeClass에 없으면 ENI 기준
+  기본값이라 medium이 8개에서 막혀 DaemonSet이 못 뜬다. 110은 kube-reserved 메모리(11×maxPods+255Mi)가 2Gi 노드에 과함).
+  권한은 전부 IRSA(Karpenter·LBC·EBS CSI).
   **책임 분리**: Terraform은 AWS 리소스만(`infra/terraform`), 클러스터 내부(Karpenter 1.14.1·AWS Load
   Balancer Controller 3.5.0 차트, NodePool)는 `infra/k8s/platform/`의 커밋 파일을 ArgoCD가 관리(아래).
   플랫폼 컴포넌트는 `karpenter.sh/nodepool DoesNotExist` affinity로 코어 노드에 고정.

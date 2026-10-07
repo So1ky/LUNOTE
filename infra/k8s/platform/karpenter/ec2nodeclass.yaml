@@ -14,6 +14,10 @@ spec:
         karpenter.sh/discovery: lunote # node SG(클러스터 통신) + app SG(RDS/Redis 인그레스) 둘 다 매칭
   metadataOptions:
     httpTokens: required # IMDSv2 강제
+  kubelet:
+    # vpc-cni prefix delegation이라 IP는 충분 — 지정하지 않으면 ENI 기준 기본값(medium 8개)이라 DaemonSet이 못 뜬다.
+    # 110이 아닌 이유: kube-reserved 메모리가 11×maxPods+255Mi로 늘어 2Gi 노드(c6gn.medium)에 과하다
+    maxPods: 20
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:
