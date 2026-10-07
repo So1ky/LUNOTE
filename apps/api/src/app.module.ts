@@ -6,7 +6,6 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { randomUUID } from 'node:crypto';
 import { LoggerModule } from 'nestjs-pino';
-import { trace } from '@opentelemetry/api';
 
 import { AdminModule } from './admin/admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -20,6 +19,7 @@ import { redisConnectionFromUrl } from './config/redis-connection';
 import { FailOpenThrottlerStorage } from './config/throttler-storage';
 import { HealthController } from './health/health.controller';
 import { ObservabilityModule } from './observability/observability.module';
+import { traceLogFields } from './observability/trace-log-fields';
 import { PrismaModule } from './prisma/prisma.module';
 import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
 
@@ -36,11 +36,8 @@ import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
       useFactory: (config: ConfigService) => ({
         pinoHttp: {
           level: config.getOrThrow<string>('LOG_LEVEL'),
-          // 로그 한 줄 → 그 요청의 트레이스로 점프(Grafana derived field). 스팬이 없으면 필드 없음
-          mixin: () => {
-            const ctx = trace.getActiveSpan()?.spanContext();
-            return ctx ? { trace_id: ctx.traceId, span_id: ctx.spanId } : {};
-          },
+          // 로그 한 줄 → 그 요청의 트레이스로 점프. 유효한 스팬이 없으면 필드 없음
+          mixin: () => traceLogFields(),
           // 인증 헤더 등 민감값은 구조상 로그에 남지 않게 마스킹 (로그 규칙)
           redact: ['req.headers.authorization', 'req.headers.cookie'],
           genReqId: (req) =>
