@@ -1,0 +1,482 @@
+# 비즈니스 대시보드 — 결제·문의 지표는 prod DB(PostgreSQL 데이터소스, 읽기 전용 grafana_ro), 실시간 불일치는 앱 카운터(Prometheus).
+# grafana_ro는 payments·quote_requests만 SELECT 가능 — 다른 테이블을 쓰려면 GRANT를 넓히는 별도 작업이 먼저다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-business
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: LUNOTE
+data:
+  business.json: |
+    {
+      "uid": "lunote-business",
+      "id": null,
+      "title": "LUNOTE 비즈니스",
+      "description": "prod DB(읽기 전용 grafana_ro — payments·quote_requests만 SELECT 가능, 다른 테이블 조인 불가) + 앱 결제 카운터.",
+      "tags": [
+        "lunote"
+      ],
+      "timezone": "browser",
+      "editable": true,
+      "graphTooltip": 1,
+      "schemaVersion": 41,
+      "time": {
+        "from": "now-30d",
+        "to": "now"
+      },
+      "refresh": "5m",
+      "templating": {
+        "list": []
+      },
+      "annotations": {
+        "list": []
+      },
+      "links": [],
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "결제 성공률 (30일)",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 6,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT count(*) FILTER (WHERE status IN ('PAID', 'REFUNDED'))::float / NULLIF(count(*), 0) AS value\nFROM payments\nWHERE \"createdAt\" > now() - interval '30 days'"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "noValue": "결제 없음",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value"
+          },
+          "description": "PG 승인까지 간 결제(PAID + 이후 환불된 REFUNDED) / 생성된 결제 전체 — 결제창 이탈(PENDING)도 실패로 센다."
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "문의 → 결제 전환율 (30일)",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres"
+          },
+          "gridPos": {
+            "x": 6,
+            "y": 0,
+            "w": 6,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT count(*) FILTER (WHERE status IN ('PAID', 'IN_PROGRESS', 'COMPLETED', 'REFUNDED'))::float / NULLIF(count(*), 0) AS value\nFROM quote_requests\nWHERE \"createdAt\" > now() - interval '30 days'"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "noValue": "문의 없음",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value"
+          },
+          "description": "한 번이라도 결제까지 간 문의 비율(환불 포함). 분모에 아직 진행 중인 문의(REVIEWING·QUOTED)가 있어 최근일수록 낮게 나온다."
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "결제 불일치 (30일)",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 6,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT count(*) AS value\nFROM payments\nWHERE \"failReason\" LIKE 'MISMATCH:%' AND \"createdAt\" > now() - interval '30 days'"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value"
+          },
+          "description": "최근 30일에 생성된 결제 중 금액·통화 불일치가 기록된 것(MISMATCH 표시). 불일치 결제는 PENDING에 멈추고 해결 표시 경로가 아직 없어 30일 창으로 본다. 결제-문의 상태 어긋남(request_status)은 DB에 남지 않아 오른쪽 카운터에만 잡힌다."
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "결제 불일치 발생 (prod, 24시간)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 18,
+            "y": 0,
+            "w": 6,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(lunote_payment_mismatch_total{namespace=\"prod\"}[24h]))",
+              "legendFormat": "__auto",
+              "range": false,
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "0",
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value"
+          },
+          "description": "앱 카운터의 발생 횟수 — 트랜잭션 롤백·웹훅 재전송·confirm 경쟁 시 같은 결제가 여러 번 셀 수 있다. Pod 종료 직전(마지막 수집 이후 ≤30초)·기동 직후(첫 수집 전) 증가분은 빠질 수 있다."
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "일별 결제 금액 (통화별)",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 5,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT date_trunc('day', \"paidAt\") AS time, currency AS metric, sum(amount)::float AS value\nFROM payments\nWHERE status = 'PAID' AND $__timeFilter(\"paidAt\")\nGROUP BY 1, 2\nORDER BY 1"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 80,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "drawStyle": "bars"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "PAID만 — 나중에 환불(부분 환불 포함, 앱은 결제 전체를 REFUNDED로 바꾼다)되면 과거 막대에서 빠진다. 일 경계는 UTC(한국 09시)."
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "일별 결제 건수",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 5,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT date_trunc('day', \"paidAt\") AS time, count(*) AS value\nFROM payments\nWHERE status = 'PAID' AND $__timeFilter(\"paidAt\")\nGROUP BY 1\nORDER BY 1"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 80,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "drawStyle": "bars"
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "PAID만 — 나중에 환불되면 과거 막대에서 빠진다. 일 경계는 UTC(한국 09시)."
+        },
+        {
+          "id": 7,
+          "type": "piechart",
+          "title": "문의 상태 분포 (전체)",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 13,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT status::text AS metric, count(*) AS value\nFROM quote_requests\nGROUP BY 1"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": true
+            },
+            "pieType": "donut",
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "values": [
+                "value",
+                "percent"
+              ]
+            },
+            "displayLabels": []
+          }
+        },
+        {
+          "id": 8,
+          "type": "piechart",
+          "title": "결제 상태 분포 (30일)",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 13,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT status::text AS metric, count(*) AS value\nFROM payments\nWHERE \"createdAt\" > now() - interval '30 days'\nGROUP BY 1"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": true
+            },
+            "pieType": "donut",
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "values": [
+                "value",
+                "percent"
+              ]
+            },
+            "displayLabels": []
+          }
+        }
+      ]
+    }
