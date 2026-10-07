@@ -59,7 +59,7 @@ spec:
         - protocol: TCP
           port: 53
 ---
-# Prometheus — 들어오는 것은 Grafana와 Alertmanager(알림 조회)뿐. 나가는 것은 수집: 모든 네임스페이스의 Pod(ServiceMonitor 대상),
+# Prometheus — 들어오는 것은 Grafana(조회)와 자기 수집뿐. 나가는 것은 수집: 모든 네임스페이스의 Pod(ServiceMonitor 대상),
 # 노드 IP(kubelet 10250·cAdvisor), kube-apiserver(443). VPC CNI는 ipBlock을 Service DNAT 전에 평가하므로 Pod 대상은 셀렉터로 연다.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
