@@ -314,7 +314,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
 - **환경 분리 (2026-09-17)**: EKS 클러스터 1개 + `staging`/`prod` 네임스페이스 분리.
   근거·완화책은 배포 설계 스펙(`docs/superpowers/specs/` — 로컬 전용, git 추적 제외) §0.
 - **EKS 구성 (2026-10-04 구축)**: 클러스터 `lunote`, K8s **1.36**(Karpenter 1.14 지원 상한에 맞춤),
-  코어 노드그룹 AL2023 arm64 `t4g.medium` 1대(min 1/max 2, taint 없음), vpc-cni prefix delegation,
+  코어 노드그룹 AL2023 arm64 `t4g.medium` 1대(→ 2026-10-06 `t4g.large` 교체 결정, min 1/max 2, taint 없음), vpc-cni prefix delegation,
   EBS CSI + gp3 기본 StorageClass. Karpenter NodePool `default`는 Spot 우선(on-demand 폴백)·arm64 전용·
   c/m/r 5세대+·한도 16 vCPU/32Gi. 권한은 전부 IRSA(Karpenter·LBC·EBS CSI).
   **책임 분리**: Terraform은 AWS 리소스만(`infra/terraform`), 클러스터 내부(Karpenter 1.14.1·AWS Load
