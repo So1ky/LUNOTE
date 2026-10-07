@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { randomUUID } from 'node:crypto';
 import { LoggerModule } from 'nestjs-pino';
+import { trace } from '@opentelemetry/api';
 
 import { AdminModule } from './admin/admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -18,6 +19,7 @@ import { validateEnv } from './config/env.validation';
 import { redisConnectionFromUrl } from './config/redis-connection';
 import { FailOpenThrottlerStorage } from './config/throttler-storage';
 import { HealthController } from './health/health.controller';
+import { ObservabilityModule } from './observability/observability.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
 
@@ -26,12 +28,19 @@ import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     // 처리되지 않은 예외를 Sentry로 보고 (DSN 미설정 시 no-op)
     SentryModule.forRoot(),
+    // 비즈니스 카운터(MetricsService) — 전역 주입
+    ObservabilityModule,
     // JSON 구조화 로그 + 요청별 request-id — Loki 수집 전제 (ARCHITECTURE §8)
     LoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         pinoHttp: {
           level: config.getOrThrow<string>('LOG_LEVEL'),
+          // 로그 한 줄 → 그 요청의 트레이스로 점프(Grafana derived field). 스팬이 없으면 필드 없음
+          mixin: () => {
+            const ctx = trace.getActiveSpan()?.spanContext();
+            return ctx ? { trace_id: ctx.traceId, span_id: ctx.spanId } : {};
+          },
           // 인증 헤더 등 민감값은 구조상 로그에 남지 않게 마스킹 (로그 규칙)
           redact: ['req.headers.authorization', 'req.headers.cookie'],
           genReqId: (req) =>

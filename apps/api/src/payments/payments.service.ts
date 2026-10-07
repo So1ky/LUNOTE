@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MetricsService } from '../observability/metrics.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { toMinorUnits } from './currency';
 import {
@@ -69,6 +70,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly portone: PortOneGateway,
     private readonly notifications: NotificationsService,
+    private readonly metrics: MetricsService,
   ) {}
 
   /**
@@ -177,6 +179,7 @@ export class PaymentsService {
         })
       : null;
     if (!local) {
+      this.metrics.webhookFailure('unknown_payment');
       this.logger.warn(
         `알 수 없는 결제의 웹훅: type=${eventType} paymentId=${paymentId ?? '-'}`,
       );
@@ -259,6 +262,9 @@ export class PaymentsService {
               : null;
         if (mismatch) {
           // 돈은 들어왔지만 우리가 청구한 것과 다르다 — 상태를 바꾸지 않고 사람에게 넘긴다
+          this.metrics.paymentMismatch(
+            remote.amount.total !== expected ? 'amount' : 'currency',
+          );
           this.logger.error(`결제 불일치 payment=${local.id}: ${mismatch}`);
           Sentry.captureMessage('payment amount mismatch', {
             level: 'error',
@@ -296,6 +302,7 @@ export class PaymentsService {
         });
         if (moved.count === 0) {
           // 결제 중 사용자가 문의를 취소한 경우 등 — 돈은 받았으니 관리자가 환불/복구 판단
+          this.metrics.paymentMismatch('request_status');
           this.logger.error(
             `결제는 PAID인데 문의 #${requestId}가 QUOTED가 아님 — 수동 확인 필요`,
           );

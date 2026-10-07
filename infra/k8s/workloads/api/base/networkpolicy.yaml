@@ -21,6 +21,18 @@ spec:
       ports:
         - protocol: TCP
           port: 3000
+    # Prometheus가 메트릭을 긁는다 — Pod IP로 직접. Pod까지 지정(AND): 네임스페이스만 지정하면 hostNetwork인
+    # node-exporter 때문에 VPC CNI가 모든 노드 IP까지 허용 목록에 넣는다
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9464
   egress:
     # RDS·Redis (프라이빗 서브넷)
     - to:
@@ -42,6 +54,17 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
+    # 트레이스 → Alloy(OTLP/gRPC). Service ClusterIP는 ipBlock에 없으므로 셀렉터로(allow-dns와 같은 이유)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: alloy
+      ports:
+        - protocol: TCP
+          port: 4317
     # 외부 HTTPS(PortOne·S3·STS·Sentry)와 SMTP
     - to:
         - ipBlock:

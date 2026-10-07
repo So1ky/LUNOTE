@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { MetricsService } from '../observability/metrics.service';
 import { PaymentsService } from './payments.service';
 import { PortOneGateway, type PortOneWebhookEvent } from './portone.gateway';
 
@@ -27,6 +28,7 @@ export class PortOneWebhookController {
   constructor(
     private readonly gateway: PortOneGateway,
     private readonly payments: PaymentsService,
+    private readonly metrics: MetricsService,
   ) {}
 
   @Post('webhook')
@@ -43,16 +45,25 @@ export class PortOneWebhookController {
       event = await this.gateway.verifyWebhook(rawBody, headers);
     } catch (e) {
       // 시크릿 불일치·타임스탬프 이탈·헤더 누락 모두 여기 — 본문은 로그에 남기지 않는다
+      this.metrics.webhookFailure('signature');
       this.logger.warn(`웹훅 서명 검증 실패: ${(e as Error).message}`);
       throw new UnauthorizedException('Invalid webhook signature');
     }
 
     const eventId = headers['webhook-id'];
     if (typeof eventId !== 'string' || !eventId) {
+      this.metrics.webhookFailure('missing_id');
       throw new UnauthorizedException('Missing webhook-id');
     }
 
-    const outcome = await this.payments.handleWebhook(eventId, event);
+    let outcome: Awaited<ReturnType<PaymentsService['handleWebhook']>>;
+    try {
+      outcome = await this.payments.handleWebhook(eventId, event);
+    } catch (e) {
+      // 500 → PortOne 재전송. 재전송마다 세므로 같은 이벤트가 여러 번 잡힐 수 있다 — 알림은 "0보다 큼"만 본다
+      this.metrics.webhookFailure('exception');
+      throw e;
+    }
     this.logger.log(`웹훅 처리: type=${String(event.type)} outcome=${outcome}`);
     return { ok: true, outcome };
   }

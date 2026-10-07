@@ -1,4 +1,4 @@
-import './instrument'; // Sentry — 반드시 다른 import보다 먼저
+import './instrument'; // 계측(OTel·Sentry) — 반드시 다른 import보다 먼저
 
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

@@ -35,6 +35,9 @@ spec:
           ports:
             - name: http
               containerPort: 3000
+            # OTel Prometheus exporter — ServiceMonitor가 Service의 metrics 포트로 긁는다. ALB는 http만 본다
+            - name: metrics
+              containerPort: 9464
           env:
             # node-postgres는 sslmode=require를 인증서 검증까지 수행한다. RDS CA는 Node 기본 신뢰 목록에
             # 없으므로 추가로 신뢰시킨다 (검증을 끄지 않는다).
