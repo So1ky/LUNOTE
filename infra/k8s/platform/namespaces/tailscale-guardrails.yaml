@@ -74,7 +74,8 @@ spec:
         - protocol: UDP
           port: 3478
 ---
-# Ingress 프록시 → 백엔드 Service: argocd-server 8080(평문, Task 8에서 insecure), grafana 3000, jenkins 8080
+# Ingress 프록시 → 백엔드 Service: argocd-server 80→8080(평문, Task 8에서 insecure), grafana 80→3000, jenkins 8080.
+# VPC CNI가 Service DNAT 전에 평가하는 경우를 대비해 Service 포트(80)도 함께 연다
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -96,6 +97,8 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+        - protocol: TCP
+          port: 80
     - to:
         - namespaceSelector:
             matchLabels:
@@ -106,6 +109,8 @@ spec:
       ports:
         - protocol: TCP
           port: 3000
+        - protocol: TCP
+          port: 80
     - to:
         - namespaceSelector:
             matchLabels:
