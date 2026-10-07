@@ -1,0 +1,205 @@
+# kube-prometheus-stack — Prometheus Operator + Prometheus + Alertmanager + Grafana + kube-state-metrics + node-exporter.
+# 수집 대상(ServiceMonitor)·알림 규칙(PrometheusRule)·대시보드는 platform/monitoring-config/(monitoring-config 앱) — 차트 values와 분리.
+fullnameOverride: kube-prometheus-stack
+
+# EKS 관리형 컨트롤 플레인 — 노드에서 닿을 수 없는 컴포넌트는 수집·규칙 모두 끈다(안 끄면 영구 TargetDown/…Down 알림)
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+defaultRules:
+  rules:
+    etcd: false
+    kubeScheduler: false
+    kubeControllerManager: false
+    kubeProxy: false
+    # Prometheus 자체 규칙은 유지(TargetDown·Watchdog 등)
+
+# 플랫폼 컴포넌트는 코어 노드에만 — Karpenter(Spot) 노드는 회수 대상
+# (node-exporter는 DaemonSet이라 모든 노드에 뜬다 — 그게 목적)
+prometheusOperator:
+  affinity: &coreNode
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      memory: 256Mi
+  admissionWebhooks:
+    patch:
+      affinity: *coreNode
+
+kube-state-metrics:
+  affinity: *coreNode
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 192Mi
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      memory: 96Mi
+
+prometheus:
+  prometheusSpec:
+    retention: 14d
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    # 차트 release 라벨이 없는 ServiceMonitor·PrometheusRule(monitoring-config 앱)도 읽는다
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    affinity: *coreNode
+    resources:
+      requests:
+        cpu: 100m # Task 2 결정: 코어 CPU 예약량 병목 — 실사용 측정 후 재조정
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 20Gi
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 2000
+      fsGroup: 2000
+      seccompProfile:
+        type: RuntimeDefault
+
+alertmanager:
+  alertmanagerSpec:
+    affinity: *coreNode
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        memory: 192Mi
+    # ESO가 만든 Secret(alertmanager-discord)을 /etc/alertmanager/secrets/alertmanager-discord/ 에 마운트
+    secrets:
+      - alertmanager-discord
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: discord
+      group_by: [alertname, namespace]
+      group_wait: 1m
+      group_interval: 5m
+      repeat_interval: 12h
+      routes:
+        # 항상 켜져 있는 생존 알림 — 디스코드로 보내지 않는다
+        - receiver: "null"
+          matchers: ['alertname = "Watchdog"']
+        # critical은 즉시, 4시간마다 재알림
+        - receiver: discord
+          matchers: ['severity = "critical"']
+          group_wait: 0s
+          repeat_interval: 4h
+    receivers:
+      - name: "null"
+      - name: discord
+        discord_configs:
+          - webhook_url_file: /etc/alertmanager/secrets/alertmanager-discord/webhook-url
+            send_resolved: true
+            title: '{{ .CommonLabels.alertname }} [{{ .Status | toUpper }}]{{ if .CommonLabels.namespace }} · {{ .CommonLabels.namespace }}{{ end }}'
+            message: '{{ range .Alerts }}• {{ .Annotations.summary }}{{ if .Annotations.description }} — {{ .Annotations.description }}{{ end }}{{ "\n" }}{{ end }}'
+
+grafana:
+  affinity: *coreNode
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 384Mi
+  # helm test용 Pod — ArgoCD에서는 쓰지 않는다
+  testFramework:
+    enabled: false
+  # 상태는 git이 원본(대시보드·데이터소스·규칙 전부 ConfigMap) — PVC 없음. 재시작하면 세션·임시 설정만 사라진다
+  persistence:
+    enabled: false
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  # PostgreSQL 데이터소스 자격 증명 → 환경 변수(GF_DS_PG_USER/GF_DS_PG_PASSWORD)
+  envFromSecret: grafana-datasource-db
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-grafana
+  grafana.ini:
+    server:
+      # Tailscale Ingress 주소(Task 8에서 확정). 그 전까지 port-forward는 localhost로 동작한다
+      root_url: "%(protocol)s://%(domain)s/"
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+    users:
+      allow_sign_up: false
+    unified_alerting:
+      enabled: true
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: monitoring
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+    datasources:
+      enabled: true
+      # 차트가 Prometheus(uid prometheus)·Alertmanager(uid alertmanager) 데이터소스를 만든다 — 나머지는 아래 additionalDataSources
+      alertmanager:
+        # Grafana 규칙(RDS·CloudWatch)을 이 Alertmanager로 전달 — 디스코드 경로를 하나로 유지
+        handleGrafanaManagedAlerts: true
+    alerts:
+      enabled: true
+      label: grafana_alert
+      labelValue: "1"
+      searchNamespace: monitoring
+  additionalDataSources:
+    - name: CloudWatch
+      uid: cloudwatch
+      type: cloudwatch
+      access: proxy
+      jsonData:
+        authType: default # IRSA
+        defaultRegion: ap-northeast-2
+    - name: PostgreSQL
+      uid: postgres
+      type: grafana-postgresql-datasource
+      access: proxy
+      url: lunote.c54wgyig80nu.ap-northeast-2.rds.amazonaws.com:5432
+      user: $GF_DS_PG_USER
+      secureJsonData:
+        password: $GF_DS_PG_PASSWORD
+      jsonData:
+        database: lunote_prod
+        sslmode: require
+        postgresVersion: 1700
+        timescaledb: false

@@ -79,6 +79,16 @@ spec:
       ports:
         - protocol: TCP
           port: 9090
+    # 자기 수집 — 차트 기본 ServiceMonitor가 Prometheus 9090과 config-reloader 8080을 긁는다
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 8080
   egress:
     - to:
         - namespaceSelector: {}

@@ -1,0 +1,28 @@
+# 메트릭·알림·대시보드 스택. 네임스페이스·시크릿·가드레일은 namespaces 앱(platform/namespaces/monitoring*.yaml).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 92.0.0
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/infra/k8s/platform/kube-prometheus-stack/values.yaml
+    - repoURL: https://github.com/So1ky/LUNOTE.git
+      targetRevision: develop
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - ServerSideApply=true # CRD가 크다(annotation 262KB 한도) — SSA 필수
