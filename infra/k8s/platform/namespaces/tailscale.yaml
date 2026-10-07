@@ -1,0 +1,56 @@
+# Tailscale Operator 네임스페이스 + OAuth 시크릿 경로. Operator 자체는 infra/k8s/apps/tailscale-operator.yaml(차트, Task 8).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tailscale
+  labels:
+    # Ingress마다 생기는 프록시 Pod가 TUN 장치용 NET_ADMIN을 요구해 baseline을 통과하지 못한다. 그 외는 경고·감사로 감시.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/audit: baseline
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eso-reader
+  namespace: tailscale
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-eso-tailscale
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: aws-secrets-manager
+  namespace: tailscale
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: ap-northeast-2
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: eso-reader
+---
+# Operator가 읽는 Secret 이름·키는 차트 고정값(operator-oauth: client_id/client_secret). 차트 values의 oauth.*는 비워 둔다.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: operator-oauth
+  namespace: tailscale
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: aws-secrets-manager
+  target:
+    name: operator-oauth
+  data:
+    - secretKey: client_id
+      remoteRef:
+        key: lunote/shared/tailscale
+        property: client_id
+    - secretKey: client_secret
+      remoteRef:
+        key: lunote/shared/tailscale
+        property: client_secret

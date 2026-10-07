@@ -1,0 +1,362 @@
+# monitoring 네임스페이스 가드레일 — 자원 상한 + 기본 거부 + 컴포넌트별 허용 통로.
+# 스크레이프 대상 쪽(staging·prod API)의 ingress 허용은 각자의 NetworkPolicy(workloads/api/base/networkpolicy.yaml)에 있다.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute
+  namespace: monitoring
+spec:
+  hard:
+    # Prometheus 512Mi + Grafana 256Mi + Alertmanager·KSM·operator ≈250Mi + Loki 512Mi + Alloy 128Mi + Tempo 512Mi ≈ 2.2Gi, limits는 2배
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    limits.memory: 8Gi
+    pods: "30"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: monitoring
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      default:
+        memory: 256Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Prometheus — 들어오는 것은 Grafana와 Alertmanager(알림 조회)뿐. 나가는 것은 수집: 모든 네임스페이스의 Pod(ServiceMonitor 대상),
+# 노드 IP(kubelet 10250·cAdvisor), kube-apiserver(443). VPC CNI는 ipBlock을 Service DNAT 전에 평가하므로 Pod 대상은 셀렉터로 연다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: 9090
+  egress:
+    - to:
+        - namespaceSelector: {}
+    - to:
+        - ipBlock:
+            cidr: 10.0.128.0/20
+        - ipBlock:
+            cidr: 10.0.144.0/20
+      ports:
+        - protocol: TCP
+          port: 10250 # kubelet·cAdvisor
+        - protocol: TCP
+          port: 9100 # node-exporter(hostNetwork라 노드 IP — ipBlock으로 평가된다)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# Alertmanager — Prometheus(알림 전달·수집)·Grafana(Grafana 규칙 전달·UI 조회)에서 들어오고, 디스코드(443)로만 나간다.
+# 8080은 config-reloader 사이드카 메트릭(차트 기본 ServiceMonitor가 긁는다)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: 9093
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# Grafana — 들어오는 것은 Tailscale 프록시(Task 8)와 Prometheus(메트릭 수집). port-forward는 Pod 네트워크 네임스페이스의 localhost로
+# 들어가 NetworkPolicy를 거치지 않는다(노드 서브넷 ipBlock은 VPC CNI에서 모든 Pod IP를 포함하므로 열지 않는다). 나가는 것은 데이터소스 5개:
+# Prometheus 9090, Alertmanager 9093, Loki 3100, Tempo 3200, RDS 5432(프라이빗 서브넷 — RDS SG가 코어 노드 SG를 허용, Plan 8 결정 7a), CloudWatch 443
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tailscale
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: alertmanager
+      ports:
+        - protocol: TCP
+          port: 9093
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: loki
+      ports:
+        - protocol: TCP
+          port: 3100
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: tempo
+      ports:
+        - protocol: TCP
+          port: 3200
+    - to:
+        - ipBlock:
+            cidr: 10.0.128.0/20
+        - ipBlock:
+            cidr: 10.0.144.0/20
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# Loki — Alloy(push)·Grafana(query)에서 들어오고 S3(443)로 나간다
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: loki
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: alloy
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: 3100
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# Tempo — Alloy(OTLP 4317)·Grafana(3200)에서 들어오고 S3(443)로 나간다
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tempo
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: tempo
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: alloy
+      ports:
+        - protocol: TCP
+          port: 4317
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: 3200
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# Alloy — staging·prod API에서 트레이스(4317)가 들어오고, Loki·Tempo로 전달하며, Pod 로그는 kube-apiserver(443)로 받는다
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: alloy
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values: [staging, prod]
+      ports:
+        - protocol: TCP
+          port: 4317
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: loki
+      ports:
+        - protocol: TCP
+          port: 3100
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: tempo
+      ports:
+        - protocol: TCP
+          port: 4317
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# kube-state-metrics — Prometheus만 긁는다
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kube-state-metrics
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# Prometheus Operator — kube-apiserver(443)만. 어드미션 웹훅(10250)은 API 서버가 호출한다(노드 IP에서 들어옴)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus-operator
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: kube-prometheus-stack-operator
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - protocol: TCP
+          port: 10250
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
