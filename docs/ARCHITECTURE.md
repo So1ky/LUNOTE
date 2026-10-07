@@ -27,7 +27,7 @@
 | 컨테이너 오케스트레이션 | AWS EKS | 코어 노드그룹 On-Demand + 워커 Spot(Karpenter) |
 | CI/CD | Jenkins(동적 에이전트 Pod) + ArgoCD, PR 검사는 GitHub Actions | GitOps 무중단 배포. PR 검사에는 배포 권한이 없다 |
 | IaC | Terraform | 콘솔 수동 조작 금지 |
-| 관측성 | Prometheus + Grafana + Loki + Alertmanager | kube-prometheus-stack Helm 차트 |
+| 관측성 | Prometheus + Grafana + Alertmanager + Loki + Tempo, 수집 Alloy, 앱 계측 OpenTelemetry | kube-prometheus-stack·loki·alloy·tempo Helm 차트. 알림은 디스코드 |
 | 시크릿 | AWS Secrets Manager + External Secrets Operator | 앱 Pod에는 IRSA로 최소권한 부여 |
 
 ## 3. 시스템 아키텍처
@@ -148,16 +148,21 @@ graph TB
 
 ## 8. 관측성 (Observability)
 
-- **메트릭**: kube-prometheus-stack (Prometheus + Grafana + Alertmanager).
-  NestJS는 `/metrics` 엔드포인트 노출 (prom-client).
-- **로그**: Loki + Promtail. 앱 로그는 JSON 구조화 로그(pino)로 출력.
-- **핵심 알림 (Alertmanager → 텔레그램 또는 Slack)**:
-  - API 5xx 비율 > 1% (5분), P95 지연 > 1s
-  - 웹훅 처리 실패, 결제 금액 불일치 감지 (비즈니스 알림)
-  - Pod CrashLoopBackOff, 노드 NotReady, RDS 스토리지/커넥션 임계치
-- 대시보드: ① 서비스(요청량/에러/지연) ② 비즈니스(결제 성공률, 문의→결제 전환) ③ 인프라(노드/DB).
-- **앱 계측 (2026-07-24 확정)**: `nestjs-pino`로 JSON 구조화 로그 + 요청별 request-id +
-  민감 필드 redaction. 에러 트래킹은 **Sentry**(무료 티어) — 1인 운영에서 장애 인지의 최소 장치.
+- **메트릭**: kube-prometheus-stack(Prometheus 보존 14일·PVC 20Gi, Grafana, Alertmanager). API는 OpenTelemetry SDK의
+  Prometheus exporter로 **9464 포트**에 `/metrics`를 연다(ALB 경로 밖). `ServiceMonitor` 1개가 staging·prod를 함께 긁는다.
+- **로그**: Loki(SingleBinary, 저장소 S3, 보존 14일) + **Alloy**(Deployment 1개, K8s API로 Pod 로그 수집 — Promtail은 2026-03 EOL).
+  앱 로그는 `nestjs-pino` JSON(요청별 request-id, 민감 필드 redaction) + `trace_id`·`span_id` 필드.
+  Loki·Tempo 차트는 `grafana-community` 저장소(`grafana/loki`는 2026-03부터 엔터프라이즈 전용, `grafana/tempo`는 폐기).
+- **트레이스**: Tempo(SingleBinary, S3, 보존 7일). 앱 → OTLP/gRPC → Alloy → Tempo. 부모 기반 20% 샘플링.
+- **앱 계측 (2026-10-06 확정)**: `@opentelemetry/sdk-node` + http·nestjs-core·ioredis·pg·prisma 자동 계측이 메트릭·트레이스를 소유한다.
+  **Sentry는 에러 트래킹만**(`skipOpenTelemetrySetup: true`) — 둘 다 계측하면 스팬이 이중으로 잡힌다. 비즈니스 카운터
+  `lunote_payment_mismatch_total`, `lunote_portone_webhook_failures_total`.
+- **핵심 알림 (Alertmanager → 디스코드)**: API 5xx 비율 > 1%(5분, 분당 요청 10건 이상일 때), P95 > 1s, 결제 금액 불일치, 웹훅 처리 실패,
+  Pod CrashLoopBackOff, 노드 NotReady, RDS 여유 스토리지 < 2GiB·커넥션 > 80(CloudWatch — Grafana 규칙이 Alertmanager로 전달).
+- **대시보드(git ConfigMap)**: ① 서비스(OTel http 메트릭) ② 비즈니스(결제 성공률·문의→결제 전환 — Grafana PostgreSQL 데이터소스,
+  읽기 전용 사용자 `grafana_ro`, `payments`·`quote_requests`만) ③ 인프라(노드·클러스터 + CloudWatch RDS).
+- **접속**: Grafana·ArgoCD·Jenkins UI는 Tailscale Operator Ingress(`https://<name>.<tailnet>.ts.net`) — 인터넷 노출 0, port-forward 불필요.
+- 외부 사활 감시(UptimeRobot)는 출시 직전(Phase 6)에 등록한다 — 수면 모드 중에는 API가 0대라 매일 다운 알림이 되기 때문.
 
 ## 9. CI/CD 파이프라인
 
@@ -244,6 +249,8 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   EBS·KMS ≈$3 ≈ **$150/월** (추정치). Spot 노드는 워크로드가 있을 때만 과금. 전체 합계 ≈$190/월.
 - **(2026-10-06) prod 워크로드**: API Pod 2개를 서로 다른 노드에 두기 위한 Spot 노드 1대 ≈ +$10~15/월(추정치).
   metrics-server·staging Redis는 기존 노드에 얹어 추가 비용 없음.
+- **(2026-10-06) 관측성**: 코어 노드 t4g.medium→t4g.large ≈ +$30/월(깨어 있는 시간) + EBS 40Gi(Prometheus 20·Loki 10·Tempo 10) ≈$4 +
+  S3·CloudWatch GetMetricData ≈$1~2 ≈ **+$35/월**. Tailscale·디스코드·Sentry 무료 티어.
 - 전체 스택은 Terraform만으로 재현 가능해야 한다 — 리전 장애 등 최악의 상황에서 RDS 백업 + `terraform apply`로 복구하는 것이 DR 전략의 기본이다.
 
 ## 11. 보안 체크리스트
@@ -349,7 +356,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   실측(설치 전 노드 실사용 1447Mi/3.8GiB, 설치·빌드 후 가용 1341Mi)상 컨트롤러(requests 1Gi, limit 1.5Gi)가
   들어간다. 단 스케줄링 기준인 requests는 2964Mi/3288Mi(90%)라 남은 예약 여유는 ≈320Mi — 코어 노드에 컴포넌트를
   더 올리려면 증설이 먼저다. t4g는 가격이 메모리에
-  정비례해 scale up(t4g.large)과 2대 증설의 비용이 같으므로(≈+$30/월) 증설은 Phase 5로 미룬다. 설정은 JCasC + Job DSL로 `infra/k8s/platform/jenkins/values.yaml`에 둔다.
+  정비례해 scale up(t4g.large)과 2대 증설의 비용이 같으므로(≈+$30/월) 증설은 Phase 5로 미룬다(→ 2026-10-06 t4g.large 교체 결정). 설정은 JCasC + Job DSL로 `infra/k8s/platform/jenkins/values.yaml`에 둔다.
   트리거는 **GitHub 웹훅** — 공유 ALB에 `ci-hooks.lunoteapp.com/github-webhook/` 규칙 하나만 열고(GitHub 발신
   IP 조건 + HMAC-SHA256 서명 검증), UI는 노출하지 않는다(port-forward). 빌더는 **BuildKit rootless**
   (기존 구상 Kaniko는 2025-06 아카이브). GitHub 쓰기는 deploy key(배포 저장소 `So1ky/lunote-deploy` 전용), ECR push는 에이전트 SA의
@@ -370,8 +377,18 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
 - **rate limit 저장소 (2026-10-06 결정)**: 프로덕션은 카운터를 Redis에 둔다(`@nest-lab/throttler-storage-redis`) —
   Pod마다 메모리에 세면 한도가 Pod 수만큼 느슨해진다. Redis 장애 시에는 통과(fail-open)시키고 요청이 대기하지 않게
   오프라인 큐를 끈다. 로컬·테스트는 인메모리.
+- **코어 노드 t4g.large (2026-10-06 결정)**: 관측성 스택(≈2.4GiB requests)을 올리기 위해 코어 노드그룹 인스턴스를 t4g.medium→**t4g.large**(1대 유지)로
+  교체한다. 2대 증설과 비용이 같고(+$30/월), 1대면 전원 스크립트·PV·AZ 구조가 그대로다. 노드 교체 시 플랫폼 컴포넌트만 수 분 중단 — API Pod는
+  Karpenter 노드라 사용자 서비스는 영향 없다. 잃는 것: 단일 장애점 유지(기존 수용).
+- **관측성 스택 (2026-10-06 결정)**: `monitoring`·`tailscale` 네임스페이스는 Pod Security privileged + warn/audit baseline(node-exporter hostPath,
+  Tailscale 프록시 NET_ADMIN). Loki·Tempo는 S3 + IRSA(버킷 단위), WAL용 PVC 10Gi. Grafana persistence 끔(대시보드·규칙은 git). RDS ingress에
+  **코어 노드 SG를 추가**한다(Grafana PostgreSQL 데이터소스) — 노드 단위 허용이므로 monitoring NetworkPolicy로 Grafana Pod만 5432 egress 허용.
+  ServiceMonitor·PrometheusRule·대시보드는 별도 ArgoCD 앱 `monitoring-config`. 알림 채널은 디스코드(`webhook_url_file`, URL은 ESO). RDS 지표는
+  CloudWatch 데이터소스(exporter Pod 없음, ≈$1/월). Alloy는 Deployment 1개(API 경유 수집이라 노드 로컬 불필요).
+- **관리 UI 접속 (2026-10-06 결정)**: Tailscale Operator + `ingressClassName: tailscale` Ingress(argocd·grafana·jenkins). ArgoCD 서버는 `server.insecure: true`
+  (프록시가 TLS 종료, 클러스터 내부 홉). 대안 기각: ALB + Cognito OIDC(관리 UI 공개 노출·2중 로그인), port-forward 재연결 스크립트(노트북만).
 - **코어 노드그룹 AZ 고정 (2026-10-05 결정)**: 코어 노드그룹은 `ap-northeast-2c` 서브넷 하나에만 둔다.
-  Jenkins(이후 Prometheus)의 PV는 EBS라 한 AZ에 묶이는데, 노드그룹이 2 AZ에 걸쳐 있으면 노드 교체나 wake 때
+  Jenkins·Prometheus·Loki·Tempo의 PV는 EBS라 한 AZ에 묶이는데, 노드그룹이 2 AZ에 걸쳐 있으면 노드 교체나 wake 때
   노드가 다른 AZ에 떠 Pod가 Pending으로 남는다. 평상시 가용성은 같다. 잃는 것: 2c 장애 시 노드그룹이 2a에
   노드를 자동으로 띄우지 못한다 — 수동 복구는 `envs/prod/eks.tf`의 AZ 이름을 2a로 바꿔 apply(Jenkins는
   2c가 돌아올 때까지 Pending). 다만 RDS(Single-AZ)가 2c, NAT·Redis가 2a에 있어 지금은 어느 AZ가 죽어도
