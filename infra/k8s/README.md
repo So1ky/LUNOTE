@@ -154,7 +154,7 @@ UI는 외부에 열지 않는다. 인터넷에 열린 것은 웹훅 수신 경�
 ## 새 플랫폼 컴포넌트 추가 시
 
 - 파드는 코어 노드에 고정: `nodeAffinity karpenter.sh/nodepool DoesNotExist`.
-- 코어 노드에는 `lunote-app` SG가 없다 — RDS/Redis에 접속해야 하는 파드는 Karpenter 노드에 둔다.
+- 코어 노드에는 `lunote-app` SG가 없다 — Redis에 접속해야 하는 파드는 Karpenter 노드에 둔다. RDS는 EKS node SG도 허용한다(Grafana용, Plan 8). 그래서 **egress 기본 거부가 없는 코어 네임스페이스(argocd·external-secrets·karpenter·kube-system·aws-load-balancer-controller)의 파드는 네트워크상 RDS 5432에 닿는다** — 막는 것은 DB 자격 증명뿐이다. 기본 거부가 있는 네임스페이스(jenkins·staging·prod·monitoring·tailscale)는 NetworkPolicy에서 5432 egress를 명시적으로 열어야 닿는다.
 - 차트 기반이면 `syncOptions: [ServerSideApply=true]`.
 - ALB(Ingress)가 필요한 네임스페이스는 `platform/aws-load-balancer-controller/values.yaml`의
   `ingressClassParams.spec.namespaceSelector`에 추가해야 한다.
