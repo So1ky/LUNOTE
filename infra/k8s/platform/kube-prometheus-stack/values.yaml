@@ -145,9 +145,10 @@ grafana:
   resources:
     requests:
       cpu: 50m
-      memory: 192Mi
+      memory: 256Mi
     limits:
-      memory: 384Mi
+      # 384Mi에서 OOMKilled(2026-10-07) — 평상시 ≈215Mi, UI 조작·백엔드 플러그인(CloudWatch 등 별도 프로세스) 기동 시 급증
+      memory: 768Mi
   # helm test용 Pod — ArgoCD에서는 쓰지 않는다
   testFramework:
     enabled: false
@@ -171,6 +172,7 @@ grafana:
     analytics:
       reporting_enabled: false
       check_for_updates: false
+      check_for_plugin_updates: false
     users:
       allow_sign_up: false
     unified_alerting:
