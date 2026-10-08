@@ -43,6 +43,19 @@ spec:
             summary: "API P95 지연 1초 초과 ({{ $labels.namespace }})"
             description: "P95 {{ $value | humanizeDuration }}"
 
+        - alert: ApiLatencySpike
+          # 급성 폭증 — ApiHighLatency(5분 지속 + warning 묶음 1분)는 1분 남짓한 폭증을 놓친다(2026-10-08 부하 테스트 실측).
+          # critical 경로는 group_wait 0s라 바로 간다. 초당 1건 이상일 때만 — 저트래픽의 느린 요청 몇 건은 ApiHighLatency가 맡는다
+          expr: |
+            histogram_quantile(0.95, sum by (le, namespace) (rate(http_server_request_duration_bucket{job="api"}[1m]))) > 3
+              and on (namespace) sum by (namespace) (rate(http_server_request_duration_count{job="api"}[1m])) > 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "API P95 지연 3초 초과 — 급성 ({{ $labels.namespace }})"
+            description: "1분 P95 {{ $value | humanizeDuration }}. 노드 CPU·Ready Pod 수·DB 커넥션 풀(P2028) 확인"
+
         - alert: PaymentAmountMismatch
           # 돈은 들어왔는데 청구와 다르다 — 즉시 사람이 봐야 한다. 카운터 증가분이 0보다 크면 발화(사유: amount/currency/request_status)
           expr: sum by (namespace, reason) (increase(lunote_payment_mismatch_total[10m])) > 0

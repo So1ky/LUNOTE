@@ -26,6 +26,17 @@ groups:
     for: 5m
     labels:
       severity: warning
+  - alert: ApiLatencySpike
+    annotations:
+      description: 1분 P95 {{ $value | humanizeDuration }}. 노드 CPU·Ready Pod 수·DB 커넥션
+        풀(P2028) 확인
+      summary: API P95 지연 3초 초과 — 급성 ({{ $labels.namespace }})
+    expr: "histogram_quantile(0.95, sum by (le, namespace) (rate(http_server_request_duration_bucket{job=\"\
+      api\"}[1m]))) > 3\n  and on (namespace) sum by (namespace) (rate(http_server_request_duration_count{job=\"\
+      api\"}[1m])) > 1\n"
+    for: 1m
+    labels:
+      severity: critical
   - alert: PaymentAmountMismatch
     annotations:
       description: 10분 내 {{ $value | printf "%.0f" }}건 — 관리자 알림·Sentry·DB failReason

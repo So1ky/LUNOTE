@@ -122,6 +122,56 @@ tests:
         alertname: ApiHighLatency
         exp_alerts: []
 
+  # 5c) 급성 폭증 — 초당 3.3건 중 5분~7분 2분간 전부 2.5~5초 버킷 → 1분 뒤 critical, 폭증이 1분 창을 벗어나면 해소
+  #     (2026-10-08 부하 테스트: ≈1분 폭증이 ApiHighLatency로는 디스코드 0건)
+  - interval: 30s
+    input_series:
+      - series: 'http_server_request_duration_bucket{job="api", namespace="prod", le="0.5", pod="a"}'
+        values: '0+100x10 1000x3 1100+100x9'
+      - series: 'http_server_request_duration_bucket{job="api", namespace="prod", le="2.5", pod="a"}'
+        values: '0+100x10 1000x3 1100+100x9'
+      - series: 'http_server_request_duration_bucket{job="api", namespace="prod", le="5", pod="a"}'
+        values: '0+100x24'
+      - series: 'http_server_request_duration_bucket{job="api", namespace="prod", le="+Inf", pod="a"}'
+        values: '0+100x24'
+      - series: 'http_server_request_duration_count{job="api", namespace="prod", http_response_status_code="200", pod="a"}'
+        values: '0+100x24'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ApiLatencySpike
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: ApiLatencySpike
+        exp_alerts: []   # 조건은 참, for 1m 대기 중
+      - eval_time: 7m
+        alertname: ApiLatencySpike
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              namespace: prod
+            exp_annotations:
+              summary: "API P95 지연 3초 초과 — 급성 (prod)"
+              description: "1분 P95 4.875s. 노드 CPU·Ready Pod 수·DB 커넥션 풀(P2028) 확인"
+      - eval_time: 9m
+        alertname: ApiLatencySpike
+        exp_alerts: []
+
+  # 5d) 저트래픽(분당 2건)이면 전부 느려도 발화하지 않는다 — ApiHighLatency 몫
+  - interval: 30s
+    input_series:
+      - series: 'http_server_request_duration_bucket{job="api", namespace="staging", le="2.5", pod="a"}'
+        values: '0x30'
+      - series: 'http_server_request_duration_bucket{job="api", namespace="staging", le="5", pod="a"}'
+        values: '0+1x30'
+      - series: 'http_server_request_duration_bucket{job="api", namespace="staging", le="+Inf", pod="a"}'
+        values: '0+1x30'
+      - series: 'http_server_request_duration_count{job="api", namespace="staging", http_response_status_code="200", pod="a"}'
+        values: '0+1x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ApiLatencySpike
+        exp_alerts: []
+
   # 6) 웹훅 실패(unknown_payment 포함) 1건 → for 1m 뒤 warning
   - interval: 30s
     input_series:
