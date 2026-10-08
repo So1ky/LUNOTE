@@ -26,6 +26,9 @@ export function startOtel(): NodeSDK | null {
   process.env.OTEL_LOGS_EXPORTER ??= 'none';
   // 트레이스도 비워 두면 OTLP(localhost:4318) + 100% 샘플링이 기본 — 켜려면 오버레이에서 otlp를 명시한다
   process.env.OTEL_TRACES_EXPORTER ??= 'none';
+  // 들어오는 traceparent를 따르지 않는다 — sampled 플래그로 parentbased 샘플링(20%)을 100%로 강제할 수 있고,
+  // 나가는 호출(PortOne·S3)에 트레이스 헤더를 붙일 이유도 없다. 프로세스 간 전파는 쓰지 않는다
+  process.env.OTEL_PROPAGATORS ??= 'none';
 
   const sdk = new NodeSDK({
     resource: resourceFromAttributes({
@@ -49,7 +52,11 @@ export function startOtel(): NodeSDK | null {
       // http_route 라벨(라우트 템플릿)은 Express 계측이 채운다 — Nest 계측은 컨트롤러 스팬만 만든다
       new ExpressInstrumentation(),
       new NestInstrumentation(),
-      new IORedisInstrumentation(),
+      // 명령 이름만 남긴다 — 기본 직렬화기는 EVAL* 인자를 전부 남기는데, BullMQ 잡 등록(EVALSHA) 인자가
+      // 잡 데이터(관리자 알림의 userEmail)라 개인정보가 트레이스에 저장된다
+      new IORedisInstrumentation({
+        dbStatementSerializer: (cmdName) => cmdName,
+      }),
       new PgInstrumentation(),
       new RuntimeNodeInstrumentation(),
       new PrismaInstrumentation(),
