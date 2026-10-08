@@ -12,7 +12,16 @@ describe('traceLogFields', () => {
     );
   });
 
-  it('유효한 스팬이면 trace_id·span_id를 남긴다', () => {
+  it('샘플링되지 않은 스팬(Tempo에 저장 안 됨)이면 필드가 없다', () => {
+    const span = trace.wrapSpanContext({
+      traceId: '0af7651916cd43dd8448eb211c80319c',
+      spanId: 'b7ad6b7169203331',
+      traceFlags: TraceFlags.NONE,
+    });
+    expect(traceLogFields(span)).toEqual({});
+  });
+
+  it('샘플링된 스팬이면 trace_id·span_id를 남긴다', () => {
     const span = trace.wrapSpanContext({
       traceId: '0af7651916cd43dd8448eb211c80319c',
       spanId: 'b7ad6b7169203331',
