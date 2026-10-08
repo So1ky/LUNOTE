@@ -76,7 +76,7 @@ export const options = {
   scenarios: { [PROFILE]: PROFILES[PROFILE] },
   thresholds: THRESHOLDS[PROFILE],
   summaryTrendStats: ['avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
-  // setup 로그인은 판정에서 뺀다
+  // setup 단계 전체의 제한 시간. setup 요청(약 2건)도 전체 지표에 포함되지만 무시할 수준이다
   setupTimeout: '30s',
 };
 
@@ -166,7 +166,7 @@ export default function (data) {
     case 'POST /quote-requests':
       res = http.post(
         `${BASE}/quote-requests`,
-        JSON.stringify({ category: 'OTHER', description: 'k6 load test request — safe to delete' }),
+        JSON.stringify({ category: 'OTHER', description: 'k6 load test request — safe to delete', contactMethod: 'email (k6 load test)' }),
         p,
       );
       break;
