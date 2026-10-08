@@ -74,8 +74,9 @@ spec:
         - protocol: UDP
           port: 3478
 ---
-# Ingress 프록시 → 백엔드 Service: argocd-server 80→8080(평문, Task 8에서 insecure), grafana 80→3000, jenkins 8080.
-# VPC CNI가 Service DNAT 전에 평가하는 경우를 대비해 Service 포트(80)도 함께 연다
+# Ingress 프록시 → 백엔드 Service ClusterIP: argocd-server 80→8080(평문, server.insecure), grafana 80→3000, jenkins 8080.
+# 규칙은 Pod의 targetPort로 적는다 — VPC CNI NP 컨트롤러가 각 포트를 ClusterIP:Service 포트(맞는 것 중 첫 번째 하나)로
+# 번역해 PolicyEndpoint에 넣는다. 참고: 위 tailscale-egress의 0.0.0.0/0:443과 합집합이라 클러스터 내부 443도 열려 있다(#166)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -97,8 +98,6 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-        - protocol: TCP
-          port: 80
     - to:
         - namespaceSelector:
             matchLabels:
@@ -109,8 +108,6 @@ spec:
       ports:
         - protocol: TCP
           port: 3000
-        - protocol: TCP
-          port: 80
     - to:
         - namespaceSelector:
             matchLabels:

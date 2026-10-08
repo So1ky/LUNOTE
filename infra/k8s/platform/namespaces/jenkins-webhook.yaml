@@ -1,4 +1,4 @@
-# GitHub 웹훅 수신 — Jenkins에서 인터넷에 열리는 유일한 경로. UI·API는 열지 않는다(port-forward).
+# GitHub 웹훅 수신 — Jenkins에서 인터넷에 열리는 유일한 경로. UI·API는 열지 않는다(tailnet 전용 Tailscale Ingress).
 # 공유 ALB(group lunote)에 "호스트 + 정확한 경로 + GitHub 발신 IP" 규칙만 추가한다.
 # 요청은 Jenkins가 HMAC-SHA256 서명까지 검증한다(platform/jenkins/values.yaml의 hookSecretConfigs).
 #
