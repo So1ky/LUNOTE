@@ -73,6 +73,9 @@ graph TB
 - 보안그룹은 최소권한: `RDS SG ← EKS 노드 SG(5432)`, `Redis SG ← EKS 노드 SG(6379)`처럼
   SG 참조 방식으로만 연다. CIDR 전체 개방 금지.
 - NAT Gateway는 비용 절감을 위해 초기 1개(단일 AZ)로 시작하고, 트래픽 성장 시 AZ별로 확장.
+- S3 Gateway VPC 엔드포인트(무료)를 프라이빗 라우팅 테이블에 붙여 같은 리전 S3 트래픽을 NAT 밖으로 뺀다
+  — Loki·Tempo 저장, ECR 이미지 레이어(ECR은 레이어를 S3에서 내려받음). ECR API 등 Interface 엔드포인트는
+  시간 요금이 절감액보다 커서 두지 않는다(2026-10-08).
 - DB 로컬 접근이 필요할 때는 SSM Session Manager 포트포워딩 사용 (Bastion EC2 두지 않음).
 
 ## 5. 시크릿 관리
