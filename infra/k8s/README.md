@@ -26,7 +26,7 @@ AWS 리소스(IAM 롤 등)는 `infra/terraform/`.
 | loki | grafana-community/loki + platform/loki/values.yaml | 18.13.8 |
 | alloy | grafana/alloy + platform/alloy/values.yaml | 1.13.0 |
 | monitoring-config | platform/monitoring-config/ (ServiceMonitor·PrometheusRule·Grafana 규칙·대시보드 ConfigMap, `tests/` 제외) | — |
-| tailscale-operator | tailscale/tailscale-operator + platform/tailscale-operator/values.yaml | 1.102.4 |
+| tailscale-operator | tailscale/tailscale-operator + platform/tailscale-operator/values.yaml (ProxyClass·Ingress는 platform/namespaces/tailscale-ingress.yaml) | 1.102.4 |
 
 ## 변경 방법
 
@@ -124,8 +124,7 @@ CI는 직전 성공 빌드 이후의 변경만 보므로 revert를 다시 되돌
 
 ## Jenkins
 
-    kubectl --context lunote port-forward svc/jenkins -n jenkins 8081:8080
-    # http://localhost:8081, 계정 admin (비밀번호: Secrets Manager lunote/shared/jenkins의 admin-password)
+UI 접속은 아래 "관리 UI 접속" 절(tailnet). 계정 admin (비밀번호: Secrets Manager lunote/shared/jenkins의 admin-password)
 
 UI는 외부에 열지 않는다. 인터넷에 열린 것은 웹훅 수신 경로 하나(`https://ci-hooks.lunoteapp.com/github-webhook/`)이고
 `platform/namespaces/jenkins-webhook.yaml`이 정의한다 — ALB 규칙이 호스트·정확한 경로·GitHub 발신 IP가 모두 맞는
@@ -142,10 +141,31 @@ UI는 외부에 열지 않는다. 인터넷에 열린 것은 웹훅 수신 경�
 
 이미지는 다이제스트(@sha256)로 고정돼 있다 — 버전을 올릴 때 `ci/api-build-pod.yaml`의 다이제스트도 함께 바꾼다.
 
-## ArgoCD 접속 (외부 노출 없음)
+## 관리 UI 접속 (Tailscale, 외부 노출 없음)
 
-    kubectl --context lunote port-forward svc/argocd-server -n argocd 8080:443
-    # https://localhost:8080, 계정 admin
+Tailscale 앱이 로그인된 기기(노트북·폰)에서만 열린다. 인터넷에 열린 포트는 없다.
+
+| UI | 주소 | 계정 |
+|---|---|---|
+| ArgoCD | https://argocd.tail3e8320.ts.net | admin |
+| Grafana | https://grafana.tail3e8320.ts.net | admin (Secrets Manager `lunote/shared/grafana`) |
+| Jenkins | https://jenkins.tail3e8320.ts.net | admin |
+
+Operator(`tailscale-operator` 앱)가 Ingress(`ingressClassName: tailscale`)마다 프록시 Pod(userspace 모드)를 tailscale
+네임스페이스에 띄우고, 프록시가 TLS(Let's Encrypt)를 끝낸 뒤 Service ClusterIP로 평문 전달한다(ArgoCD `server.insecure`).
+첫 접속은 인증서 발급으로 수십 초 걸릴 수 있다. ArgoCD CLI는 `argocd login argocd.tail3e8320.ts.net --grpc-web`.
+
+tailnet 쪽 선행 조건(Tailscale admin console — 바꾸면 접속이 끊긴다):
+- DNS: **MagicDNS**·**HTTPS Certificates** 켜짐(꺼지면 Operator가 `HTTPSNotEnabled` 이벤트만 남긴다)
+- Access controls: `tagOwners` — `tag:k8s-operator`: autogroup:admin, `tag:k8s`: tag:k8s-operator.
+  grant는 `autogroup:member → tag:k8s : tcp:443` 하나(클러스터 → 내 기기 방향 차단)
+- OAuth 클라이언트(태그 `tag:k8s-operator`, 범위 Services·Devices Core·Auth Keys 쓰기) → Secrets Manager `lunote/shared/tailscale`
+
+비상용 port-forward (Tailscale 장애 시 — 평문, NetworkPolicy는 port-forward에 적용되지 않는다):
+
+    kubectl --context lunote port-forward svc/argocd-server -n argocd 8080:80                       # http://localhost:8080
+    kubectl --context lunote port-forward svc/kube-prometheus-stack-grafana -n monitoring 3300:80   # http://localhost:3300
+    kubectl --context lunote port-forward svc/jenkins -n jenkins 8081:8080                          # http://localhost:8081
 
 ## 부트스트랩 / 재해복구 (빈 클러스터에서)
 

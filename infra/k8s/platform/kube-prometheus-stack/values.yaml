@@ -168,7 +168,9 @@ grafana:
     annotations:
       eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-grafana
   grafana.ini:
-    # server.root_url은 Task 8(Tailscale Ingress 주소)에서 설정 — 그 전까지 port-forward는 기본값으로 동작한다
+    server:
+      # Tailscale Ingress 주소 — 리다이렉트·알림·공유 링크의 기준 URL
+      root_url: https://grafana.tail3e8320.ts.net/
     analytics:
       reporting_enabled: false
       check_for_updates: false

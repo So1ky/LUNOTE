@@ -205,7 +205,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   Unconfined라 baseline enforce가 빌드를 막는다(EKS는 PSA 예외 설정이 없다). 등급을 올리려면 빌드 Pod 네임스페이스
   분리가 선행(#125와 함께). argocd repo-server NetworkPolicy는 차트 기본값(`global.networkPolicy.create`)이
   이미 만들어 둔 것을 확인했다 — repo-server gRPC는 server·controller만, redis는 세 컴포넌트만 허용하고, server
-  정책은 전체 허용(접속은 port-forward 전제), metrics 포트는 모든 네임스페이스에 열려 있다.
+  정책은 전체 허용(접속은 port-forward 전제 — 2026-10-08부터 Tailscale Ingress), metrics 포트는 모든 네임스페이스에 열려 있다.
   ⑦ **sync impersonation(#128 마지막 항목)**: ArgoCD의 sync(apply·hook·prune)는 원래 컨트롤러 SA(ClusterRole `*`)로
   돈다 — 프로젝트 허용 목록은 리소스 "종류"만 막고 권한 자체는 그대로였다. `application.sync.impersonation.enabled`를 켜고
   워크로드 프로젝트에 `destinationServiceAccounts`(네임스페이스의 `argocd-sync` SA, 오버레이가 만드는 종류의 쓰기 +
@@ -326,7 +326,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   (`infra/k8s/bootstrap/root-app.yaml`)가 `infra/k8s/apps/`를 감시하고, 플랫폼 컴포넌트 전부(ArgoCD 자신,
   Karpenter, LBC, ESO, StorageClass, 환경 네임스페이스)를 `develop` 브랜치 기준으로 동기화한다.
   automated + selfHeal, **자동 prune은 끔**(실수로 지운 파일이 NodePool 삭제로 이어지지 않게).
-  비HA 최소 구성(dex·notifications 없음), 외부 노출 없이 port-forward 접속.
+  비HA 최소 구성(dex·notifications 없음), 외부 노출 없이 접속(2026-10-08부터 Tailscale Ingress — 아래 '관리 UI 접속').
   External Secrets Operator 2.11.0: 컨트롤러에는 AWS 권한이 없고, 환경 네임스페이스의 SA `eso-reader`가
   **환경별 IRSA 롤**(`lunote-eso-{staging,prod}` — `lunote/<env>/*` + `lunote/shared/redis` 읽기 전용)을
   맡는다. 네임스페이스 `SecretStore`만 쓰므로 staging에서 prod 시크릿은 읽을 수 없다(AccessDenied 검증).
@@ -360,7 +360,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   더 올리려면 증설이 먼저다. t4g는 가격이 메모리에
   정비례해 scale up(t4g.large)과 2대 증설의 비용이 같으므로(≈+$30/월) 증설은 Phase 5로 미룬다(→ 2026-10-06 t4g.large 교체 결정). 설정은 JCasC + Job DSL로 `infra/k8s/platform/jenkins/values.yaml`에 둔다.
   트리거는 **GitHub 웹훅** — 공유 ALB에 `ci-hooks.lunoteapp.com/github-webhook/` 규칙 하나만 열고(GitHub 발신
-  IP 조건 + HMAC-SHA256 서명 검증), UI는 노출하지 않는다(port-forward). 빌더는 **BuildKit rootless**
+  IP 조건 + HMAC-SHA256 서명 검증), UI는 노출하지 않는다(tailnet 전용 — '관리 UI 접속'). 빌더는 **BuildKit rootless**
   (기존 구상 Kaniko는 2025-06 아카이브). GitHub 쓰기는 deploy key(배포 저장소 `So1ky/lunote-deploy` 전용), ECR push는 에이전트 SA의
   IRSA(`lunote-jenkins-agent`). 시크릿은 `lunote/shared/jenkins` → ESO(`lunote-eso-jenkins`).
   e2e 의존 서비스는 빌드 Pod 사이드카(S3는 S3Mock — MinIO 공개 이미지 배포 중단).

@@ -1,9 +1,11 @@
 # jenkins 차트 5.9.65 (Jenkins 2.568.3 LTS) — ArgoCD Application(infra/k8s/apps/jenkins.yaml)이 관리.
 # 설정은 전부 여기(JCasC + Job DSL)에 둔다. UI에서 바꾼 설정은 재시작 시 사라진다.
-# UI는 외부에 열지 않는다 — 접속은 kubectl port-forward (infra/k8s/README.md).
+# UI는 외부에 열지 않는다 — 접속은 tailnet의 https://jenkins.tail3e8320.ts.net (Tailscale Ingress, infra/k8s/README.md).
 # 인터넷에 열리는 것은 웹훅 경로 하나뿐이며 차트가 아니라 platform/namespaces/jenkins-webhook.yaml이 정의한다.
 # 시크릿·네임스페이스·에이전트 SA·NetworkPolicy는 infra/k8s/platform/namespaces/jenkins*.yaml.
 controller:
+  # 링크·리버스 프록시 검사의 기준 주소(Tailscale Ingress). 에이전트는 이 주소가 아니라 Service로 붙는다(agent.jenkinsUrl 기본값)
+  jenkinsUrl: https://jenkins.tail3e8320.ts.net/
   # 빌드는 에이전트 Pod만 한다 — 컨트롤러에서 빌드 코드가 실행되지 않게 0
   numExecutors: 0
   # helm test용 Pod — ArgoCD 관리에서는 쓰지 않고, 기본 거부 네임스페이스에서 실패만 한다

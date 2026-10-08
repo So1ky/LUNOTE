@@ -162,9 +162,13 @@ spec:
   policyTypes: [Ingress, Egress]
   ingress:
     - from:
+        # Tailscale Ingress 프록시만(Operator Pod 제외) — namespaceSelector와 podSelector가 한 항목이라 AND
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: tailscale
+          podSelector:
+            matchLabels:
+              tailscale.com/parent-resource-type: ingress
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: prometheus

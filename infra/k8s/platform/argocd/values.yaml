@@ -1,6 +1,6 @@
 # argo-cd 차트 10.9.6 (앱 v3.5.3) — 부트스트랩만 helm, 이후 ArgoCD가 자기 자신을 관리한다
 # (infra/k8s/apps/argocd.yaml). 부트스트랩·재해복구 절차는 infra/k8s/README.md.
-# 외부 노출 없음 — 접속은 kubectl port-forward (README 참고).
+# 외부 노출 없음 — 접속은 tailnet의 https://argocd.tail3e8320.ts.net (Tailscale Ingress, README 참고).
 global:
   # 플랫폼 컴포넌트는 코어 노드그룹에만 — Karpenter(Spot) 노드는 회수 대상이라 회피한다
   affinity:
@@ -26,6 +26,10 @@ configs:
     # enforced=false: SA가 없는 프로젝트(플랫폼 앱의 default)는 컨트롤러 SA로 폴백한다 — 모든 프로젝트에 SA를 달면 true로.
     application.sync.impersonation.enabled: "true"
     application.sync.impersonation.enforced: "false"
+  params:
+    # Tailscale Ingress 프록시가 TLS를 끝내고 평문으로 넘긴다(클러스터 내부 홉) — 자체 TLS를 끈다.
+    # 비상용 port-forward도 http://localhost:8080
+    server.insecure: true
 controller:
   resources:
     requests:

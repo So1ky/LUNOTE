@@ -1,0 +1,75 @@
+# 관리 UI 3개를 tailnet에만 노출한다(Plan 8 결정 9). 프록시 Pod는 Operator가 tailscale 네임스페이스에 만든다.
+# 접속: https://{argocd,grafana,jenkins}.tail3e8320.ts.net — Tailscale 앱이 로그인된 기기에서만.
+# ProxyClass CRD는 tailscale-operator 앱이 설치한다 — 먼저 sync되면 SkipDryRunOnMissingResource로 재시도된다.
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyClass
+metadata:
+  name: core-node
+spec:
+  statefulSet:
+    pod:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: karpenter.sh/nodepool
+                    operator: DoesNotExist
+      tailscaleContainer:
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+          limits:
+            memory: 128Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tailscale
+  namespace: argocd
+  annotations:
+    tailscale.com/proxy-class: core-node
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: argocd-server
+      port:
+        number: 80 # server.insecure=true → 평문 8080(Service 80). 프록시가 TLS를 끝낸다
+  tls:
+    - hosts: [argocd] # → argocd.tail3e8320.ts.net
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tailscale
+  namespace: monitoring
+  annotations:
+    tailscale.com/proxy-class: core-node
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: kube-prometheus-stack-grafana
+      port:
+        number: 80
+  tls:
+    - hosts: [grafana]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tailscale
+  namespace: jenkins
+  annotations:
+    tailscale.com/proxy-class: core-node
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: jenkins
+      port:
+        number: 8080
+  tls:
+    - hosts: [jenkins]
