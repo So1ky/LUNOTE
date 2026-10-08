@@ -37,8 +37,6 @@ configMapGenerator:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy.monitoring.svc:4317
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       - OTEL_TRACES_SAMPLER_ARG=0.2
-       # 부하 테스트 창(Plan 9) — 한 IP에서 거는 부하가 전역 rate limit에 막히지 않게. 테스트 직후 되돌린다
-      - THROTTLE_DEFAULT_LIMIT=100000
 patches:
   - target:
       kind: ServiceAccount
