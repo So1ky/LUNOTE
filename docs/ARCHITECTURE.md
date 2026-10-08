@@ -382,8 +382,9 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
 - **코어 노드 t4g.large (2026-10-06 결정)**: 관측성 스택(≈2.4GiB requests)을 올리기 위해 코어 노드그룹 인스턴스를 t4g.medium→**t4g.large**(1대 유지)로
   교체한다. 2대 증설과 비용이 같고(+$30/월), 1대면 전원 스크립트·PV·AZ 구조가 그대로다. 노드 교체 시 플랫폼 컴포넌트만 수 분 중단 — API Pod는
   Karpenter 노드라 사용자 서비스는 영향 없다. 잃는 것: 단일 장애점 유지(기존 수용).
-- **관측성 스택 (2026-10-06 결정)**: `monitoring`·`tailscale` 네임스페이스는 Pod Security privileged + warn/audit baseline(node-exporter hostPath,
-  Tailscale 프록시 NET_ADMIN). Loki·Tempo는 S3 + IRSA(버킷 단위), WAL용 PVC 10Gi. Grafana persistence 끔(대시보드·규칙은 git). RDS ingress에
+- **관측성 스택 (2026-10-06 결정)**: `monitoring` 네임스페이스는 Pod Security privileged + warn/audit baseline(node-exporter hostPath).
+  `tailscale`은 **baseline**(2026-10-08 수정 — Ingress 프록시는 userspace 모드라 NET_ADMIN·privileged가 없다. Connector·egress 프록시처럼
+  kernel 모드를 쓰게 되면 privileged로 올린다). Loki·Tempo는 S3 + IRSA(버킷 단위), WAL용 PVC 10Gi. Grafana persistence 끔(대시보드·규칙은 git). RDS ingress에
   **코어 노드 SG를 추가**한다(Grafana PostgreSQL 데이터소스) — 노드 단위 허용이므로 monitoring NetworkPolicy로 Grafana Pod만 5432 egress 허용.
   ServiceMonitor·PrometheusRule·대시보드는 별도 ArgoCD 앱 `monitoring-config`. 알림 채널은 디스코드(`webhook_url_file`, URL은 ESO). RDS 지표는
   CloudWatch 데이터소스(exporter Pod 없음, ≈$1/월). Alloy는 Deployment 1개(API 경유 수집이라 노드 로컬 불필요).

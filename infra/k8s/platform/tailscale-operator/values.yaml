@@ -1,0 +1,32 @@
+# Tailscale Kubernetes Operator 1.102.4 — Ingress(ingressClassName: tailscale)마다 프록시 Pod를 만들어 tailnet에 노출한다.
+# 프록시는 TLS(Let's Encrypt, Tailscale 발급)를 끝내고 백엔드 Service ClusterIP로 평문 프록시한다.
+oauth: {} # 비워 둔다 — Secret operator-oauth(platform/namespaces/tailscale.yaml, ESO)를 읽는다
+
+operatorConfig:
+  hostname: lunote-k8s-operator
+  # 플랫폼 컴포넌트는 코어 노드그룹에만 — Karpenter(Spot) 노드는 회수 대상이라 회피한다
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
+  resources:
+    requests:
+      cpu: 20m
+      memory: 96Mi
+    limits:
+      memory: 256Mi
+  logging: info
+
+# kube-apiserver를 tailnet에 노출하지 않는다(kubectl은 지금처럼 AWS 자격 증명으로)
+apiServerProxyConfig:
+  mode: "false"
+
+proxyConfig:
+  defaultTags: tag:k8s
+  # 프록시도 코어 노드에 — ProxyClass core-node(platform/namespaces/tailscale-ingress.yaml)
+  defaultProxyClass: core-node
+
+installCRDs: true
