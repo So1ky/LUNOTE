@@ -162,7 +162,9 @@ graph TB
   이벤트의 요청 정보는 **허용 목록(method·쿼리 뺀 URL)만** 보낸다(`beforeSend`) — SDK 기본값도 Authorization·쿠키·요청 본문을
   싣기 때문(2026-10-08 실측). environment는 `SENTRY_ENVIRONMENT`(staging·prod). 비즈니스 카운터
   `lunote_payment_mismatch_total`, `lunote_portone_webhook_failures_total`.
-- **핵심 알림 (Alertmanager → 디스코드)**: API 5xx 비율 > 1%(5분, 분당 요청 10건 이상일 때), P95 > 1s, 결제 금액 불일치, 웹훅 처리 실패,
+- **핵심 알림 (Alertmanager → 디스코드)**: API 5xx 비율 > 1%(5분, 분당 요청 10건 이상일 때), P95 > 1s(5분 지속, warning),
+  **P95 > 3s 1분 지속(초당 1건 이상일 때, critical — 2026-10-08 부하 테스트에서 ≈1분 폭증이 warning 경로(for 5m + group_wait 1m)에 묻혀
+  디스코드 0건이었다. 저트래픽의 느린 요청 몇 건은 5분 warning이 맡는다)**, 결제 금액 불일치, 웹훅 처리 실패,
   Pod CrashLoopBackOff, 노드 NotReady, RDS 여유 스토리지 < 2GiB·커넥션 > 80(CloudWatch — Grafana 규칙이 Alertmanager로 전달).
 - **대시보드(git ConfigMap)**: ① 서비스(OTel http 메트릭) ② 비즈니스(결제 성공률·문의→결제 전환 — Grafana PostgreSQL 데이터소스,
   읽기 전용 사용자 `grafana_ro`, `payments`·`quote_requests`만) ③ 인프라(노드·클러스터 + CloudWatch RDS).
