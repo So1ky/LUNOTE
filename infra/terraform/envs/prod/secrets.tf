@@ -8,3 +8,9 @@ resource "aws_secretsmanager_secret" "app_staging" {
 resource "aws_secretsmanager_secret" "app_prod" {
   name = "lunote/prod/app"
 }
+
+# ArgoCD 관리자 비밀번호 원본(admin-password). ArgoCD는 bcrypt 해시만 argocd-secret에 두므로 원문을 여기 보관한다.
+# ESO로 동기화하지 않는다 — 바꿀 때 이 값을 갱신하고 해시를 argocd-secret에 patch한다(infra/k8s/README.md "관리 UI 접속").
+resource "aws_secretsmanager_secret" "argocd" {
+  name = "lunote/shared/argocd"
+}

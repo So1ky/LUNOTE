@@ -145,11 +145,20 @@ UI는 외부에 열지 않는다. 인터넷에 열린 것은 웹훅 수신 경�
 
 Tailscale 앱이 로그인된 기기(노트북·폰)에서만 열린다. 인터넷에 열린 포트는 없다.
 
-| UI | 주소 | 계정 |
-|---|---|---|
-| ArgoCD | https://argocd.tail3e8320.ts.net | admin |
-| Grafana | https://grafana.tail3e8320.ts.net | admin (Secrets Manager `lunote/shared/grafana`) |
-| Jenkins | https://jenkins.tail3e8320.ts.net | admin |
+| UI | 주소 | 계정 | 비밀번호 원본 (Secrets Manager) |
+|---|---|---|---|
+| ArgoCD | https://argocd.tail3e8320.ts.net | admin | `lunote/shared/argocd`의 `admin-password` |
+| Grafana | https://grafana.tail3e8320.ts.net | admin | `lunote/shared/grafana`의 `admin-password` |
+| Jenkins | https://jenkins.tail3e8320.ts.net | admin | `lunote/shared/jenkins`의 `admin-password` |
+
+값 꺼내기(본인 터미널에서 — 대화·로그에 남기지 않는다):
+
+    AWS_PROFILE=lunote aws secretsmanager get-secret-value --secret-id lunote/shared/<argocd|grafana|jenkins> \
+      --query SecretString --output text | python3 -c 'import json,sys;print(json.load(sys.stdin)["admin-password"])'
+
+Grafana·Jenkins는 ESO가 이 값을 Secret으로 동기화한다. **ArgoCD는 클러스터에 bcrypt 해시만 둔다**(`argocd-secret`의
+`admin.password`) — ESO를 쓰지 않으므로 바꿀 때는 `sh scripts/argocd-reset-admin.sh`(새 무작위 값 → Secrets Manager →
+해시 patch → 로그인 확인, 값은 클립보드로만). UI의 Update Password로 바꾸면 Secrets Manager와 어긋나니 쓰지 않는다.
 
 Operator(`tailscale-operator` 앱)가 Ingress(`ingressClassName: tailscale`)마다 프록시 Pod(userspace 모드)를 tailscale
 네임스페이스에 띄우고, 프록시가 TLS(Let's Encrypt)를 끝낸 뒤 Service ClusterIP로 평문 전달한다(ArgoCD `server.insecure`).
