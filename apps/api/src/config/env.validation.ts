@@ -52,6 +52,8 @@ const POLICY_DEFAULTS: Record<string, string> = {
   AUTH_RESEND_COOLDOWN_SEC: '60',
   PRESIGN_UPLOAD_TTL_SEC: '300',
   PRESIGN_DOWNLOAD_TTL_SEC: '3600',
+  // 전역 rate limit — IP당 분당 요청 수. 부하 테스트 창에서만 prod 오버레이로 올린다 (Plan 9)
+  THROTTLE_DEFAULT_LIMIT: '100',
 };
 
 export function validateEnv(config: Record<string, unknown>) {
@@ -71,6 +73,14 @@ export function validateEnv(config: Record<string, unknown>) {
   if (missing.length > 0) {
     throw new Error(
       `필수 환경변수 누락: ${missing.join(', ')} — .env(로컬) 또는 Secrets Manager(프로덕션)를 확인하세요`,
+    );
+  }
+
+  // 보안 통제라 잘못된 값이 제한을 조용히 끄지 않게 기동을 막는다 — NaN과의 비교는 항상 false라 가드가 아무것도 막지 않는다
+  const throttleLimit = Number(config.THROTTLE_DEFAULT_LIMIT);
+  if (!Number.isInteger(throttleLimit) || throttleLimit < 1) {
+    throw new Error(
+      `THROTTLE_DEFAULT_LIMIT는 1 이상의 정수여야 합니다 (현재: ${String(config.THROTTLE_DEFAULT_LIMIT)})`,
     );
   }
   return config;

@@ -50,13 +50,19 @@ import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
         },
       }),
     }),
-    // 전역 기본 제한. 인증 엔드포인트는 컨트롤러에서 @Throttle로 더 강하게 건다.
+    // 전역 기본 제한. 인증 엔드포인트는 컨트롤러에서 @Throttle로 더 강하게 건다. 한도는 THROTTLE_DEFAULT_LIMIT(기본 100, env.validation.ts).
     // 프로덕션은 카운터를 Redis에 둔다 — Pod마다 따로 세면 한도가 Pod 수만큼 느슨해진다.
     // 로컬·테스트는 인메모리: 테스트는 스위트마다 앱을 새로 만들어 카운터가 초기화되는 것에 의존한다.
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        throttlers: [{ name: 'default', ttl: 60_000, limit: 100 }],
+        throttlers: [
+          {
+            name: 'default',
+            ttl: 60_000,
+            limit: Number(config.getOrThrow<string>('THROTTLE_DEFAULT_LIMIT')),
+          },
+        ],
         storage:
           config.get('NODE_ENV') === 'production'
             ? new FailOpenThrottlerStorage(
