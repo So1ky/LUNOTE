@@ -23,6 +23,8 @@ configMapGenerator:
       - CORS_ORIGINS=https://admin-staging.lunoteapp.com
       - SMTP_HOST=smtp-relay.brevo.com
       - SMTP_PORT=587
+      # Sentry 이벤트의 environment(NODE_ENV는 staging·prod 모두 production). DSN은 시크릿 lunote/staging/app
+      - SENTRY_ENVIRONMENT=staging
       # OpenTelemetry(Plan 8). 트레이스: 앱 → Alloy(OTLP 4317) → Tempo, 부모 기반 20% 샘플링
       - OTEL_SERVICE_NAME=lunote-api
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=staging

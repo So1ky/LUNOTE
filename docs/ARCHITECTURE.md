@@ -155,14 +155,17 @@ graph TB
   Loki·Tempo 차트는 `grafana-community` 저장소(`grafana/loki`는 2026-03부터 엔터프라이즈 전용, `grafana/tempo`는 폐기).
 - **트레이스**: Tempo(SingleBinary, S3, 보존 7일). 앱 → OTLP/gRPC → Alloy → Tempo. 부모 기반 20% 샘플링.
 - **앱 계측 (2026-10-06 확정)**: `@opentelemetry/sdk-node` + http·nestjs-core·ioredis·pg·prisma 자동 계측이 메트릭·트레이스를 소유한다.
-  **Sentry는 에러 트래킹만**(`skipOpenTelemetrySetup: true`) — 둘 다 계측하면 스팬이 이중으로 잡힌다. 비즈니스 카운터
+  **Sentry는 에러 트래킹만**(`skipOpenTelemetrySetup: true`) — 둘 다 계측하면 스팬이 이중으로 잡힌다.
+  이벤트의 요청 정보는 **허용 목록(method·쿼리 뺀 URL)만** 보낸다(`beforeSend`) — SDK 기본값도 Authorization·쿠키·요청 본문을
+  싣기 때문(2026-10-08 실측). environment는 `SENTRY_ENVIRONMENT`(staging·prod). 비즈니스 카운터
   `lunote_payment_mismatch_total`, `lunote_portone_webhook_failures_total`.
 - **핵심 알림 (Alertmanager → 디스코드)**: API 5xx 비율 > 1%(5분, 분당 요청 10건 이상일 때), P95 > 1s, 결제 금액 불일치, 웹훅 처리 실패,
   Pod CrashLoopBackOff, 노드 NotReady, RDS 여유 스토리지 < 2GiB·커넥션 > 80(CloudWatch — Grafana 규칙이 Alertmanager로 전달).
 - **대시보드(git ConfigMap)**: ① 서비스(OTel http 메트릭) ② 비즈니스(결제 성공률·문의→결제 전환 — Grafana PostgreSQL 데이터소스,
   읽기 전용 사용자 `grafana_ro`, `payments`·`quote_requests`만) ③ 인프라(노드·클러스터 + CloudWatch RDS).
 - **접속**: Grafana·ArgoCD·Jenkins UI는 Tailscale Operator Ingress(`https://<name>.<tailnet>.ts.net`) — 인터넷 노출 0, port-forward 불필요.
-- 외부 사활 감시(UptimeRobot)는 출시 직전(Phase 6)에 등록한다 — 수면 모드 중에는 API가 0대라 매일 다운 알림이 되기 때문.
+- 외부 사활 감시(UptimeRobot)와 데드맨 스위치(Alertmanager Watchdog 외부 수신)는 출시 직전(Phase 6)에 등록한다
+  — 수면 모드 중에는 API·클러스터가 내려가 매일 다운 알림이 되기 때문.
 
 ## 9. CI/CD 파이프라인
 

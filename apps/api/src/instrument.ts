@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nestjs';
 import { config } from 'dotenv';
 import { startOtel } from './observability/otel';
+import { scrubSentryEvent } from './observability/sentry-scrub';
 
 /**
  * 계측 진입점 — Nest 부트스트랩 전에 실행돼야 해서 main.ts 최상단에서 import한다.
@@ -18,8 +19,11 @@ const dsn = process.env.SENTRY_DSN;
 if (dsn) {
   Sentry.init({
     dsn,
-    environment: process.env.NODE_ENV ?? 'development',
+    // NODE_ENV는 staging·prod 모두 production — 오버레이의 SENTRY_ENVIRONMENT로 구분한다
+    environment:
+      process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV ?? 'development',
     skipOpenTelemetrySetup: true,
+    beforeSend: scrubSentryEvent,
     // tracesSampleRate는 0이라도 지정하면 Sentry가 트레이싱을 켠 것으로 보고 Nest·Prisma 등
     // 자동 계측을 OTel에 또 등록한다(hasSpansEnabled는 != null 검사) — 아예 넣지 않는다
   });
