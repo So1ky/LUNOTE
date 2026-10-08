@@ -26,6 +26,7 @@ AWS 리소스(IAM 롤 등)는 `infra/terraform/`.
 | loki | grafana-community/loki + platform/loki/values.yaml | 18.13.8 |
 | alloy | grafana/alloy + platform/alloy/values.yaml | 1.13.0 |
 | monitoring-config | platform/monitoring-config/ (ServiceMonitor·PrometheusRule·Grafana 규칙·대시보드 ConfigMap, `tests/` 제외) | — |
+| tailscale-operator | tailscale/tailscale-operator + platform/tailscale-operator/values.yaml | 1.102.4 |
 
 ## 변경 방법
 
@@ -152,6 +153,8 @@ UI는 외부에 열지 않는다. 인터넷에 열린 것은 웹훅 수신 경�
     helm install argocd argo/argo-cd --version 10.9.6 -n argocd --create-namespace \
       -f platform/argocd/values.yaml
     kubectl apply -f bootstrap/root-app.yaml
+    # namespaces 앱의 tailscale Ingress는 IngressClass tailscale(tailscale-operator 앱)가 생기기 전엔 ALB 컨트롤러 웹훅이
+    # 거부한다 — tailscale-operator가 Healthy가 된 뒤 namespaces 앱이 실패 상태면 다시 sync한다
     # 전 Application이 Synced/Healthy가 되면 helm 릴리스 기록을 지운다(이후 ArgoCD가 관리)
     kubectl delete secret -n argocd -l owner=helm,name=argocd
 

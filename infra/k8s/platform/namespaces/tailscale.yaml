@@ -4,10 +4,11 @@ kind: Namespace
 metadata:
   name: tailscale
   labels:
-    # Ingress마다 생기는 프록시 Pod가 TUN 장치용 NET_ADMIN을 요구해 baseline을 통과하지 못한다. 그 외는 경고·감사로 감시.
-    pod-security.kubernetes.io/enforce: privileged
-    pod-security.kubernetes.io/warn: baseline
-    pod-security.kubernetes.io/audit: baseline
+    # Ingress 프록시는 userspace 모드(TS_USERSPACE=true — sysctler init·privileged·NET_ADMIN 없음)라 baseline으로 충분하다.
+    # Connector·egress 프록시처럼 kernel 모드(TUN)를 쓰게 되면 privileged가 필요하다. restricted 위반은 경고·감사로 감시.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
 ---
 apiVersion: v1
 kind: ServiceAccount
