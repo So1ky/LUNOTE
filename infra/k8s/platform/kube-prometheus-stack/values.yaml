@@ -235,7 +235,7 @@ grafana:
         maxLines: 1000
         # 로그 줄 → 트레이스. trace_id는 라벨이 아니라 pino JSON 본문 필드라 정규식으로 뽑는다.
         # $$ = Grafana 프로비저닝의 환경 변수 치환 회피($VAR·${VAR}를 치환한다) — 저장 값은 ${__value.raw}
-        # 샘플링(20%)에서 빠진 요청도 trace_id는 찍힌다(요청 내 로그 상관용) → 그 링크는 "trace not found"
+        # 앱은 샘플링된(Tempo에 저장되는) 요청에만 trace_id를 찍는다 — 링크가 보이면 열린다. 요청 단위 묶기는 req.id
         derivedFields:
           - name: TraceID
             matcherRegex: '"trace_id":"([0-9a-f]{32})"'
