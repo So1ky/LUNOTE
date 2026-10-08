@@ -9,5 +9,6 @@ settings:
 controller:
   resources:
     requests:
-      cpu: 250m
+      # 코어 노드 CPU 예약량이 병목(93%) — 실사용은 3일 최대 21m(2026-10-08). limit은 없어 throttle 없음
+      cpu: 100m
       memory: 256Mi
