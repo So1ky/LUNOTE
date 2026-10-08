@@ -10,6 +10,14 @@ tempo:
   backendWorker:
     compaction:
       block_retention: 168h
+  # 단일 바이너리는 live-store가 완료 블록을 곧바로 S3에 쓴다 — 기본 30초면 저트래픽에서 작은 블록이
+  # 하루 수천 개(객체 수·압축 부하·blocklist 길이). WAL은 PV(/var/tempo)라 길게 잡아도 재시작에 안전
+  liveStore:
+    max_block_duration: 5m
+  # Go 힙이 limit(1Gi)에 닿기 전에 GC가 먼저 조이게 — 없으면 압축·검색 중 순간 증가가 곧바로 OOMKill
+  extraEnv:
+    - name: GOMEMLIMIT
+      value: 900MiB
   storage:
     trace:
       backend: s3

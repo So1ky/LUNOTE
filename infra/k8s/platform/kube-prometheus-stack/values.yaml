@@ -238,7 +238,7 @@ grafana:
         # 샘플링(20%)에서 빠진 요청도 trace_id는 찍힌다(요청 내 로그 상관용) → 그 링크는 "trace not found"
         derivedFields:
           - name: TraceID
-            matcherRegex: '"trace_id":"(\w+)"'
+            matcherRegex: '"trace_id":"([0-9a-f]{32})"'
             url: "$${__value.raw}"
             urlDisplayLabel: Tempo에서 보기
             datasourceUid: tempo
