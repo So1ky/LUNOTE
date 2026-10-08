@@ -1,19 +1,19 @@
-# 로그·트레이스 수집기 — K8s API로 Pod 로그를 받아 Loki로, 앱 트레이스(OTLP 4317)를 받아 Tempo로 보낸다(Deployment 1개).
+# 트레이스 저장소(S3, 7일). 수집은 alloy 앱(OTLP 4317), 조회는 Grafana 데이터소스 Tempo(uid tempo).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: alloy
+  name: tempo
   namespace: argocd
 spec:
   project: default
   sources:
-    - repoURL: https://grafana.github.io/helm-charts
-      chart: alloy
-      targetRevision: 1.13.0
+    - repoURL: https://grafana-community.github.io/helm-charts
+      chart: tempo
+      targetRevision: 3.1.0
       helm:
-        releaseName: alloy
+        releaseName: tempo
         valueFiles:
-          - $values/infra/k8s/platform/alloy/values.yaml
+          - $values/infra/k8s/platform/tempo/values.yaml
     - repoURL: https://github.com/So1ky/LUNOTE.git
       targetRevision: develop
       ref: values

@@ -23,10 +23,10 @@ configMapGenerator:
       - CORS_ORIGINS=https://admin-staging.lunoteapp.com
       - SMTP_HOST=smtp-relay.brevo.com
       - SMTP_PORT=587
-      # OpenTelemetry(Plan 8). 트레이스는 Tempo 도입 전까지 none — 받을 곳 없이 켜면 연결 실패가 쌓인다
+      # OpenTelemetry(Plan 8). 트레이스: 앱 → Alloy(OTLP 4317) → Tempo, 부모 기반 20% 샘플링
       - OTEL_SERVICE_NAME=lunote-api
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=staging
-      - OTEL_TRACES_EXPORTER=none
+      - OTEL_TRACES_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy.monitoring.svc:4317
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio

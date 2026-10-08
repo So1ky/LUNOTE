@@ -25,6 +25,7 @@ AWS 리소스(IAM 롤 등)는 `infra/terraform/`.
 | kube-prometheus-stack | prometheus-community/kube-prometheus-stack + platform/kube-prometheus-stack/values.yaml | 92.0.0 |
 | loki | grafana-community/loki + platform/loki/values.yaml | 18.13.8 |
 | alloy | grafana/alloy + platform/alloy/values.yaml | 1.13.0 |
+| tempo | grafana-community/tempo + platform/tempo/values.yaml | 3.1.0 |
 | monitoring-config | platform/monitoring-config/ (ServiceMonitor·PrometheusRule·Grafana 규칙·대시보드 ConfigMap, `tests/` 제외) | — |
 | tailscale-operator | tailscale/tailscale-operator + platform/tailscale-operator/values.yaml (ProxyClass·Ingress는 platform/namespaces/tailscale-ingress.yaml) | 1.102.4 |
 
