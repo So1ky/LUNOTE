@@ -4,6 +4,8 @@ import { JwtModule, JwtSignOptions } from '@nestjs/jwt';
 import { UsersModule } from '../users/users.module';
 import { PassportModule } from '@nestjs/passport';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AppleNotificationsController } from './apple-notifications.controller';
+import { AppleNotificationsService } from './apple-notifications.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
@@ -29,7 +31,7 @@ import { SocialAuthModule } from './social/social-auth.module';
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  controllers: [AuthController, AppleNotificationsController],
+  providers: [AuthService, JwtStrategy, AppleNotificationsService],
 })
 export class AuthModule {}

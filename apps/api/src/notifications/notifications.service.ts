@@ -67,6 +67,34 @@ export class NotificationsService {
     });
   }
 
+  /**
+   * Apple ID 삭제 알림을 받았지만 결제 진행 중이라 탈퇴하지 못한 계정 → 관리자 수동 정리 신호.
+   * 본문에는 사용자 ID만 — 이메일 등 개인정보를 싣지 않는다.
+   */
+  async notifyAdminsAppleAccountDeleted(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ) {
+    const admins = await tx.user.findMany({
+      where: { role: UserRole.ADMIN },
+      select: { id: true },
+    });
+    if (admins.length === 0) {
+      this.logger.warn(
+        '관리자 계정이 없어 Apple 계정 삭제 알림을 만들 수 없습니다',
+      );
+      return;
+    }
+    await tx.notification.createMany({
+      data: admins.map((a) => ({
+        userId: a.id,
+        type: 'APPLE_ACCOUNT_DELETED',
+        title: 'Apple ID deleted — account pending deletion',
+        body: `User ${userId}: delete via admin after the paid service is completed or refunded`,
+      })),
+    });
+  }
+
   /** 견적 발송 → 문의 소유자에게 인앱 알림 행 생성 (견적 발행 트랜잭션 안에서 호출) */
   async notifyUserQuoteSent(
     tx: Prisma.TransactionClient,
