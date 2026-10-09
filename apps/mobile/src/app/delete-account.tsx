@@ -62,7 +62,11 @@ export default function DeleteAccountScreen() {
         <Button
           label={t('deleteAccount.done')}
           size="lg"
-          onPress={() => router.replace('/welcome')}
+          onPress={() => {
+            // 스택을 비우고 게스트 홈으로 — 가입 직후용 /welcome으로 보내지 않는다
+            if (router.canDismiss()) router.dismissAll();
+            router.replace('/home');
+          }}
         />
       </Screen>
     );
