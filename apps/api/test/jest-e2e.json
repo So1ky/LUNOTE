@@ -4,6 +4,8 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
+    "^.+/node_modules/jose/.+\\.js$": ["ts-jest", { "tsconfig": { "allowJs": true } }],
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "transformIgnorePatterns": ["/node_modules/(?!jose/)"]
 }
