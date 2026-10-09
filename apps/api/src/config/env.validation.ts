@@ -20,6 +20,17 @@ export const PORTONE_ENV_KEYS = [
   'PORTONE_PAYPAL_CHANNEL_KEY',
 ] as const;
 
+/**
+ * 소셜 로그인 — Web 클라이언트 ID·Team ID·Key ID는 공개 식별자(ConfigMap), .p8 개인키만 시크릿.
+ * 로컬은 미설정 허용: 소셜 엔드포인트가 503으로 응답한다 (PortOne과 같은 방식).
+ */
+export const SOCIAL_ENV_KEYS = [
+  'GOOGLE_WEB_CLIENT_ID',
+  'APPLE_TEAM_ID',
+  'APPLE_KEY_ID',
+  'APPLE_PRIVATE_KEY',
+] as const;
+
 /** 프로덕션에서만 필수 (로컬은 아래 DEV_DEFAULTS로 대체) */
 const PROD_REQUIRED = [
   'REDIS_URL',
@@ -29,6 +40,7 @@ const PROD_REQUIRED = [
   // PortOne — 없으면 결제가 불가능한 채로 뜨므로 프로덕션은 기동 실패시킨다.
   // 로컬은 미설정 허용: PaymentsService가 503(PAYMENTS_NOT_CONFIGURED)으로 응답한다.
   ...PORTONE_ENV_KEYS,
+  ...SOCIAL_ENV_KEYS,
 ];
 
 /** 개발 편의 기본값 — 프로덕션에서는 PROD_REQUIRED가 우선이라 적용되지 않는 것 포함 */
@@ -52,6 +64,8 @@ const POLICY_DEFAULTS: Record<string, string> = {
   AUTH_RESEND_COOLDOWN_SEC: '60',
   PRESIGN_UPLOAD_TTL_SEC: '300',
   PRESIGN_DOWNLOAD_TTL_SEC: '3600',
+  // Apple identity token의 aud·client_secret의 sub — 번들 ID 확정값 (ARCHITECTURE §12)
+  APPLE_BUNDLE_ID: 'com.lunoteapp',
   // 전역 rate limit — IP당 분당 요청 수. 부하 테스트 창에서만 prod 오버레이로 올린다 (Plan 9)
   THROTTLE_DEFAULT_LIMIT: '100',
 };

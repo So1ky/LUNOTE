@@ -6,13 +6,18 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { AuthProvider } from '@prisma/client';
+import { AuthProvider, Prisma } from '@prisma/client';
 import { hash as argonHash, verify as argonVerify } from 'argon2';
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { MailService } from '../notifications/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppleLoginDto } from './dto/apple-login.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
+import { AppleTokenVerifier } from './social/apple-token.verifier';
+import { GoogleTokenVerifier } from './social/google-token.verifier';
+import type { SocialIdentity } from './social/social-identity';
 
 const hashCode = (code: string) =>
   createHash('sha256').update(code).digest('hex');
@@ -34,6 +39,8 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly mail: MailService,
+    private readonly google: GoogleTokenVerifier,
+    private readonly apple: AppleTokenVerifier,
     config: ConfigService,
   ) {
     this.CODE_TTL_MS =
@@ -279,6 +286,84 @@ export class AuthService {
     return this.issueTokens(user.id, user.role);
   }
 
+  async loginWithGoogle(dto: GoogleLoginDto) {
+    return this.socialLogin(AuthProvider.GOOGLE, await this.google.verify(dto));
+  }
+
+  async loginWithApple(dto: AppleLoginDto) {
+    const identity = await this.apple.verify(dto);
+    return this.socialLogin(AuthProvider.APPLE, {
+      ...identity,
+      firstName: dto.firstName?.trim() || undefined,
+      lastName: dto.lastName?.trim() || undefined,
+    });
+  }
+
+  /**
+   * 소셜 신원 → 로그인 또는 가입. 같은 이메일이 다른 방식으로 가입돼 있으면 409(자동 연결 없음, ARCHITECTURE §11).
+   * 탈퇴 사용자는 providerId가 null로 익명화돼 같은 소셜 계정이 오면 신규 가입이 된다.
+   */
+  private async socialLogin(provider: AuthProvider, identity: SocialIdentity) {
+    const existing = await this.findSocialUser(provider, identity.providerId);
+    if (existing) return this.issueTokens(existing.id, existing.role);
+
+    if (!identity.email) {
+      throw new BadRequestException('Email is required to create an account');
+    }
+    await this.assertEmailAvailable(identity.email);
+
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          email: identity.email,
+          provider,
+          providerId: identity.providerId,
+          firstName: identity.firstName,
+          lastName: identity.lastName,
+          // 제공자가 검증한 이메일 — 인증 코드 단계를 건너뛴다
+          emailVerifiedAt: new Date(),
+        },
+        select: { id: true, role: true },
+      });
+      return this.issueTokens(user.id, user.role);
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        // 같은 소셜 계정의 동시 가입 — 먼저 커밋된 쪽으로 로그인
+        const winner = await this.findSocialUser(provider, identity.providerId);
+        if (winner) return this.issueTokens(winner.id, winner.role);
+        // 같은 이메일의 다른 방식 가입이 먼저 커밋됨
+        await this.assertEmailAvailable(identity.email);
+      }
+      throw e;
+    }
+  }
+
+  private findSocialUser(provider: AuthProvider, providerId: string) {
+    return this.prisma.user.findFirst({
+      where: { provider, providerId },
+      select: { id: true, role: true },
+    });
+  }
+
+  /** 409 본문의 provider는 검증된 토큰 소유자(= 이메일 주인)에게만 보이므로 계정 존재 노출이 아니다 */
+  private async assertEmailAvailable(email: string) {
+    const taken = await this.prisma.user.findUnique({
+      where: { email },
+      select: { provider: true },
+    });
+    if (taken) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'This email is registered with another sign-in method',
+        code: 'EMAIL_REGISTERED',
+        provider: taken.provider,
+      });
+    }
+  }
+
   /**
    * 액세스(30m JWT) + 리프레시(불투명 랜덤, 30d) 쌍 발급.
    * 리프레시 원문은 응답으로만 나가고 DB에는 sha256 해시만 저장한다.
@@ -337,8 +422,8 @@ export class AuthService {
     return { ok: true };
   }
 
-  /** 비밀번호 변경/재설정 시 호출 — 모든 기기의 세션을 무효화한다 */
-  private async revokeAllRefreshTokens(userId: string) {
+  /** 모든 기기의 세션 무효화 — 비밀번호 변경/재설정, Apple 연결 해제 알림에서 호출 */
+  async revokeAllRefreshTokens(userId: string) {
     await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },

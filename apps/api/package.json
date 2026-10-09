@@ -57,6 +57,7 @@
     "dotenv": "^17.4.2",
     "helmet": "^8.3.0",
     "ioredis": "^5.11.1",
+    "jose": "^6.2.12",
     "nestjs-pino": "^4.6.1",
     "nodemailer": "^10.0.14",
     "passport": "^0.7.0",
@@ -109,8 +110,10 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
+      "^.+/node_modules/jose/.+\\.js$": ["ts-jest", { "tsconfig": { "allowJs": true } }],
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": ["/node_modules/(?!jose/)"],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

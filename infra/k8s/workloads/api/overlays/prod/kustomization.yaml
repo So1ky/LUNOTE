@@ -37,6 +37,10 @@ configMapGenerator:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy.monitoring.svc:4317
       - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       - OTEL_TRACES_SAMPLER_ARG=0.2
+      # 소셜 로그인 공개 식별자 (ARCHITECTURE §11 소셜 로그인). .p8 개인키(APPLE_PRIVATE_KEY)는 시크릿 lunote/<env>/app
+      - GOOGLE_WEB_CLIENT_ID=786866774491-390g35n6o1g1op6huo949v84cn75ibhp.apps.googleusercontent.com
+      - APPLE_TEAM_ID=R8529642F3
+      - APPLE_KEY_ID=7MC6QTSKKW
 patches:
   - target:
       kind: ServiceAccount
