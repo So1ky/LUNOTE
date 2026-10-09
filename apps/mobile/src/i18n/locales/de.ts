@@ -389,29 +389,29 @@ const de: Resources = {
 
   deleteAccount: {
     title: 'Konto löschen',
-    intro: 'Dein LUNOTE-Konto wird dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.',
+    intro: 'Ihr LUNOTE-Konto wird dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.',
     deletedLabel: 'Wird sofort gelöscht',
     deletedItems:
-      'Dein Name, deine E-Mail, dein Profilfoto, hochgeladene Dateien, Benachrichtigungen und Anfragen, die du nicht bezahlt hast. Offene Anfragen werden storniert.',
+      'Ihr Name, Ihre E-Mail-Adresse, Ihr Profilfoto, hochgeladene Dateien, Benachrichtigungen und Anfragen, die Sie nicht bezahlt haben. Offene Anfragen werden storniert.',
     keptLabel: 'Wird gesetzlich aufbewahrt',
     keptItems:
-      'Für bezahlte Bestellungen verpflichtet uns das koreanische E-Commerce-Gesetz, Vertrags- und Zahlungsdaten 5 Jahre (Streitfalldaten 3 Jahre) aufzubewahren. Sie sind nicht mehr mit deinem Namen oder deinen Kontaktdaten verknüpft und werden nach Ablauf der Frist vernichtet.',
+      'Für bezahlte Bestellungen verpflichtet uns das koreanische E-Commerce-Gesetz, Vertrags- und Zahlungsdaten 5 Jahre (Streitfalldaten 3 Jahre) aufzubewahren. Sie sind nicht mehr mit Ihrem Namen oder Ihren Kontaktdaten verknüpft und werden nach Ablauf der Frist vernichtet.',
     timing:
-      'Dein Konto wird sofort gelöscht. Hochgeladene Dateien werden innerhalb weniger Minuten entfernt.',
+      'Ihr Konto wird sofort gelöscht. Hochgeladene Dateien werden innerhalb weniger Minuten entfernt.',
     password: 'Passwort',
     submit: 'Mein Konto löschen',
     confirmTitle: 'Konto wirklich löschen?',
     confirmMessage:
-      'Du wirst abgemeldet und verlierst den Zugriff auf deine Anfragen. Das kann nicht rückgängig gemacht werden.',
+      'Sie werden abgemeldet und verlieren den Zugriff auf Ihre Anfragen. Das kann nicht rückgängig gemacht werden.',
     confirm: 'Ja, löschen',
     goBack: 'Zurück',
     wrongPassword: 'Das Passwort ist falsch.',
-    noPassword: 'Dieses Konto kann nicht in der App gelöscht werden. Bitte kontaktiere den Support.',
+    noPassword: 'Dieses Konto kann nicht in der App gelöscht werden. Bitte kontaktieren Sie den Support.',
     activeOrders:
-      'Du hast einen bezahlten Service in Bearbeitung. Du kannst dein Konto löschen, sobald er abgeschlossen oder erstattet ist.',
+      'Sie haben einen bezahlten Service in Bearbeitung. Sie können Ihr Konto löschen, sobald er abgeschlossen oder erstattet ist.',
     contactSupport: 'Support kontaktieren',
-    doneTitle: 'Dein Konto wurde gelöscht',
-    doneSubtitle: 'Danke, dass du LUNOTE genutzt hast.',
+    doneTitle: 'Ihr Konto wurde gelöscht',
+    doneSubtitle: 'Danke, dass Sie LUNOTE genutzt haben.',
     done: 'OK',
   },
 
