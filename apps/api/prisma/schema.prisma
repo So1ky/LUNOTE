@@ -82,6 +82,8 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  // 탈퇴 시각 — 행은 거래 기록 보존용으로 남고 개인정보는 익명화된다 (ARCHITECTURE §11 계정 삭제)
+  deletedAt DateTime?
 
   requests      QuoteRequest[]
   notifications Notification[]
