@@ -384,6 +384,35 @@ const es: Resources = {
       'Tu nombre cambiará a "{{name}}". Nuestro equipo lo usa para identificarte.',
     save: 'Guardar',
     goBack: 'Volver',
+    deleteAccount: 'Eliminar cuenta',
+  },
+
+  deleteAccount: {
+    title: 'Eliminar cuenta',
+    intro: 'Esto elimina tu cuenta de LUNOTE de forma permanente. No se puede deshacer.',
+    deletedLabel: 'Se elimina de inmediato',
+    deletedItems:
+      'Tu nombre, correo, foto de perfil, archivos subidos, notificaciones y solicitudes que no hayas pagado. Las solicitudes abiertas se cancelan.',
+    keptLabel: 'Se conserva por ley',
+    keptItems:
+      'En los pedidos que pagaste, la ley coreana de comercio electrónico nos obliga a conservar los registros de contrato y pago durante 5 años (los de disputas, 3 años). Ya no estarán vinculados a tu nombre ni a tus datos de contacto y se destruirán al terminar el plazo.',
+    timing:
+      'Tu cuenta se elimina de inmediato. Los archivos subidos se borran en unos minutos.',
+    password: 'Contraseña',
+    submit: 'Eliminar mi cuenta',
+    confirmTitle: '¿Eliminar tu cuenta?',
+    confirmMessage:
+      'Se cerrará tu sesión y perderás el acceso a tus solicitudes. No se puede deshacer.',
+    confirm: 'Sí, eliminar',
+    goBack: 'Volver',
+    wrongPassword: 'La contraseña no es correcta.',
+    noPassword: 'Esta cuenta no se puede eliminar desde la app. Contacta con soporte.',
+    activeOrders:
+      'Tienes un servicio pagado en curso. Podrás eliminar tu cuenta cuando se complete o se reembolse.',
+    contactSupport: 'Contactar con soporte',
+    doneTitle: 'Tu cuenta ha sido eliminada',
+    doneSubtitle: 'Gracias por usar LUNOTE.',
+    done: 'Aceptar',
   },
 
   language: {

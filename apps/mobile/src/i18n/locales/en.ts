@@ -393,6 +393,35 @@ const en = {
       'Your name will change to "{{name}}". Our team uses it to identify you.',
     save: 'Save',
     goBack: 'Go back',
+    deleteAccount: 'Delete account',
+  },
+
+  deleteAccount: {
+    title: 'Delete account',
+    intro: 'This permanently deletes your LUNOTE account. It can’t be undone.',
+    deletedLabel: 'Deleted right away',
+    deletedItems:
+      'Your name, email, profile photo, uploaded files, notifications, and requests you haven’t paid for. Open requests are cancelled.',
+    keptLabel: 'Kept, as required by law',
+    keptItems:
+      'For orders you paid for, Korean e-commerce law requires us to keep contract and payment records for 5 years (dispute records for 3 years). They are no longer linked to your name or contact details and are destroyed when the period ends.',
+    timing:
+      'Your account is deleted immediately. Uploaded files are erased within a few minutes.',
+    password: 'Password',
+    submit: 'Delete my account',
+    confirmTitle: 'Delete your account?',
+    confirmMessage:
+      'You’ll be signed out and lose access to your requests. This can’t be undone.',
+    confirm: 'Yes, delete',
+    goBack: 'Go back',
+    wrongPassword: 'Your password is incorrect.',
+    noPassword: 'This account can’t be deleted in the app. Please contact support.',
+    activeOrders:
+      'You have a paid service in progress. You can delete your account once it’s completed or refunded.',
+    contactSupport: 'Contact support',
+    doneTitle: 'Your account has been deleted',
+    doneSubtitle: 'Thank you for using LUNOTE.',
+    done: 'OK',
   },
 
   language: {

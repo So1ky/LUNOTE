@@ -42,6 +42,8 @@ type AuthState = {
     lastName?: string,
   ) => Promise<void>;
   signOut: () => Promise<void>;
+  /** 계정 삭제 — 성공하면 로컬 세션도 정리 (서버가 리프레시 토큰까지 지운다) */
+  deleteAccount: (password: string) => Promise<void>;
   /** 인증 상태 변경(이메일 인증 등) 후 프로필 갱신 */
   refreshProfile: () => Promise<void>;
   /** 프로필 수정 (이름/언어/아바타/알림 설정) — 서버 응답으로 상태 갱신 */
@@ -157,6 +159,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   }, []);
 
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      await api<{ deleted: true }>('/users/me', {
+        method: 'DELETE',
+        body: { password },
+        token,
+      });
+      // 서버 세션은 이미 없다 — /auth/logout 없이 로컬만 정리
+      await tokenStorage.clear();
+      setToken(null);
+      setProfile(null);
+    },
+    [token],
+  );
+
   const value = useMemo(
     () => ({
       loading,
@@ -165,10 +182,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
+      deleteAccount,
       refreshProfile,
       updateProfile,
     }),
-    [loading, token, profile, signIn, signUp, signOut, refreshProfile, updateProfile],
+    [loading, token, profile, signIn, signUp, signOut, deleteAccount, refreshProfile, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

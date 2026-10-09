@@ -384,6 +384,33 @@ const ko: Resources = {
       '이름이 "{{name}}"(으)로 변경돼요. 컨시어지 팀이 본인 확인에 사용해요.',
     save: '저장',
     goBack: '돌아가기',
+    deleteAccount: '계정 삭제',
+  },
+
+  deleteAccount: {
+    title: '계정 삭제',
+    intro: 'LUNOTE 계정을 영구적으로 삭제합니다. 되돌릴 수 없어요.',
+    deletedLabel: '즉시 삭제되는 정보',
+    deletedItems:
+      '이름, 이메일, 프로필 사진, 업로드한 파일, 알림, 결제하지 않은 문의. 진행 전인 문의는 취소돼요.',
+    keptLabel: '법에 따라 보관되는 정보',
+    keptItems:
+      '결제한 주문은 전자상거래법에 따라 계약·결제 기록을 5년(분쟁 처리 기록은 3년) 보관해요. 이름·연락처와는 분리되며 기간이 끝나면 파기돼요.',
+    timing: '계정은 즉시 삭제되고, 업로드한 파일은 몇 분 안에 지워져요.',
+    password: '비밀번호',
+    submit: '계정 삭제하기',
+    confirmTitle: '계정을 삭제할까요?',
+    confirmMessage: '로그아웃되고 문의 내역에 더 이상 접근할 수 없어요. 되돌릴 수 없어요.',
+    confirm: '삭제할게요',
+    goBack: '돌아가기',
+    wrongPassword: '비밀번호가 올바르지 않아요.',
+    noPassword: '이 계정은 앱에서 삭제할 수 없어요. 고객센터로 문의해 주세요.',
+    activeOrders:
+      '결제 후 진행 중인 서비스가 있어요. 서비스가 완료되거나 환불된 뒤 삭제할 수 있어요.',
+    contactSupport: '고객센터 문의',
+    doneTitle: '계정이 삭제되었어요',
+    doneSubtitle: 'LUNOTE를 이용해 주셔서 감사합니다.',
+    done: '확인',
   },
 
   language: {
