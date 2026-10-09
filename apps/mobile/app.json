@@ -9,10 +9,10 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.anonymous.lunote"
+      "bundleIdentifier": "com.lunoteapp"
     },
     "android": {
-      "package": "app.lunote",
+      "package": "com.lunoteapp",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

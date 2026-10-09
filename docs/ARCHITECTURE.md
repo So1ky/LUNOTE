@@ -22,7 +22,7 @@
 | ORM | **Prisma** | 타입 안전 쿼리 + 마이그레이션 관리 |
 | DB | AWS RDS PostgreSQL, **Single-AZ** + PITR(5분) | 파일은 S3 (presigned URL). 2026-10-04 결정: 출시 후에도 Single-AZ 유지, **누적 실결제 10건 도달 시 Multi-AZ 전환**(속성 하나, 온라인 변경). 유실 위험은 PITR로 동일, 잃는 건 장애 시 자동 페일오버뿐 |
 | 큐/캐시 | **Redis + BullMQ** | 푸시 알림 발송, 웹훅 재처리 잡 |
-| 인증 | Passport — Google/Apple OAuth **+ 이메일/비밀번호** + JWT | 비밀번호는 argon2 해싱, 재설정은 이메일 링크 방식 |
+| 인증 | 이메일/비밀번호 + Google·Apple(네이티브 SDK ID 토큰을 서버가 jose로 검증) + JWT(Passport 가드) | 비밀번호는 argon2 해싱, 재설정은 이메일 링크 방식. 소셜 결정은 §11 소셜 로그인 |
 | 결제 | PortOne (페이팔 SPB) + 수동 계좌이체 | 웹훅 서명 검증 + 멱등성 필수, 계좌이체는 관리자 확인 흐름 |
 | 컨테이너 오케스트레이션 | AWS EKS | 코어 노드그룹 On-Demand + 워커 Spot(Karpenter) |
 | CI/CD | Jenkins(동적 에이전트 Pod) + ArgoCD, PR 검사는 GitHub Actions | GitOps 무중단 배포. PR 검사에는 배포 권한이 없다 |
@@ -336,13 +336,26 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
 - **운영**: 정리 잡이 실패하면 같은 jobId로 add해도 무시되므로 `job.retry()` 또는 삭제 후 재등록한다. IRSA 권한 apply가 이미지 롤아웃보다 먼저여야 한다.
 - **시스템 밖 잔존**: PortOne/PayPal의 결제자 정보, 관리자 메일함의 신규 문의 메일 — 처리방침(6-2)에 고지.
 - **TODO(2031-10)**: 보존기간 5년이 지난 거래 기록 파기 배치 — 첫 만료 전까지 구현.
-- **소셜 로그인 도입 시**: 소셜 가입자 재인증 + Sign in with Apple 토큰 revoke(REST) + 서버 간 알림 엔드포인트(한국 개발자 필수).
+- **소셜 가입자**: 앱 탈퇴는 제공자 재로그인으로 재인증(토큰 sub = providerId, 발급 5분 이내). Apple은 재인증 code를 교환해 즉시 revoke(토큰 미저장),
+  관리자 대행 삭제는 사용자에게 "설정 → Apple로 로그인에서 연결 해제"를 안내한다.
+
+### 소셜 로그인 (2026-10-09 결정)
+
+- **방식**: 네이티브 SDK가 받은 ID 토큰을 `POST /auth/google`·`/auth/apple`로 보내고 서버가 jose로 JWKS 서명·iss·aud·exp 검증.
+  Passport OAuth 리다이렉트는 쓰지 않는다 — 딥링크 토큰 전달 구간 제거, Google client secret 불필요.
+- **이메일 충돌**: 다른 방식으로 가입된 이메일이면 409 + 기존 provider. 자동 연결 없음(Google 비-Gmail 계정의 email_verified 신뢰 함정).
+- **Apple은 iOS만**: Android Apple 로그인은 웹 리다이렉트가 필요해 제외. App Store 4.8 의무는 iOS만.
+- **nonce 미사용**: 클라이언트 생성 nonce는 토큰과 함께 탈취돼 효과가 없다. 보호는 TLS·aud·Apple 토큰 10분 만료·탈퇴 재인증 5분·요청 본문 비기록.
+- **Apple 서버 간 알림** `POST /auth/apple/notifications`: consent-revoked → 전 세션 폐기, account-delete → 자동 탈퇴
+  (PAID·IN_PROGRESS면 세션 폐기 + 관리자 인앱 알림 `APPLE_ACCOUNT_DELETED` 후 수동 정리), email-* → 로그만.
+  알림 주소는 번들 ID당 1개라 prod만 수신한다.
+- **설정**: 공개 식별자(`GOOGLE_WEB_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`)는 ConfigMap, `.p8`(`APPLE_PRIVATE_KEY`)만 Secrets Manager.
 
 ## 12. 확정된 식별자·환경 결정 (구 미결정 사항)
 
 - **도메인 `lunoteapp.com` / 번들 식별자 `com.lunoteapp` 확정 (2026-09-22)** — iOS/Android 동일.
   App Store 최초 등록 후 변경 불가하므로 등록 시 이 값 사용.
-  (`app.json`의 임시값 `app.lunote`는 스토어 등록 전에 교체 — 교체 시 개발 빌드 재빌드 필요.)
+  (`app.json` 적용 완료 2026-10-09 — 소셜 콘솔 등록이 번들 ID에 묶이므로 등록 전에 교체했다.)
 - **환경 분리 (2026-09-17)**: EKS 클러스터 1개 + `staging`/`prod` 네임스페이스 분리.
   근거·완화책은 배포 설계 스펙(`docs/superpowers/specs/` — 로컬 전용, git 추적 제외) §0.
 - **EKS 구성 (2026-10-04 구축)**: 클러스터 `lunote`, K8s **1.36**(Karpenter 1.14 지원 상한에 맞춤),
