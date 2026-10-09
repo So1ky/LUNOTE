@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -26,6 +27,14 @@ beforeAll(async () => {
   jwks = createLocalJWKSet({
     keys: [{ ...(await exportJWK(pair.publicKey)), kid: 'test', alg: 'RS256' }],
   });
+});
+
+// 503 경로의 warn 로그가 테스트 출력을 어지럽히지 않게 막는다
+beforeEach(() => {
+  jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+});
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 const config = (values: Record<string, string>) =>
@@ -191,6 +200,36 @@ describe('GoogleTokenVerifier', () => {
       .setExpirationTime(now + 300)
       .sign(new TextEncoder().encode('x'.repeat(32)));
     await expect(verifier().verify({ idToken })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('키가 2개 이상인 JWKS에서 kid 없는 토큰은 400 — 공격자가 5xx를 만들 수 없게', async () => {
+    const a = await generateKeyPair('RS256');
+    const b = await generateKeyPair('RS256');
+    const multiJwks = createLocalJWKSet({
+      keys: [
+        { ...(await exportJWK(a.publicKey)), kid: 'a', alg: 'RS256' },
+        { ...(await exportJWK(b.publicKey)), kid: 'b', alg: 'RS256' },
+      ],
+    });
+    const now = Math.floor(Date.now() / 1000);
+    const idToken = await new SignJWT({
+      email: 'a@gmail.com',
+      email_verified: true,
+    })
+      .setProtectedHeader({ alg: 'RS256' })
+      .setSubject('sub-1')
+      .setIssuer('https://accounts.google.com')
+      .setAudience(GOOGLE_CLIENT)
+      .setIssuedAt(now)
+      .setExpirationTime(now + 300)
+      .sign(a.privateKey);
+    const v = new GoogleTokenVerifier(
+      config({ GOOGLE_WEB_CLIENT_ID: GOOGLE_CLIENT }),
+      multiJwks,
+    );
+    await expect(v.verify({ idToken })).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });
