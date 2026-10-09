@@ -74,7 +74,8 @@ export class AdminQuoteRequestsService {
 
   findAll(status?: RequestStatus) {
     return this.prisma.quoteRequest.findMany({
-      where: status ? { status } : undefined,
+      // 탈퇴 사용자의 보존 기록은 운영 화면에서 분리 (개인정보보호법 §21③, 분쟁 시 DB 직접 조회)
+      where: { ...(status ? { status } : {}), user: { deletedAt: null } },
       orderBy: { createdAt: 'desc' },
       select: ADMIN_REQUEST_SELECT,
       take: 200, // 안전 상한 — 커서 페이지네이션은 규모가 커지면 도입 (2026-07-24 결정)
@@ -82,8 +83,8 @@ export class AdminQuoteRequestsService {
   }
 
   async findOne(id: number) {
-    const request = await this.prisma.quoteRequest.findUnique({
-      where: { id },
+    const request = await this.prisma.quoteRequest.findFirst({
+      where: { id, user: { deletedAt: null } },
       select: ADMIN_DETAIL_SELECT,
     });
     if (!request) {

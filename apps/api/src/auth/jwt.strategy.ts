@@ -28,9 +28,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         lastName: true,
         role: true,
         emailVerifiedAt: true,
+        deletedAt: true,
       },
     });
-    if (!user) {
+    // 탈퇴 사용자는 남은 액세스 토큰(최대 30분)도 즉시 무효
+    if (!user || user.deletedAt) {
       throw new UnauthorizedException();
     }
     return user;

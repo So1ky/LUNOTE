@@ -1,8 +1,22 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { DeleteMeDto } from './dto/delete-me.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { UsersService } from './users.service';
 
@@ -23,5 +37,17 @@ export class UsersController {
   @ApiOperation({ summary: '내 프로필 수정 — 이름/언어/아바타/알림 설정' })
   updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateMeDto) {
     return this.users.updateMe(user.id, dto);
+  }
+
+  @Delete('me')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @ApiOperation({
+    summary: '계정 삭제 — 비밀번호 재확인, 익명화 + 결제 기록 보존',
+  })
+  @ApiResponse({ status: 400, description: '비밀번호 불일치' })
+  @ApiResponse({ status: 403, description: '비밀번호 없는 계정 또는 관리자' })
+  @ApiResponse({ status: 409, description: '결제 완료·진행 중 문의 존재' })
+  deleteMe(@CurrentUser() user: AuthUser, @Body() dto: DeleteMeDto) {
+    return this.users.deleteMe(user.id, dto.password);
   }
 }

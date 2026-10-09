@@ -58,11 +58,19 @@ export class NotificationsProcessor extends WorkerHost {
   }
 
   /** 신규 문의 → 모든 관리자에게 이메일 (앱을 안 보고 있어도 접수를 놓치지 않도록) */
-  private async sendAdminEmails(data: {
-    requestId: number;
-    category: string;
-    userEmail: string;
-  }) {
+  private async sendAdminEmails(data: { requestId: number; category: string }) {
+    // 사용자 이메일은 잡 payload에 싣지 않고 발송 시 조회한다 (완료 잡이 Redis에 남기 때문).
+    // 롤아웃 중 옛 잡에 남은 userEmail 필드는 읽지 않는다
+    const request = await this.prisma.quoteRequest.findUnique({
+      where: { id: data.requestId },
+      select: { user: { select: { email: true } } },
+    });
+    if (!request) {
+      this.logger.warn(
+        `문의가 이미 삭제되어 접수 이메일을 보내지 않습니다 (requestId=${data.requestId})`,
+      );
+      return;
+    }
     const admins = await this.prisma.user.findMany({
       where: { role: UserRole.ADMIN },
       select: { email: true },
@@ -75,7 +83,7 @@ export class NotificationsProcessor extends WorkerHost {
       await this.mail.send(
         admin.email,
         `[LUNOTE] 새 문의 #${data.requestId} (${data.category})`,
-        `새 문의가 접수되었습니다.\n\n문의 번호: #${data.requestId}\n카테고리: ${data.category}\n사용자: ${data.userEmail}\n\n앱 또는 관리자 API에서 확인 후 24시간 내에 견적을 발송하세요.`,
+        `새 문의가 접수되었습니다.\n\n문의 번호: #${data.requestId}\n카테고리: ${data.category}\n사용자: ${request.user.email}\n\n앱 또는 관리자 API에서 확인 후 24시간 내에 견적을 발송하세요.`,
       );
     }
   }

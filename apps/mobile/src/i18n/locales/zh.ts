@@ -383,6 +383,32 @@ const zh: Resources = {
       '您的姓名将更改为“{{name}}”。我们的团队将凭此识别您的身份。',
     save: '保存',
     goBack: '返回',
+    deleteAccount: '删除账户',
+  },
+
+  deleteAccount: {
+    title: '删除账户',
+    intro: '这将永久删除你的 LUNOTE 账户，且无法恢复。',
+    deletedLabel: '立即删除的信息',
+    deletedItems:
+      '姓名、邮箱、头像、上传的文件、通知以及未付款的请求。尚未开始的请求将被取消。',
+    keptLabel: '依法保留的信息',
+    keptItems:
+      '对于已付款的订单，韩国电子商务法要求我们保留合同和付款记录 5 年（纠纷处理记录 3 年）。这些记录将与你的姓名和联系方式分离，并在期满后销毁。',
+    timing: '账户会立即删除，上传的文件将在几分钟内清除。',
+    password: '密码',
+    submit: '删除我的账户',
+    confirmTitle: '确定删除账户吗？',
+    confirmMessage: '你将被退出登录，且无法再查看你的请求。此操作无法撤销。',
+    confirm: '确定删除',
+    goBack: '返回',
+    wrongPassword: '密码不正确。',
+    noPassword: '此账户无法在应用内删除，请联系客服。',
+    activeOrders: '你有已付款且正在进行的服务。服务完成或退款后即可删除账户。',
+    contactSupport: '联系客服',
+    doneTitle: '你的账户已删除',
+    doneSubtitle: '感谢使用 LUNOTE。',
+    done: '确定',
   },
 
   language: {

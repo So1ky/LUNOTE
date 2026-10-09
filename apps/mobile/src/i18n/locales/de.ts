@@ -384,6 +384,35 @@ const de: Resources = {
       'Ihr Name wird zu "{{name}}" geändert. Unser Team erkennt Sie daran.',
     save: 'Speichern',
     goBack: 'Zurück',
+    deleteAccount: 'Konto löschen',
+  },
+
+  deleteAccount: {
+    title: 'Konto löschen',
+    intro: 'Ihr LUNOTE-Konto wird dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.',
+    deletedLabel: 'Wird sofort gelöscht',
+    deletedItems:
+      'Ihr Name, Ihre E-Mail-Adresse, Ihr Profilfoto, hochgeladene Dateien, Benachrichtigungen und Anfragen, die Sie nicht bezahlt haben. Offene Anfragen werden storniert.',
+    keptLabel: 'Wird gesetzlich aufbewahrt',
+    keptItems:
+      'Für bezahlte Bestellungen verpflichtet uns das koreanische E-Commerce-Gesetz, Vertrags- und Zahlungsdaten 5 Jahre (Streitfalldaten 3 Jahre) aufzubewahren. Sie sind nicht mehr mit Ihrem Namen oder Ihren Kontaktdaten verknüpft und werden nach Ablauf der Frist vernichtet.',
+    timing:
+      'Ihr Konto wird sofort gelöscht. Hochgeladene Dateien werden innerhalb weniger Minuten entfernt.',
+    password: 'Passwort',
+    submit: 'Mein Konto löschen',
+    confirmTitle: 'Konto wirklich löschen?',
+    confirmMessage:
+      'Sie werden abgemeldet und verlieren den Zugriff auf Ihre Anfragen. Das kann nicht rückgängig gemacht werden.',
+    confirm: 'Ja, löschen',
+    goBack: 'Zurück',
+    wrongPassword: 'Das Passwort ist falsch.',
+    noPassword: 'Dieses Konto kann nicht in der App gelöscht werden. Bitte kontaktieren Sie den Support.',
+    activeOrders:
+      'Sie haben einen bezahlten Service in Bearbeitung. Sie können Ihr Konto löschen, sobald er abgeschlossen oder erstattet ist.',
+    contactSupport: 'Support kontaktieren',
+    doneTitle: 'Ihr Konto wurde gelöscht',
+    doneSubtitle: 'Danke, dass Sie LUNOTE genutzt haben.',
+    done: 'OK',
   },
 
   language: {

@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  DeleteObjectsCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -58,5 +60,39 @@ export class StorageService {
       new GetObjectCommand({ Bucket: this.bucket, Key: key }),
       { expiresIn: this.downloadTtlSec },
     );
+  }
+
+  /**
+   * 사용자 프리픽스(uploads/<id>/) 아래 객체를 전부 영구 삭제한다 (버킷 버전 관리 없음).
+   * 매번 처음부터 다시 목록을 받아 빌 때까지 반복 — 삭제 중 연속 토큰이 어긋날 일이 없다.
+   * 부분 실패는 throw해서 호출 측(BullMQ 잡)이 재시도하게 한다.
+   */
+  async deletePrefix(prefix: string): Promise<number> {
+    if (!/^uploads\/[^/]+\/$/.test(prefix)) {
+      throw new Error(`refusing to delete unexpected prefix: "${prefix}"`);
+    }
+    let deleted = 0;
+    for (;;) {
+      const page = await this.client.send(
+        new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix }),
+      );
+      const objects = (page.Contents ?? []).flatMap((o) =>
+        o.Key ? [{ Key: o.Key }] : [],
+      );
+      if (objects.length === 0) return deleted;
+
+      const res = await this.client.send(
+        new DeleteObjectsCommand({
+          Bucket: this.bucket,
+          Delete: { Objects: objects, Quiet: true },
+        }),
+      );
+      if (res.Errors?.length) {
+        throw new Error(
+          `S3 delete failed for ${res.Errors.length} object(s): ${res.Errors[0].Code}`,
+        );
+      }
+      deleted += objects.length;
+    }
   }
 }

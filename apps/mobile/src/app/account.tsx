@@ -120,6 +120,21 @@ export default function AccountScreen() {
         </Card>
       </View>
 
+      {/* App Store 5.1.1(v): 계정 삭제는 계정 설정에서 찾기 쉬워야 한다 */}
+      <Card style={styles.linkCard}>
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.linkRow, pressed && styles.linkPressed]}
+          onPress={() => router.push('/delete-account')}>
+          <ThemedText type="body" style={styles.error}>
+            {t('account.deleteAccount')}
+          </ThemedText>
+          <ThemedText type="body" themeColor="textSecondary">
+            ›
+          </ThemedText>
+        </Pressable>
+      </Card>
+
       <ConfirmDialog
         visible={confirmingName}
         title={t('account.confirmTitle')}

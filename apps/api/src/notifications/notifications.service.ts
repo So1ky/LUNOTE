@@ -19,7 +19,6 @@ export type AdminEmailJob = {
   type: 'ADMIN_NEW_REQUEST_EMAIL';
   requestId: number;
   category: string;
-  userEmail: string;
 };
 
 export type AdminPaymentPaidEmailJob = {
