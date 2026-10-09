@@ -116,7 +116,6 @@ export class QuoteRequestsService {
       type: 'ADMIN_NEW_REQUEST_EMAIL',
       requestId: created.id,
       category: created.category,
-      userEmail,
     });
 
     return created;
