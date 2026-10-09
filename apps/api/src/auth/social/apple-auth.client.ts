@@ -43,9 +43,16 @@ export class AppleAuthClient {
       code,
     });
     if (res?.status === 400) {
-      // invalid_grant — 만료되거나 이미 쓴 code. 앱이 재인증을 다시 하면 된다
-      throw new BadRequestException(
-        'Apple confirmation expired — please try again',
+      const error = await this.errorCode(res);
+      // invalid_grant만 사용자 문제(만료·재사용 code). invalid_client 등은 서버 설정 오류
+      if (error === 'invalid_grant') {
+        throw new BadRequestException(
+          'Apple confirmation expired — please try again',
+        );
+      }
+      this.logger.error(`Apple 토큰 교환 실패 status=400 error=${error}`);
+      throw new ServiceUnavailableException(
+        'Could not confirm with Apple — please try again',
       );
     }
     if (!res?.ok) {
@@ -56,23 +63,35 @@ export class AppleAuthClient {
         'Could not confirm with Apple — please try again',
       );
     }
-    const body = (await res.json()) as { refresh_token?: string };
-    if (!body.refresh_token) {
+    let refreshToken: string | undefined;
+    try {
+      refreshToken = ((await res.json()) as { refresh_token?: string })
+        .refresh_token;
+    } catch {
+      this.logger.error('Apple 토큰 교환 응답 파싱 실패');
+    }
+    if (!refreshToken) {
       this.logger.error('Apple 토큰 교환 응답에 refresh_token 없음');
       throw new ServiceUnavailableException(
         'Could not confirm with Apple — please try again',
       );
     }
-    return body.refresh_token;
+    return refreshToken;
   }
 
-  /** 연결 해제 — 최대 3회. 최종 실패는 false (계정은 이미 삭제됐으므로 호출자가 기록만 한다) */
+  /** 연결 해제 — 최대 3회. 절대 던지지 않는다: 최종 실패·설정 오류는 false (계정은 이미 삭제됐으므로 호출자가 기록만 한다) */
   async revoke(refreshToken: string): Promise<boolean> {
     for (let attempt = 1; attempt <= REVOKE_ATTEMPTS; attempt++) {
-      const res = await this.post(APPLE_REVOKE_URL, {
-        token: refreshToken,
-        token_type_hint: 'refresh_token',
-      });
+      let res: Response | null;
+      try {
+        res = await this.post(APPLE_REVOKE_URL, {
+          token: refreshToken,
+          token_type_hint: 'refresh_token',
+        });
+      } catch {
+        // client_secret 생성 실패(설정 오류) — 재시도해도 같으므로 즉시 포기
+        return false;
+      }
       if (res?.ok) return true;
       this.logger.warn(
         `Apple revoke 실패 attempt=${attempt} status=${res?.status ?? 'network'}`,
@@ -82,6 +101,16 @@ export class AppleAuthClient {
       }
     }
     return false;
+  }
+
+  /** 400 응답 본문의 error 코드(민감하지 않음). 파싱 실패 시 'unknown' */
+  private async errorCode(res: Response): Promise<string> {
+    try {
+      const { error } = (await res.json()) as { error?: unknown };
+      return typeof error === 'string' ? error : 'unknown';
+    } catch {
+      return 'unknown';
+    }
   }
 
   /** 네트워크 실패·타임아웃은 null — 호출자가 상태 코드와 함께 판단 */
@@ -111,14 +140,20 @@ export class AppleAuthClient {
     if (!this.teamId || !this.keyId || !this.privateKey) {
       throw new ServiceUnavailableException('Apple sign-in is not configured');
     }
-    const key = await importPKCS8(this.privateKey, 'ES256');
-    return new SignJWT({})
-      .setProtectedHeader({ alg: 'ES256', kid: this.keyId })
-      .setIssuer(this.teamId)
-      .setSubject(this.bundleId)
-      .setAudience(APPLE_ISSUER)
-      .setIssuedAt()
-      .setExpirationTime('5m')
-      .sign(key);
+    try {
+      const key = await importPKCS8(this.privateKey, 'ES256');
+      return await new SignJWT({})
+        .setProtectedHeader({ alg: 'ES256', kid: this.keyId })
+        .setIssuer(this.teamId)
+        .setSubject(this.bundleId)
+        .setAudience(APPLE_ISSUER)
+        .setIssuedAt()
+        .setExpirationTime('5m')
+        .sign(key);
+    } catch (e) {
+      // 키 형식 오류 등 — 원문(키 조각이 섞일 수 있음) 대신 에러 이름만 기록
+      this.logger.error(`Apple client_secret 생성 실패 ${(e as Error).name}`);
+      throw new ServiceUnavailableException('Apple sign-in is not configured');
+    }
   }
 }

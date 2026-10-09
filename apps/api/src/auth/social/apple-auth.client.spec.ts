@@ -98,6 +98,27 @@ describe('AppleAuthClient.exchangeCode', () => {
     );
   });
 
+  it('Apple 400 invalid_client(서버 설정 오류) → 503', async () => {
+    fetchMock.mockResolvedValueOnce(response(400, { error: 'invalid_client' }));
+    await expect(client().exchangeCode('c')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
+  it('200인데 JSON이 아닌 본문 → 503', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('not json', { status: 200 }));
+    await expect(client().exchangeCode('c')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
+  it('깨진 키 → 503, Apple 호출 안 함', async () => {
+    await expect(
+      client({ APPLE_PRIVATE_KEY: 'not-a-key' }).exchangeCode('c'),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('Apple 5xx → 503', async () => {
     fetchMock.mockResolvedValueOnce(response(503));
     await expect(client().exchangeCode('c')).rejects.toBeInstanceOf(
@@ -144,5 +165,19 @@ describe('AppleAuthClient.revoke', () => {
     fetchMock.mockResolvedValue(response(500));
     await expect(client().revoke('r')).resolves.toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('깨진 키 → false (던지지 않는다)', async () => {
+    await expect(
+      client({ APPLE_PRIVATE_KEY: 'not-a-key' }).revoke('r'),
+    ).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('미설정 → false (던지지 않는다)', async () => {
+    await expect(client({ APPLE_PRIVATE_KEY: '' }).revoke('r')).resolves.toBe(
+      false,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
