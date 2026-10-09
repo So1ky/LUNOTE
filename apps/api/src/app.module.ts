@@ -42,11 +42,14 @@ import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
           redact: ['req.headers.authorization', 'req.headers.cookie'],
           genReqId: (req) =>
             (req.headers['x-request-id'] as string) ?? randomUUID(),
-          // 로컬은 사람이 읽는 포맷, 프로덕션은 JSON 그대로
-          transport:
-            config.get('NODE_ENV') === 'production'
-              ? undefined
-              : { target: 'pino-pretty', options: { singleLine: true } },
+          // 로컬은 사람이 읽는 포맷, 프로덕션은 JSON 그대로.
+          // 테스트(jest가 NODE_ENV=test 설정)도 transport 없이 — 앱마다 워커 스레드가 생기고 app.close()가
+          // 끝내지 않아, 가끔 하나가 ref로 남아 jest가 종료되지 않는다 (CI 빌드 #67 실측)
+          transport: ['production', 'test'].includes(
+            config.get<string>('NODE_ENV') ?? '',
+          )
+            ? undefined
+            : { target: 'pino-pretty', options: { singleLine: true } },
         },
       }),
     }),
