@@ -5,6 +5,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   createLocalJWKSet,
+  errors,
   exportJWK,
   generateKeyPair,
   SignJWT,
@@ -157,6 +158,40 @@ describe('GoogleTokenVerifier', () => {
     await expect(
       v.verify({ idToken: await googleToken({}) }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it('JWKS HTTP 오류(일반 JOSEError)는 503', async () => {
+    const httpErrorJwks: Jwks = () =>
+      Promise.reject(
+        new errors.JOSEError(
+          'Expected 200 OK from the JSON Web Key Set HTTP response',
+        ),
+      );
+    const v = new GoogleTokenVerifier(
+      config({ GOOGLE_WEB_CLIENT_ID: GOOGLE_CLIENT }),
+      httpErrorJwks,
+    );
+    await expect(
+      v.verify({ idToken: await googleToken({}) }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it('RS256이 아닌 alg(HS256)로 서명된 토큰은 400 — 알고리즘 고정', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const idToken = await new SignJWT({
+      email: 'a@gmail.com',
+      email_verified: true,
+    })
+      .setProtectedHeader({ alg: 'HS256', kid: 'test' })
+      .setSubject('sub-1')
+      .setIssuer('https://accounts.google.com')
+      .setAudience(GOOGLE_CLIENT)
+      .setIssuedAt(now)
+      .setExpirationTime(now + 300)
+      .sign(new TextEncoder().encode('x'.repeat(32)));
+    await expect(verifier().verify({ idToken })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('GOOGLE_WEB_CLIENT_ID 미설정(로컬)이면 503', async () => {
