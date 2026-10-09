@@ -4,14 +4,14 @@ namespace: prod
 resources:
   # base를 커밋 SHA로 고정한다(로컬 ../../base 아님). base는 staging과 공유하므로, 로컬 경로면 base 변경이 staging
   # 검증 전에 prod에 바로 들어간다. 승격 = 아래 ref와 newTag를 바꾸는 PR (절차: infra/k8s/README.md "prod 승격").
-  - https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=72aca2f57287cdd6ebf18cfe625da4a08a8999a2
+  - https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=02b9dd0f277183233f2659d1f051e1eeeb19432f
   - externalsecret.yaml
   - hpa.yaml
   - pdb.yaml
 images:
   - name: lunote-api
     newName: 695019457880.dkr.ecr.ap-northeast-2.amazonaws.com/lunote/api
-    newTag: 72aca2f57287 # staging이 실제로 돌린 태그만 — 사람이 승격 PR로 바꾼다(CI는 건드리지 않는다)
+    newTag: 02b9dd0f2771 # staging이 실제로 돌린 태그만 — 사람이 승격 PR로 바꾼다(CI는 건드리지 않는다)
 configMapGenerator:
   - name: api-config
     options:
