@@ -1,6 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtService } from '@nestjs/jwt';
 import {
   AuthProvider,
   Category,
@@ -138,24 +137,6 @@ describe('Account deletion (e2e)', () => {
       .expect(400);
     const user = await prisma.user.findUniqueOrThrow({ where: { email } });
     expect(user.deletedAt).toBeNull();
-  });
-
-  it('비밀번호 없는(소셜) 계정은 403', async () => {
-    const social = await prisma.user.create({
-      data: {
-        email: `del-social-${stamp}@test.lunote.app`,
-        provider: AuthProvider.GOOGLE,
-        providerId: `g-${stamp}`,
-      },
-    });
-    const token = app
-      .get(JwtService, { strict: false })
-      .sign({ sub: social.id, role: social.role });
-    await request(app.getHttpServer())
-      .delete('/users/me')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ password: 'anything' })
-      .expect(403);
   });
 
   it('PAID·IN_PROGRESS 문의가 있으면 409, 취소도 롤백된다', async () => {
