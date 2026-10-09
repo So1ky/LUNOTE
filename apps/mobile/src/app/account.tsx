@@ -103,22 +103,25 @@ export default function AccountScreen() {
         />
       </View>
 
-      <View style={styles.section}>
-        <ThemedText type="caption" themeColor="textSecondary">
-          {t('account.securitySection')}
-        </ThemedText>
-        <Card style={styles.linkCard}>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.linkRow, pressed && styles.linkPressed]}
-            onPress={() => router.push('/change-password')}>
-            <ThemedText type="body">{t('account.changePassword')}</ThemedText>
-            <ThemedText type="body" themeColor="textSecondary">
-              ›
-            </ThemedText>
-          </Pressable>
-        </Card>
-      </View>
+      {/* 소셜 가입자는 비밀번호가 없다 — 변경 메뉴를 숨긴다 */}
+      {profile?.provider === 'EMAIL' && (
+        <View style={styles.section}>
+          <ThemedText type="caption" themeColor="textSecondary">
+            {t('account.securitySection')}
+          </ThemedText>
+          <Card style={styles.linkCard}>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.linkRow, pressed && styles.linkPressed]}
+              onPress={() => router.push('/change-password')}>
+              <ThemedText type="body">{t('account.changePassword')}</ThemedText>
+              <ThemedText type="body" themeColor="textSecondary">
+                ›
+              </ThemedText>
+            </Pressable>
+          </Card>
+        </View>
+      )}
 
       {/* App Store 5.1.1(v): 계정 삭제는 계정 설정에서 찾기 쉬워야 한다 */}
       <Card style={styles.linkCard}>

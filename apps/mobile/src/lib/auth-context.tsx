@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { api, setAuthEventHandlers } from './api';
+import { getAppleCredential, getGoogleIdToken } from './social-auth';
 import { tokenStorage } from './token-storage';
 
 type TokenPair = { accessToken: string; refreshToken: string };
@@ -21,6 +22,7 @@ export type Profile = {
   emailVerifiedAt: string | null;
   language: string | null;
   avatarUrl: string | null;
+  provider: 'EMAIL' | 'GOOGLE' | 'APPLE';
 };
 
 /** 표시 이름 — 실명이 없으면 이메일 앞부분 */
@@ -41,6 +43,9 @@ type AuthState = {
     firstName?: string,
     lastName?: string,
   ) => Promise<void>;
+  /** 소셜 로그인/가입 — 사용자가 취소하면 false */
+  signInWithGoogle: () => Promise<boolean>;
+  signInWithApple: () => Promise<boolean>;
   signOut: () => Promise<void>;
   /** 계정 삭제 — 성공하면 로컬 세션도 정리 (서버가 리프레시 토큰까지 지운다) */
   deleteAccount: (password: string) => Promise<void>;
@@ -130,6 +135,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [applyTokens],
   );
 
+  const signInWithGoogle = useCallback(async () => {
+    const idToken = await getGoogleIdToken();
+    if (!idToken) return false;
+    const pair = await api<TokenPair>('/auth/google', {
+      method: 'POST',
+      body: { idToken },
+    });
+    await applyTokens(pair);
+    return true;
+  }, [applyTokens]);
+
+  const signInWithApple = useCallback(async () => {
+    const credential = await getAppleCredential();
+    if (!credential) return false;
+    // authorizationCode는 로그인에 쓰지 않는다 — 탈퇴 재인증 때만 서버로 보낸다
+    const pair = await api<TokenPair>('/auth/apple', {
+      method: 'POST',
+      body: {
+        identityToken: credential.identityToken,
+        firstName: credential.firstName,
+        lastName: credential.lastName,
+      },
+    });
+    await applyTokens(pair);
+    return true;
+  }, [applyTokens]);
+
   const refreshProfile = useCallback(async () => {
     if (!token) return;
     setProfile(await api<Profile>('/auth/me', { token }));
@@ -181,12 +213,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       signIn,
       signUp,
+      signInWithGoogle,
+      signInWithApple,
       signOut,
       deleteAccount,
       refreshProfile,
       updateProfile,
     }),
-    [loading, token, profile, signIn, signUp, signOut, deleteAccount, refreshProfile, updateProfile],
+    [loading, token, profile, signIn, signUp, signInWithGoogle, signInWithApple, signOut, deleteAccount, refreshProfile, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -73,6 +73,11 @@ const zh: Resources = {
     continueGuest: '← 以访客身份继续浏览',
     newToLunote: '第一次使用 LUNOTE？ ',
     createAccount: '注册账号',
+    emailRegistered: '该邮箱已通过{{method}}注册。请使用{{method}}登录。',
+    methodEMAIL: '邮箱和密码',
+    methodGOOGLE: 'Google',
+    methodAPPLE: 'Apple',
+    socialFailed: '登录失败，请重试。',
   },
 
   signup: {

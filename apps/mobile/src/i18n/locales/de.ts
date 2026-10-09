@@ -73,6 +73,11 @@ const de: Resources = {
     continueGuest: '← Als Gast weiterstöbern',
     newToLunote: 'Neu bei LUNOTE? ',
     createAccount: 'Konto erstellen',
+    emailRegistered: 'Diese E-Mail-Adresse ist bereits mit {{method}} registriert. Bitte melden Sie sich mit {{method}} an.',
+    methodEMAIL: 'E-Mail und Passwort',
+    methodGOOGLE: 'Google',
+    methodAPPLE: 'Apple',
+    socialFailed: 'Die Anmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut.',
   },
 
   signup: {
