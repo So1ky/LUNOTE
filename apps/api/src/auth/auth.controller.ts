@@ -16,9 +16,11 @@ import { Throttle } from '@nestjs/throttler';
 import { UsersService } from '../users/users.service';
 import type { AuthUser } from './auth-user';
 import { AuthService } from './auth.service';
+import { AppleLoginDto } from './dto/apple-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CurrentUser } from './current-user.decorator';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -57,6 +59,47 @@ export class AuthController {
   @ApiResponse({ status: 429, description: '요청 한도 초과' })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
+  }
+
+  // 토큰 검증 실패는 400, 제공자 장애는 503 — 401은 앱이 세션 만료로 처리하므로 쓰지 않는다
+  @Post('google')
+  @HttpCode(200)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({
+    summary: 'Google 로그인/가입 — ID 토큰 서버 검증 (IP당 1분 10회)',
+  })
+  @ApiResponse({ status: 200, description: 'accessToken + refreshToken' })
+  @ApiResponse({ status: 400, description: '토큰 검증 실패 / 이메일 미검증' })
+  @ApiResponse({
+    status: 409,
+    description: '다른 방식으로 가입된 이메일 — 본문 provider',
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Google 공개키 조회 실패 또는 미설정',
+  })
+  google(@Body() dto: GoogleLoginDto) {
+    return this.auth.loginWithGoogle(dto);
+  }
+
+  @Post('apple')
+  @HttpCode(200)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({
+    summary: 'Apple 로그인/가입 — identity token 서버 검증 (IP당 1분 10회)',
+  })
+  @ApiResponse({ status: 200, description: 'accessToken + refreshToken' })
+  @ApiResponse({
+    status: 400,
+    description: '토큰 검증 실패 / 신규인데 이메일 없음',
+  })
+  @ApiResponse({
+    status: 409,
+    description: '다른 방식으로 가입된 이메일 — 본문 provider',
+  })
+  @ApiResponse({ status: 503, description: 'Apple 공개키 조회 실패' })
+  apple(@Body() dto: AppleLoginDto) {
+    return this.auth.loginWithApple(dto);
   }
 
   // 30분마다 정상 갱신이 발생하므로 로그인보다 완만하게 제한

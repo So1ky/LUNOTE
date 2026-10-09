@@ -19,6 +19,8 @@ const PROFILE_SELECT = {
   emailVerifiedAt: true,
   language: true,
   avatarS3Key: true,
+  // 앱이 비밀번호 메뉴·탈퇴 재인증 방식을 고르는 기준
+  provider: true,
 } as const;
 
 @Injectable()

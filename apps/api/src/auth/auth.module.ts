@@ -7,12 +7,14 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { SocialAuthModule } from './social/social-auth.module';
 
 @Module({
   imports: [
     PassportModule,
     NotificationsModule,
     UsersModule,
+    SocialAuthModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
