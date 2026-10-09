@@ -153,7 +153,7 @@ data:
         {
           "id": 3,
           "type": "stat",
-          "title": "결제 불일치 (30일)",
+          "title": "미해결 결제 불일치",
           "datasource": {
             "type": "grafana-postgresql-datasource",
             "uid": "postgres"
@@ -174,7 +174,7 @@ data:
               "rawQuery": true,
               "editorMode": "code",
               "format": "table",
-              "rawSql": "SELECT count(*) AS value\nFROM payments\nWHERE \"failReason\" LIKE 'MISMATCH:%' AND \"createdAt\" > now() - interval '30 days'"
+              "rawSql": "SELECT count(*) AS value\nFROM payments\nWHERE status = 'PENDING' AND \"failReason\" LIKE 'MISMATCH:%'"
             }
           ],
           "fieldConfig": {
@@ -208,7 +208,7 @@ data:
             "graphMode": "none",
             "textMode": "value"
           },
-          "description": "최근 30일에 생성된 결제 중 금액·통화 불일치가 기록된 것(MISMATCH 표시). 불일치 결제는 PENDING에 멈추고 해결 표시 경로가 아직 없어 30일 창으로 본다. 결제-문의 상태 어긋남(request_status)은 DB에 남지 않아 오른쪽 카운터에만 잡힌다."
+          "description": "금액·통화 불일치로 PENDING에 멈춘 결제(기간 무관). PortOne 콘솔에서 환불하면 Transaction.Cancelled 웹훅으로 REFUNDED가 되어 빠진다(MISMATCH 기록은 남음). 결제-문의 상태 어긋남(request_status)은 DB에 남지 않아 오른쪽 카운터에만 잡힌다."
         },
         {
           "id": 4,
