@@ -11,6 +11,7 @@ import {
   SignJWT,
   type JWTPayload,
 } from 'jose';
+import { AppleTokenVerifier } from './apple-token.verifier';
 import { GoogleTokenVerifier } from './google-token.verifier';
 import type { Jwks } from './social-identity';
 
@@ -199,5 +200,111 @@ describe('GoogleTokenVerifier', () => {
     await expect(
       v.verify({ idToken: await googleToken({}) }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+});
+
+const BUNDLE = 'com.lunoteapp';
+const APPLE_ISS = 'https://appleid.apple.com';
+
+describe('AppleTokenVerifier', () => {
+  const verifier = (j: Jwks = jwks) =>
+    new AppleTokenVerifier(config({ APPLE_BUNDLE_ID: BUNDLE }), j);
+
+  it('유효한 identity token → 신원 (이름은 토큰에 없다)', async () => {
+    const identityToken = await sign(
+      { email: 'abc@privaterelay.appleid.com' },
+      { iss: APPLE_ISS, aud: BUNDLE },
+    );
+    await expect(verifier().verify({ identityToken })).resolves.toMatchObject({
+      providerId: 'sub-1',
+      email: 'abc@privaterelay.appleid.com',
+    });
+  });
+
+  it('email 클레임이 없어도 신원은 반환 (기존 사용자 재로그인)', async () => {
+    const identityToken = await sign({}, { iss: APPLE_ISS, aud: BUNDLE });
+    const identity = await verifier().verify({ identityToken });
+    expect(identity.providerId).toBe('sub-1');
+    expect(identity.email).toBeUndefined();
+  });
+
+  it('aud가 번들 ID가 아니면 400', async () => {
+    const identityToken = await sign(
+      {},
+      { iss: APPLE_ISS, aud: 'com.other.app' },
+    );
+    await expect(verifier().verify({ identityToken })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('iss가 Apple이 아니면 400', async () => {
+    const identityToken = await sign(
+      {},
+      { iss: 'https://evil.example', aud: BUNDLE },
+    );
+    await expect(verifier().verify({ identityToken })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('공개키 조회 실패는 503', async () => {
+    const identityToken = await sign({}, { iss: APPLE_ISS, aud: BUNDLE });
+    await expect(
+      verifier(failingJwks).verify({ identityToken }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  describe('verifyNotification', () => {
+    const notification = (events: unknown) =>
+      sign(
+        {
+          events: typeof events === 'string' ? events : JSON.stringify(events),
+        },
+        { iss: APPLE_ISS, aud: BUNDLE },
+      );
+
+    it('events(JSON 문자열)에서 type·sub 추출', async () => {
+      const payload = await notification({
+        type: 'consent-revoked',
+        sub: 'apple-sub-9',
+        event_time: 1,
+      });
+      await expect(verifier().verifyNotification(payload)).resolves.toEqual({
+        type: 'consent-revoked',
+        sub: 'apple-sub-9',
+      });
+    });
+
+    it('events가 JSON이 아니면 400', async () => {
+      const payload = await notification('not-json');
+      await expect(
+        verifier().verifyNotification(payload),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('type·sub가 없으면 400', async () => {
+      const payload = await notification({ event_time: 1 });
+      await expect(
+        verifier().verifyNotification(payload),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('위조 서명은 400', async () => {
+      const other = await generateKeyPair('RS256');
+      const now = Math.floor(Date.now() / 1000);
+      const payload = await new SignJWT({
+        events: JSON.stringify({ type: 'account-delete', sub: 'x' }),
+      })
+        .setProtectedHeader({ alg: 'RS256', kid: 'test' })
+        .setIssuer(APPLE_ISS)
+        .setAudience(BUNDLE)
+        .setIssuedAt(now)
+        .setExpirationTime(now + 300)
+        .sign(other.privateKey);
+      await expect(
+        verifier().verifyNotification(payload),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
   });
 });
