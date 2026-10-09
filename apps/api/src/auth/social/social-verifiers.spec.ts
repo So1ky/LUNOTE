@@ -290,6 +290,20 @@ describe('AppleTokenVerifier', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('events가 객체가 아닌 JSON(null)이면 400', async () => {
+      const payload = await notification('null');
+      await expect(
+        verifier().verifyNotification(payload),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('type은 있고 sub가 없으면 400', async () => {
+      const payload = await notification({ type: 'consent-revoked' });
+      await expect(
+        verifier().verifyNotification(payload),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
     it('위조 서명은 400', async () => {
       const other = await generateKeyPair('RS256');
       const now = Math.floor(Date.now() / 1000);

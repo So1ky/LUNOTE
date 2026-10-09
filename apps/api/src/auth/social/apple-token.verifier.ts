@@ -45,15 +45,20 @@ export class AppleTokenVerifier implements SocialTokenVerifier<AppleTokenInput> 
 
   async verifyNotification(payload: string): Promise<AppleNotificationEvent> {
     const claims = await this.verifyJwt<{ events?: string }>(payload);
-    let event: Partial<AppleNotificationEvent>;
+    let parsed: unknown;
     try {
-      event = JSON.parse(
-        claims.events ?? '',
-      ) as Partial<AppleNotificationEvent>;
+      parsed = JSON.parse(claims.events ?? '');
     } catch {
       throw new BadRequestException('Invalid Apple notification');
     }
-    if (typeof event.type !== 'string' || typeof event.sub !== 'string') {
+    // JSON.parse는 null·숫자·문자열도 돌려준다 — 객체가 아니면 형식 오류(400)
+    const event = parsed as Partial<AppleNotificationEvent> | null;
+    if (
+      !event ||
+      typeof event !== 'object' ||
+      typeof event.type !== 'string' ||
+      typeof event.sub !== 'string'
+    ) {
       throw new BadRequestException('Invalid Apple notification');
     }
     return { type: event.type, sub: event.sub };
