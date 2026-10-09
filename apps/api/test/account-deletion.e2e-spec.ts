@@ -1,9 +1,19 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
+import {
+  AuthProvider,
+  Category,
+  PaymentProvider,
+  PaymentStatus,
+  RequestStatus,
+} from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
+import { StorageService } from './../src/storage/storage.service';
 
 describe('Account deletion (e2e)', () => {
   let app: INestApplication<App>;
@@ -17,6 +27,70 @@ describe('Account deletion (e2e)', () => {
       .send({ email, password })
       .expect(201);
     return res.body as { accessToken: string; refreshToken: string };
+  };
+
+  let storage: StorageService;
+
+  /** 문의 1건 시드 — quote/payment 유무로 보존·삭제 분기를 만든다. 첨부 행 1개 포함 */
+  const seedRequest = async (
+    userId: string,
+    status: RequestStatus,
+    opts: { quote?: boolean; payment?: PaymentStatus } = {},
+  ) => {
+    const req = await prisma.quoteRequest.create({
+      data: {
+        userId,
+        category: Category.OTHER,
+        description: `seed ${status}`,
+        contactMethod: 'kakao: seed-user',
+        status,
+      },
+    });
+    await prisma.attachment.create({
+      data: {
+        requestId: req.id,
+        s3Key: `uploads/${userId}/${randomUUID()}/doc.pdf`,
+        fileName: 'doc.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 10,
+      },
+    });
+    if (opts.quote || opts.payment) {
+      const quote = await prisma.quote.create({
+        data: {
+          requestId: req.id,
+          amount: 100,
+          currency: 'USD',
+          explanation: 'seed',
+          expiresAt: new Date(Date.now() + 86_400_000),
+        },
+      });
+      if (opts.payment) {
+        await prisma.payment.create({
+          data: {
+            quoteId: quote.id,
+            provider: PaymentProvider.PAYPAL,
+            amount: 100,
+            currency: 'USD',
+            status: opts.payment,
+          },
+        });
+      }
+    }
+    return req.id;
+  };
+
+  const userIdOf = async (email: string) =>
+    (await prisma.user.findUniqueOrThrow({ where: { email } })).id;
+
+  /** 조건이 참이 될 때까지 폴링 (워커가 비동기라서) */
+  const waitFor = async (fn: () => Promise<boolean>, ms = 15_000) => {
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline) {
+      if (await fn()) return true;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    return false;
   };
 
   beforeAll(async () => {
@@ -34,6 +108,7 @@ describe('Account deletion (e2e)', () => {
     );
     await app.init();
     prisma = app.get(PrismaService);
+    storage = app.get(StorageService);
   });
 
   afterAll(async () => {
@@ -51,5 +126,177 @@ describe('Account deletion (e2e)', () => {
       .get('/auth/me')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(401);
+  });
+
+  it('비밀번호가 틀리면 400, 아무것도 바뀌지 않는다', async () => {
+    const email = `del-wrong-${stamp}@test.lunote.app`;
+    const { accessToken } = await signup(email);
+    await request(app.getHttpServer())
+      .delete('/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ password: 'wrong-password' })
+      .expect(400);
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(user.deletedAt).toBeNull();
+  });
+
+  it('비밀번호 없는(소셜) 계정은 403', async () => {
+    const social = await prisma.user.create({
+      data: {
+        email: `del-social-${stamp}@test.lunote.app`,
+        provider: AuthProvider.GOOGLE,
+        providerId: `g-${stamp}`,
+      },
+    });
+    const token = app
+      .get(JwtService, { strict: false })
+      .sign({ sub: social.id, role: social.role });
+    await request(app.getHttpServer())
+      .delete('/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ password: 'anything' })
+      .expect(403);
+  });
+
+  it('PAID·IN_PROGRESS 문의가 있으면 409, 취소도 롤백된다', async () => {
+    const email = `del-active-${stamp}@test.lunote.app`;
+    const { accessToken } = await signup(email);
+    const userId = await userIdOf(email);
+    const reviewing = await seedRequest(userId, RequestStatus.REVIEWING);
+    await seedRequest(userId, RequestStatus.IN_PROGRESS, {
+      payment: PaymentStatus.PAID,
+    });
+
+    await request(app.getHttpServer())
+      .delete('/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ password })
+      .expect(409);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user.email).toBe(email);
+    expect(user.deletedAt).toBeNull();
+    const still = await prisma.quoteRequest.findUniqueOrThrow({
+      where: { id: reviewing },
+    });
+    expect(still.status).toBe(RequestStatus.REVIEWING);
+  });
+
+  it('탈퇴: 결제 없는 문의 삭제, 결제 있는 문의 보존·연락처 비움, 익명화, 세션·파일 정리, 재가입 가능', async () => {
+    const email = `del-main-${stamp}@test.lunote.app`;
+    const { accessToken, refreshToken } = await signup(email);
+    const userId = await userIdOf(email);
+
+    const reviewing = await seedRequest(userId, RequestStatus.REVIEWING);
+    const quoted = await seedRequest(userId, RequestStatus.QUOTED, {
+      quote: true,
+    });
+    const cancelled = await seedRequest(userId, RequestStatus.CANCELLED);
+    const pendingPay = await seedRequest(userId, RequestStatus.QUOTED, {
+      payment: PaymentStatus.PENDING,
+    });
+    const completed = await seedRequest(userId, RequestStatus.COMPLETED, {
+      payment: PaymentStatus.PAID,
+    });
+
+    await prisma.notification.create({
+      data: { userId, type: 'QUOTE_SENT', title: 't', body: 'b' },
+    });
+    // 관리자 알림(본문에 사용자 이메일)도 해당 문의를 가리키면 삭제돼야 한다
+    const admin = await prisma.user.create({
+      data: {
+        email: `del-noti-admin-${stamp}@test.lunote.app`,
+        provider: AuthProvider.EMAIL,
+        role: 'ADMIN',
+      },
+    });
+    await prisma.notification.create({
+      data: {
+        userId: admin.id,
+        type: 'REQUEST_CREATED',
+        title: `New request #${completed}`,
+        body: `OTHER · ${email}`,
+        requestId: completed,
+      },
+    });
+
+    // 실제 S3Mock 객체 — 정리 잡이 지우는지 확인
+    const fileKey = `uploads/${userId}/${randomUUID()}/passport.jpg`;
+    const body = Buffer.from('fake-image');
+    const put = await fetch(
+      await storage.presignUpload(fileKey, 'image/jpeg', body.length),
+      { method: 'PUT', body, headers: { 'Content-Type': 'image/jpeg' } },
+    );
+    expect(put.ok).toBe(true);
+
+    const res = await request(app.getHttpServer())
+      .delete('/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ password })
+      .expect(200);
+    expect(res.body).toEqual({ deleted: true });
+
+    // 결제 행 없는 문의는 삭제
+    const gone = await prisma.quoteRequest.findMany({
+      where: { id: { in: [reviewing, quoted, cancelled] } },
+    });
+    expect(gone).toHaveLength(0);
+
+    // 결제 행 있는 문의는 보존, QUOTED였던 건 CANCELLED, 연락처 비움, 첨부 행 없음
+    const kept = await prisma.quoteRequest.findMany({
+      where: { id: { in: [pendingPay, completed] } },
+      include: { attachments: true, quote: { include: { payments: true } } },
+      orderBy: { id: 'asc' },
+    });
+    expect(kept.map((r) => r.status)).toEqual([
+      RequestStatus.CANCELLED,
+      RequestStatus.COMPLETED,
+    ]);
+    for (const r of kept) {
+      expect(r.contactMethod).toBe('');
+      expect(r.attachments).toHaveLength(0);
+      expect(r.quote?.payments).toHaveLength(1);
+    }
+
+    // 익명화
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user.email).toBe(`deleted+${userId}@deleted.lunoteapp.invalid`);
+    expect(user.deletedAt).not.toBeNull();
+    expect(user.passwordHash).toBeNull();
+    expect(user.firstName).toBeNull();
+    expect(user.lastName).toBeNull();
+    expect(user.avatarS3Key).toBeNull();
+
+    // 알림(본인 + 관리자 것)·리프레시 토큰 삭제
+    expect(
+      await prisma.notification.count({
+        where: { OR: [{ userId }, { requestId: completed }] },
+      }),
+    ).toBe(0);
+    expect(await prisma.refreshToken.count({ where: { userId } })).toBe(0);
+
+    // 세션 즉시 무효
+    await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email, password })
+      .expect(401);
+
+    // S3 파일 영구 삭제 (BullMQ 워커)
+    const deleted = await waitFor(async () => {
+      const r = await fetch(await storage.presignDownload(fileKey));
+      return r.status === 404;
+    });
+    expect(deleted).toBe(true);
+
+    // 같은 이메일로 즉시 재가입 가능
+    await signup(email);
   });
 });
