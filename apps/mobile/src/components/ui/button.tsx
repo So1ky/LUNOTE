@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleSheet, type PressableProps, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Brand, Radius, Spacing } from '@/constants/theme';
@@ -8,6 +8,7 @@ type ButtonProps = Omit<PressableProps, 'style'> & {
   variant?: 'primary' | 'outline' | 'ghost' | 'danger';
   size?: 'md' | 'lg';
   loading?: boolean;
+  icon?: React.ReactNode;
   style?: ViewStyle;
 };
 
@@ -17,6 +18,7 @@ export function Button({
   size = 'md',
   loading = false,
   disabled,
+  icon,
   style,
   ...rest
 }: ButtonProps) {
@@ -41,9 +43,12 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={textColor} />
       ) : (
-        <ThemedText type="smallStrong" style={{ color: textColor }}>
-          {label}
-        </ThemedText>
+        <View style={styles.content}>
+          {icon}
+          <ThemedText type="smallStrong" style={{ color: textColor }}>
+            {label}
+          </ThemedText>
+        </View>
       )}
     </Pressable>
   );
@@ -57,6 +62,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.xl,
     minHeight: 48,
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
   lg: {
     minHeight: 56,

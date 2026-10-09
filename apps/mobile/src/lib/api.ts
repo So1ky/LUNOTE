@@ -15,6 +15,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** 에러 응답 본문 — 409 EMAIL_REGISTERED의 provider 등 구조화된 필드 */
+    readonly body?: Record<string, unknown>,
   ) {
     super(message);
   }
@@ -120,16 +122,17 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
   }
 
   if (!res.ok) {
-    // NestJS 에러 형식: { message: string | string[], statusCode }
+    // NestJS 에러 형식: { message: string | string[], statusCode, ...추가 필드 }
     let message = `Request failed (${res.status})`;
+    let data: (Record<string, unknown> & { message?: string | string[] }) | undefined;
     try {
-      const data = (await res.json()) as { message?: string | string[] };
+      data = (await res.json()) as Record<string, unknown> & { message?: string | string[] };
       if (Array.isArray(data.message)) message = data.message.join('\n');
       else if (data.message) message = data.message;
     } catch {
       // 본문이 JSON이 아니면 기본 메시지 유지
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, data);
   }
 
   return (await res.json()) as T;

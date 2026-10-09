@@ -9,7 +9,9 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api-staging.lunoteapp.com"
+        "EXPO_PUBLIC_API_URL": "https://api-staging.lunoteapp.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "786866774491-390g35n6o1g1op6huo949v84cn75ibhp.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "786866774491-n0ei2tp87pre6lj6vll3a260mqe4jnpe.apps.googleusercontent.com"
       }
     },
     "production": {
