@@ -70,6 +70,20 @@ describe('MetricsService', () => {
     expect(value('missing_id')).toBe(0);
   });
 
+  it('계정 삭제 카운터는 결과별, 정리 실패 카운터는 단일 값으로 누적된다', async () => {
+    service.accountDeletion('deleted');
+    service.accountDeletion('deleted');
+    service.accountDeletion('blocked');
+    service.accountCleanupFailure();
+    const points = await collect(exporter, reader);
+    const deletion = (result: string) =>
+      points['lunote_account_deletions'].find((d) => d.attrs.result === result)
+        ?.value;
+    expect(deletion('deleted')).toBe(2);
+    expect(deletion('blocked')).toBe(1);
+    expect(points['lunote_account_cleanup_failures'][0].value).toBe(1);
+  });
+
   it('기록 전에도 모든 사유가 0으로 노출된다 — 알림 increase()가 첫 발생을 놓치지 않게', async () => {
     const points = await collect(exporter, reader);
     const zeros = (name: string) =>
@@ -88,5 +102,12 @@ describe('MetricsService', () => {
       'signature',
       'unknown_payment',
     ]);
+    expect(
+      points['lunote_account_deletions']
+        .filter((d) => d.value === 0)
+        .map((d) => d.attrs.result)
+        .sort(),
+    ).toEqual(['blocked', 'deleted']);
+    expect(points['lunote_account_cleanup_failures'][0].value).toBe(0);
   });
 });
