@@ -296,6 +296,19 @@ describe('Payments (e2e)', () => {
     expect(adminNoti).not.toBeNull();
   });
 
+  let mismatchPaymentId: string;
+
+  it('POST /payments — 불일치 결제는 재사용하지 않고 새 시도를 만든다', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/payments')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ quoteId })
+      .expect(201);
+    mismatchPaymentId = paymentId;
+    paymentId = (res.body as { paymentId: string }).paymentId; // 이후 시나리오는 재시도 결제로 진행
+    expect(paymentId).not.toBe(mismatchPaymentId);
+  });
+
   it('웹훅 — 검증 통과 + 금액 일치 → PAID 전이 + 인앱 알림', async () => {
     remote = paidRemote();
     const { raw, headers } = signedWebhook({
@@ -387,6 +400,35 @@ describe('Payments (e2e)', () => {
     });
     const res = await postWebhook(raw, headers).expect(200);
     expect((res.body as { outcome: string }).outcome).toBe('unknown_payment');
+  });
+
+  it('웹훅 — 불일치(PENDING) 결제 환불 → REFUNDED, 불일치 기록 유지, 재시도로 PAID된 문의는 그대로', async () => {
+    remote = {
+      ...paidRemote({ total: 1000 }),
+      status: 'CANCELLED',
+    } as unknown as PortOnePayment;
+    const { raw, headers } = signedWebhook({
+      type: 'Transaction.Cancelled',
+      timestamp: new Date().toISOString(),
+      data: {
+        paymentId: mismatchPaymentId,
+        storeId,
+        transactionId: 'tx',
+        cancellationId: 'c0',
+      },
+    });
+    const res = await postWebhook(raw, headers).expect(200);
+    expect((res.body as { outcome: string }).outcome).toBe('refunded');
+
+    const p = await prisma.payment.findUnique({
+      where: { id: mismatchPaymentId },
+    });
+    expect(p?.status).toBe('REFUNDED');
+    expect(p?.failReason).toContain('MISMATCH');
+    const req = await prisma.quoteRequest.findUnique({
+      where: { id: requestId },
+    });
+    expect(req?.status).toBe('PAID');
   });
 
   it('웹훅 — 환불(Transaction.Cancelled) → REFUNDED', async () => {

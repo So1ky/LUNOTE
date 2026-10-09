@@ -139,7 +139,11 @@ graph TB
     웹훅·confirm이 동시에 와도 전이는 한 번만 일어난다.
   - 같은 견적에 PAID 결제가 2건 생기는 것은 DB 부분 유니크 인덱스(`payments_one_paid_per_quote`)가 막는다.
   - 취소/환불은 PortOne 콘솔에서 실행하고 `Transaction.Cancelled` 웹훅으로 REFUNDED를 반영한다
-    (관리자 환불 API는 필요가 입증될 때 추가).
+    (관리자 환불 API는 필요가 입증될 때 추가). PAID뿐 아니라 PENDING 결제(금액·통화 불일치,
+    PAID 웹훅 유실)도 같은 경로로 REFUNDED가 된다 — 불일치 기록(`failReason='MISMATCH: …'`)은
+    감사용으로 남기고, "미해결 불일치" = PENDING + MISMATCH.
+  - 결제 의도 재사용은 사유 없는 PENDING(`failReason` null)만 — PG에 이미 결제된 불일치 결제의
+    paymentId를 다시 내주지 않는다.
   - PortOne 외부 호출은 `PortOneGateway` 한 클래스로만 나간다 — e2e는 이 클래스를 가짜로 바꿔
     실 API 없이 서명 검증·불일치·중복·환불 시나리오를 검증한다.
 - **견적 정책 (2026-07-24 확정)**: 견적은 발행 후 **불변** — 수정 API를 두지 않는다

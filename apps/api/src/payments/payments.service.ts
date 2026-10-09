@@ -102,9 +102,15 @@ export class PaymentsService {
     const provider = PROVIDER_BY_CURRENCY[quote.currency];
     if (!provider) throw new ConflictException('UNSUPPORTED_CURRENCY');
 
-    // 미완료 시도가 있으면 재사용 — PortOne은 미결제 paymentId 재요청을 허용하고, 행 남발을 막는다
+    // 미완료 시도가 있으면 재사용 — PortOne은 미결제 paymentId 재요청을 허용하고, 행 남발을 막는다.
+    // 사유가 붙은 PENDING(금액 불일치)은 PG에선 이미 결제된 건이라 재사용 대상이 아니다
     const existing = await this.prisma.payment.findFirst({
-      where: { quoteId: quote.id, status: PaymentStatus.PENDING, provider },
+      where: {
+        quoteId: quote.id,
+        status: PaymentStatus.PENDING,
+        provider,
+        failReason: null,
+      },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });
@@ -354,7 +360,15 @@ export class PaymentsService {
           where: { id: local.id, status: PaymentStatus.PAID },
           data: { status: PaymentStatus.REFUNDED },
         });
-        if (count === 0) return 'noop';
+        if (count === 0) {
+          // PENDING도 환불 대상: 금액 불일치로 멈춘 결제, PAID 웹훅을 놓친 결제 (failReason은 감사용으로 유지).
+          // 문의는 건드리지 않는다 — 이 결제로 PAID가 된 적이 없고, 재시도 결제로 이미 PAID일 수 있다
+          const pending = await tx.payment.updateMany({
+            where: { id: local.id, status: PaymentStatus.PENDING },
+            data: { status: PaymentStatus.REFUNDED },
+          });
+          return pending.count > 0 ? 'refunded' : 'noop';
+        }
         await tx.quoteRequest.updateMany({
           where: {
             id: requestId,
