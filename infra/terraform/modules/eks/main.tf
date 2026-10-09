@@ -23,7 +23,26 @@ module "eks" {
   }
 
   addons = {
-    coredns    = {}
+    coredns = {
+      # 기본값은 hostname anti-affinity가 preferred뿐이라 노드 1대일 때 2개가 같은 Spot 노드에 몰린다 (#154)
+      # 이 값을 주면 기본 제약(zone, ScheduleAnyway)이 대체되므로 함께 다시 적는다
+      configuration_values = jsonencode({
+        topologySpreadConstraints = [
+          {
+            maxSkew           = 1
+            topologyKey       = "kubernetes.io/hostname"
+            whenUnsatisfiable = "DoNotSchedule"
+            labelSelector     = { matchLabels = { "k8s-app" = "kube-dns" } }
+          },
+          {
+            maxSkew           = 1
+            topologyKey       = "topology.kubernetes.io/zone"
+            whenUnsatisfiable = "ScheduleAnyway"
+            labelSelector     = { matchLabels = { "k8s-app" = "kube-dns" } }
+          },
+        ]
+      })
+    }
     kube-proxy = {}
     vpc-cni = {
       before_compute = true
