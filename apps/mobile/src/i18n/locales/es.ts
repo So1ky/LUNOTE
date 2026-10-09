@@ -420,6 +420,11 @@ const es: Resources = {
     doneTitle: 'Tu cuenta ha sido eliminada',
     doneSubtitle: 'Gracias por usar LUNOTE.',
     done: 'Aceptar',
+    reauthIntro: 'Para confirmar que eres tú, vuelve a iniciar sesión con la cuenta con la que te registraste.',
+    confirmWithGoogle: 'Confirmar con Google',
+    confirmWithApple: 'Confirmar con Apple',
+    reauthFailed: 'No pudimos confirmar que eres tú. Inténtalo de nuevo con la cuenta con la que te registraste.',
+    tryLater: 'No podemos confirmarlo ahora. Inténtalo de nuevo en un momento.',
   },
 
   language: {

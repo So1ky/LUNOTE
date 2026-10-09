@@ -416,6 +416,11 @@ const zh: Resources = {
     doneTitle: '你的账户已删除',
     doneSubtitle: '感谢使用 LUNOTE。',
     done: '确定',
+    reauthIntro: '为确认是您本人，请使用注册时的账号重新登录。',
+    confirmWithGoogle: '通过 Google 确认',
+    confirmWithApple: '通过 Apple 确认',
+    reauthFailed: '身份确认失败。请使用注册时的账号重试。',
+    tryLater: '暂时无法确认，请稍后再试。',
   },
 
   language: {

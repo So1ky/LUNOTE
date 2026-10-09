@@ -429,6 +429,11 @@ const en = {
     doneTitle: 'Your account has been deleted',
     doneSubtitle: 'Thank you for using LUNOTE.',
     done: 'OK',
+    reauthIntro: 'To confirm it’s you, sign in again with the account you joined with.',
+    confirmWithGoogle: 'Confirm with Google',
+    confirmWithApple: 'Confirm with Apple',
+    reauthFailed: 'We couldn’t confirm it’s you. Try again with the account you joined with.',
+    tryLater: 'We can’t confirm right now. Please try again in a moment.',
   },
 
   language: {

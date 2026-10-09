@@ -13,12 +13,14 @@ import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth, type DeleteProof } from '@/lib/auth-context';
+import { getAppleCredential, getGoogleIdToken } from '@/lib/social-auth';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { deleteAccount } = useAuth();
+  const { deleteAccount, profile } = useAuth();
+  const provider = profile?.provider ?? 'EMAIL';
 
   const [password, setPassword] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -27,18 +29,35 @@ export default function DeleteAccountScreen() {
   const [blocked, setBlocked] = useState(false);
   const [done, setDone] = useState(false);
 
+  /** 가입 방식별 증명 — 소셜은 이 시점에 재로그인한다. 사용자가 취소하면 null */
+  const getProof = async (): Promise<DeleteProof | null> => {
+    if (provider === 'GOOGLE') {
+      const idToken = await getGoogleIdToken();
+      return idToken ? { idToken } : null;
+    }
+    if (provider === 'APPLE') {
+      const c = await getAppleCredential();
+      return c ? { identityToken: c.identityToken, authorizationCode: c.authorizationCode } : null;
+    }
+    return { password };
+  };
+
   const onDelete = async () => {
     setError(null);
     setBlocked(false);
     setDeleting(true);
     try {
-      await deleteAccount(password);
+      const proof = await getProof();
+      if (!proof) return; // 재로그인 취소
+      await deleteAccount(proof);
       setDone(true);
     } catch (e) {
-      // 서버 계약: 400 비밀번호 불일치, 403 앱에서 삭제 불가(소셜·관리자), 409 진행 중 결제
-      if (e instanceof ApiError && e.status === 400) setError(t('deleteAccount.wrongPassword'));
-      else if (e instanceof ApiError && e.status === 403) setError(t('deleteAccount.noPassword'));
+      // 서버 계약: 400 재인증 실패, 403 관리자, 409 진행 중 결제, 503 제공자 확인 불가
+      if (e instanceof ApiError && e.status === 400) {
+        setError(t(provider === 'EMAIL' ? 'deleteAccount.wrongPassword' : 'deleteAccount.reauthFailed'));
+      } else if (e instanceof ApiError && e.status === 403) setError(t('deleteAccount.noPassword'));
       else if (e instanceof ApiError && e.status === 409) setBlocked(true);
+      else if (e instanceof ApiError && e.status === 503) setError(t('deleteAccount.tryLater'));
       else setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setDeleting(false);
@@ -94,13 +113,19 @@ export default function DeleteAccountScreen() {
           </ThemedText>
         </Card>
 
-        <TextField
-          label={t('deleteAccount.password')}
-          placeholder="••••••••"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+        {provider === 'EMAIL' ? (
+          <TextField
+            label={t('deleteAccount.password')}
+            placeholder="••••••••"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+        ) : (
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('deleteAccount.reauthIntro')}
+          </ThemedText>
+        )}
 
         {error && (
           <ThemedText type="small" style={styles.error}>
@@ -125,7 +150,7 @@ export default function DeleteAccountScreen() {
           variant="danger"
           size="lg"
           loading={deleting}
-          disabled={!password}
+          disabled={provider === 'EMAIL' && !password}
           onPress={() => setConfirming(true)}
         />
       </View>
@@ -134,7 +159,13 @@ export default function DeleteAccountScreen() {
         visible={confirming}
         title={t('deleteAccount.confirmTitle')}
         message={t('deleteAccount.confirmMessage')}
-        confirmLabel={t('deleteAccount.confirm')}
+        confirmLabel={
+          provider === 'GOOGLE'
+            ? t('deleteAccount.confirmWithGoogle')
+            : provider === 'APPLE'
+              ? t('deleteAccount.confirmWithApple')
+              : t('deleteAccount.confirm')
+        }
         dismissLabel={t('deleteAccount.goBack')}
         destructive
         loading={deleting}

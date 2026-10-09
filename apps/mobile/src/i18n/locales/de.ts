@@ -420,6 +420,11 @@ const de: Resources = {
     doneTitle: 'Ihr Konto wurde gelöscht',
     doneSubtitle: 'Danke, dass Sie LUNOTE genutzt haben.',
     done: 'OK',
+    reauthIntro: 'Bitte melden Sie sich zur Bestätigung erneut mit dem Konto an, mit dem Sie sich registriert haben.',
+    confirmWithGoogle: 'Mit Google bestätigen',
+    confirmWithApple: 'Mit Apple bestätigen',
+    reauthFailed: 'Ihre Identität konnte nicht bestätigt werden. Bitte versuchen Sie es erneut mit dem Konto, mit dem Sie sich registriert haben.',
+    tryLater: 'Die Bestätigung ist gerade nicht möglich. Bitte versuchen Sie es gleich noch einmal.',
   },
 
   language: {
