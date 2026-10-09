@@ -47,9 +47,10 @@ export class AccountDeletionService {
   async deleteAccount(userId: string, actorAdminId?: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       // 사용자 행 잠금 — 사용자·관리자 경로의 동시 삭제를 직렬화 (두 번째는 아래에서 404)
+      // FOR UPDATE가 아닌 NO KEY UPDATE: 결제 확정 트랜잭션의 알림 INSERT가 FK로 users 행에 KEY SHARE를 잡으므로 FOR UPDATE면 교착 가능
       const [user] = await tx.$queryRaw<
         { role: UserRole; deletedAt: Date | null }[]
-      >`SELECT role, "deletedAt" FROM users WHERE id = ${userId} FOR UPDATE`;
+      >`SELECT role, "deletedAt" FROM users WHERE id = ${userId} FOR NO KEY UPDATE`;
       if (!user || user.deletedAt) {
         throw new NotFoundException('User not found');
       }
