@@ -299,4 +299,100 @@ describe('Account deletion (e2e)', () => {
     // 같은 이메일로 즉시 재가입 가능
     await signup(email);
   });
+
+  describe('관리자 대행 삭제', () => {
+    let adminToken: string;
+    let customerToken: string;
+    let adminId: string;
+
+    beforeAll(async () => {
+      const adminEmail = `del-admin-${stamp}@test.lunote.app`;
+      await signup(adminEmail);
+      adminId = await userIdOf(adminEmail);
+      await prisma.user.update({
+        where: { id: adminId },
+        data: { role: 'ADMIN' },
+      });
+      const login = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: adminEmail, password })
+        .expect(200);
+      adminToken = (login.body as { accessToken: string }).accessToken;
+      customerToken = (await signup(`del-cust-${stamp}@test.lunote.app`))
+        .accessToken;
+    });
+
+    it('일반 사용자는 관리자 사용자 API에 403', async () => {
+      await request(app.getHttpServer())
+        .get('/admin/users')
+        .query({ email: `del-admin-${stamp}@test.lunote.app` })
+        .set('Authorization', `Bearer ${customerToken}`)
+        .expect(403);
+    });
+
+    it('이메일로 찾아 삭제 → 감사 로그, 관리자 문의 API에서 제외, 재삭제 404', async () => {
+      const email = `del-target-${stamp}@test.lunote.app`;
+      await signup(email);
+      const targetId = await userIdOf(email);
+      const kept = await seedRequest(targetId, RequestStatus.COMPLETED, {
+        payment: PaymentStatus.PAID,
+      });
+
+      const found = await request(app.getHttpServer())
+        .get('/admin/users')
+        .query({ email })
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      const body = found.body as {
+        id: string;
+        role: string;
+        createdAt: string;
+      };
+      expect(Object.keys(body).sort()).toEqual(['createdAt', 'id', 'role']);
+      expect(body.id).toBe(targetId);
+      expect(body.role).toBe('CUSTOMER');
+      expect(typeof body.createdAt).toBe('string');
+
+      await request(app.getHttpServer())
+        .delete(`/admin/users/${targetId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      const audit = await prisma.adminAuditLog.findFirst({
+        where: { action: 'ACCOUNT_DELETED', targetId },
+      });
+      expect(audit?.adminId).toBe(adminId);
+
+      // 보존 기록은 운영 API에서 분리(개인정보보호법 §21③)
+      const list = await request(app.getHttpServer())
+        .get('/admin/quote-requests')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect((list.body as { id: number }[]).map((r) => r.id)).not.toContain(
+        kept,
+      );
+      await request(app.getHttpServer())
+        .get(`/admin/quote-requests/${kept}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(404);
+
+      // 익명화 후엔 원래 이메일로 못 찾고, 재삭제는 404
+      await request(app.getHttpServer())
+        .get('/admin/users')
+        .query({ email })
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(404);
+      await request(app.getHttpServer())
+        .delete(`/admin/users/${targetId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(404);
+    });
+
+    it('관리자 계정은 대행 삭제도 403', async () => {
+      await request(app.getHttpServer())
+        .delete(`/admin/users/${adminId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(403);
+    });
+  });
 });
