@@ -219,6 +219,16 @@ describe('Account deletion (e2e)', () => {
         requestId: completed,
       },
     });
+    // 결제 불일치 관리자 알림은 환불 신호라 보존돼야 한다
+    const mismatch = await prisma.notification.create({
+      data: {
+        userId: admin.id,
+        type: 'PAYMENT_MISMATCH',
+        title: `Payment mismatch #${completed}`,
+        body: `request not in QUOTED status at payment time · payment ${randomUUID()}`,
+        requestId: completed,
+      },
+    });
 
     // 실제 S3Mock 객체 — 정리 잡이 지우는지 확인
     const fileKey = `uploads/${userId}/${randomUUID()}/passport.jpg`;
@@ -270,9 +280,15 @@ describe('Account deletion (e2e)', () => {
     // 알림(본인 + 관리자 것)·리프레시 토큰 삭제
     expect(
       await prisma.notification.count({
-        where: { OR: [{ userId }, { requestId: completed }] },
+        where: {
+          OR: [{ userId }, { requestId: completed, type: 'REQUEST_CREATED' }],
+        },
       }),
     ).toBe(0);
+    // PAYMENT_* 관리자 알림은 보존
+    expect(
+      await prisma.notification.findUnique({ where: { id: mismatch.id } }),
+    ).not.toBeNull();
     expect(await prisma.refreshToken.count({ where: { userId } })).toBe(0);
 
     // 세션 즉시 무효
@@ -324,8 +340,8 @@ describe('Account deletion (e2e)', () => {
 
     it('일반 사용자는 관리자 사용자 API에 403', async () => {
       await request(app.getHttpServer())
-        .get('/admin/users')
-        .query({ email: `del-admin-${stamp}@test.lunote.app` })
+        .post('/admin/users/lookup')
+        .send({ email: `del-admin-${stamp}@test.lunote.app` })
         .set('Authorization', `Bearer ${customerToken}`)
         .expect(403);
     });
@@ -339,8 +355,8 @@ describe('Account deletion (e2e)', () => {
       });
 
       const found = await request(app.getHttpServer())
-        .get('/admin/users')
-        .query({ email })
+        .post('/admin/users/lookup')
+        .send({ email })
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
       const body = found.body as {
@@ -378,8 +394,8 @@ describe('Account deletion (e2e)', () => {
 
       // 익명화 후엔 원래 이메일로 못 찾고, 재삭제는 404
       await request(app.getHttpServer())
-        .get('/admin/users')
-        .query({ email })
+        .post('/admin/users/lookup')
+        .send({ email })
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404);
       await request(app.getHttpServer())

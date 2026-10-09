@@ -1,10 +1,11 @@
 import {
   Controller,
+  Body,
   Delete,
-  Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
-  Query,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -20,7 +21,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AdminUsersService } from './admin-users.service';
-import { FindUserQuery } from './dto/find-user.query';
+import { FindUserDto } from './dto/find-user.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -30,7 +31,9 @@ import { FindUserQuery } from './dto/find-user.query';
 export class AdminUsersController {
   constructor(private readonly service: AdminUsersService) {}
 
-  @Get()
+  // 이메일을 URL 쿼리에 싣지 않는다 — 요청 로그(Loki)·트레이스(Tempo)에 남는다
+  @Post('lookup')
+  @HttpCode(200)
   @ApiOperation({
     summary: '[관리자] 이메일로 사용자 id 조회 (삭제 요청 처리용)',
   })
@@ -38,8 +41,8 @@ export class AdminUsersController {
     status: 404,
     description: '없음 (탈퇴 사용자는 이메일이 익명화됨)',
   })
-  findByEmail(@Query() query: FindUserQuery) {
-    return this.service.findByEmail(query.email);
+  findByEmail(@Body() dto: FindUserDto) {
+    return this.service.findByEmail(dto.email);
   }
 
   @Delete(':id')

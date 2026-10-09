@@ -48,6 +48,9 @@ export class AccountDeletionService {
     await this.prisma.$transaction(async (tx) => {
       // 사용자 행 잠금 — 사용자·관리자 경로의 동시 삭제를 직렬화 (두 번째는 아래에서 404)
       // FOR UPDATE가 아닌 NO KEY UPDATE: 결제 확정 트랜잭션의 알림 INSERT가 FK로 users 행에 KEY SHARE를 잡으므로 FOR UPDATE면 교착 가능
+      // 마지막 tx.user.update가 유니크 인덱스 컬럼(email, providerId)을 바꾸므로 그 시점에 행 잠금이 승격된다.
+      // 결제 확정 경로는 users KEY SHARE를 마지막에 잡고 바로 커밋하므로 안전하다.
+      // 관리자 createQuote와의 교착은 이론상 가능하나 PostgreSQL이 감지해 한쪽을 롤백한다(500, 데이터 손상 없음)
       const [user] = await tx.$queryRaw<
         { role: UserRole; deletedAt: Date | null }[]
       >`SELECT role, "deletedAt" FROM users WHERE id = ${userId} FOR NO KEY UPDATE`;
@@ -96,9 +99,15 @@ export class AccountDeletionService {
         where: { userId },
         data: { contactMethod: '' },
       });
-      // 관리자 알림 본문에 사용자 이메일이 들어가므로(REQUEST_CREATED) 해당 문의 알림도 지운다
+      // 본인 알림 + 본문에 사용자 이메일이 든 관리자 REQUEST_CREATED 알림만 지운다.
+      // PAYMENT_MISMATCH/PAYMENT_PAID 관리자 알림은 환불 신호이고 개인정보가 없어 보존
       await tx.notification.deleteMany({
-        where: { OR: [{ userId }, { requestId: { in: allIds } }] },
+        where: {
+          OR: [
+            { userId },
+            { requestId: { in: allIds }, type: 'REQUEST_CREATED' },
+          ],
+        },
       });
       await tx.refreshToken.deleteMany({ where: { userId } });
       await tx.user.update({
