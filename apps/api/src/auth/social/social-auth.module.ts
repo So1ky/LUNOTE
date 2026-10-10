@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { createRemoteJWKSet } from 'jose';
+import { AppleAuthClient } from './apple-auth.client';
 import { APPLE_JWKS_URL, AppleTokenVerifier } from './apple-token.verifier';
 import { GOOGLE_JWKS_URL, GoogleTokenVerifier } from './google-token.verifier';
 import { APPLE_JWKS, GOOGLE_JWKS } from './social-identity';
@@ -18,7 +19,8 @@ import { APPLE_JWKS, GOOGLE_JWKS } from './social-identity';
     },
     GoogleTokenVerifier,
     AppleTokenVerifier,
+    AppleAuthClient,
   ],
-  exports: [GoogleTokenVerifier, AppleTokenVerifier],
+  exports: [GoogleTokenVerifier, AppleTokenVerifier, AppleAuthClient],
 })
 export class SocialAuthModule {}

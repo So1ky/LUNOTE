@@ -418,6 +418,11 @@ const ja: Resources = {
     doneTitle: 'アカウントを削除しました',
     doneSubtitle: 'LUNOTEをご利用いただきありがとうございました。',
     done: 'OK',
+    reauthIntro: 'ご本人確認のため、登録したアカウントでもう一度ログインしてください。',
+    confirmWithGoogle: 'Googleで確認',
+    confirmWithApple: 'Appleで確認',
+    reauthFailed: '本人確認ができませんでした。登録したアカウントでもう一度お試しください。',
+    tryLater: '現在確認できません。しばらくしてからもう一度お試しください。',
   },
 
   language: {

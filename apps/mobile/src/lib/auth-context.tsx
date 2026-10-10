@@ -48,12 +48,18 @@ type AuthState = {
   signInWithApple: () => Promise<boolean>;
   signOut: () => Promise<void>;
   /** 계정 삭제 — 성공하면 로컬 세션도 정리 (서버가 리프레시 토큰까지 지운다) */
-  deleteAccount: (password: string) => Promise<void>;
+  deleteAccount: (proof: DeleteProof) => Promise<void>;
   /** 인증 상태 변경(이메일 인증 등) 후 프로필 갱신 */
   refreshProfile: () => Promise<void>;
   /** 프로필 수정 (이름/언어/아바타/알림 설정) — 서버 응답으로 상태 갱신 */
   updateProfile: (patch: UpdateProfilePatch) => Promise<void>;
 };
+
+/** 탈퇴 재인증 — 계정 provider에 맞는 증명 하나 */
+export type DeleteProof =
+  | { password: string }
+  | { idToken: string }
+  | { identityToken: string; authorizationCode: string };
 
 export type UpdateProfilePatch = {
   firstName?: string;
@@ -192,10 +198,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteAccount = useCallback(
-    async (password: string) => {
+    async (proof: DeleteProof) => {
       await api<{ deleted: true }>('/users/me', {
         method: 'DELETE',
-        body: { password },
+        body: proof,
         token,
       });
       // 서버 세션은 이미 없다 — /auth/logout 없이 로컬만 정리

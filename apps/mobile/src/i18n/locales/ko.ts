@@ -418,6 +418,11 @@ const ko: Resources = {
     doneTitle: '계정이 삭제되었어요',
     doneSubtitle: 'LUNOTE를 이용해 주셔서 감사합니다.',
     done: '확인',
+    reauthIntro: '본인 확인을 위해 가입한 계정으로 다시 로그인해 주세요.',
+    confirmWithGoogle: 'Google로 확인',
+    confirmWithApple: 'Apple로 확인',
+    reauthFailed: '본인 확인에 실패했어요. 가입한 계정으로 다시 시도해 주세요.',
+    tryLater: '지금은 확인할 수 없어요. 잠시 후 다시 시도해 주세요.',
   },
 
   language: {
