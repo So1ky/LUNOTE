@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
 import { LegalText } from '@/components/legal-text';
@@ -61,9 +61,12 @@ export default function PayScreen() {
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [error, setError] = useState<string | null>(null);
+  // 버튼 연타 가드 — setPhase('loading')는 다음 렌더에야 버튼을 숨긴다
+  const continuingRef = useRef(false);
 
+  // 견적은 한 번만 가져온다 — 토큰 갱신(30분)으로 effect가 다시 돌아도 결제 중 화면을 동의 단계로 되돌리지 않는다
   useEffect(() => {
-    if (!token || Number.isNaN(requestId)) return;
+    if (!token || Number.isNaN(requestId) || quote) return;
     let cancelled = false;
     (async () => {
       try {
@@ -81,11 +84,12 @@ export default function PayScreen() {
     return () => {
       cancelled = true;
     };
-  }, [token, requestId, t]);
+  }, [token, requestId, t, quote]);
 
   // 동의 후에만 서버에 결제 시도를 만든다 — 서버가 이 시점을 withdrawalConsentAt으로 기록
   const onContinue = async () => {
-    if (!token || !quote) return;
+    if (!token || !quote || continuingRef.current) return;
+    continuingRef.current = true;
     setPhase('loading');
     try {
       setIntent(await createPaymentIntent(token, quote.id));
@@ -93,6 +97,8 @@ export default function PayScreen() {
     } catch (e) {
       setError(describeError(e, t));
       setPhase('error');
+    } finally {
+      continuingRef.current = false;
     }
   };
 

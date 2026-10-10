@@ -86,6 +86,16 @@ describe('Social login (e2e)', () => {
     expect(count).toBe(0);
   });
 
+  it('Apple 신규인데 약관 동의가 없으면 400 (Google과 같은 경로)', async () => {
+    const sub = `a-noterms-${stamp}`;
+    await request(app.getHttpServer())
+      .post('/auth/apple')
+      .send({
+        identityToken: fakeToken(sub, `${sub}@privaterelay.appleid.com`),
+      })
+      .expect(400);
+  });
+
   it('기존 Google 사용자는 약관 동의 없이도 로그인된다', async () => {
     const sub = `g-new-${stamp}`;
     await request(app.getHttpServer())

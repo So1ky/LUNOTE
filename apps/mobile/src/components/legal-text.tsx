@@ -3,7 +3,7 @@ import { useTranslation } from '@/i18n';
 import { openLegal, type LegalDoc } from '@/lib/legal';
 
 const DOCS: LegalDoc[] = ['terms', 'privacy', 'refund'];
-const PLACEHOLDER = /(\{\{(?:terms|privacy|refund)\}\})/;
+const PLACEHOLDER = new RegExp(`(\\{\\{(?:${DOCS.join('|')})\\}\\})`);
 
 type Props = {
   /** `{{terms}}` `{{privacy}}` `{{refund}}` 자리표시자를 가진 번역 키 */

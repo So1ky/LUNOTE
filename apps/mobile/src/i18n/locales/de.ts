@@ -83,7 +83,7 @@ const de: Resources = {
     methodGOOGLE: 'Google',
     methodAPPLE: 'Apple',
     socialFailed: 'Die Anmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut.',
-    socialConsent: 'Wenn du mit Google oder Apple fortfährst, stimmst du den {{terms}} und der {{privacy}} zu.',
+    socialConsent: 'Wenn Sie mit Google oder Apple fortfahren, stimmen Sie den {{terms}} und der {{privacy}} zu.',
   },
 
   signup: {
