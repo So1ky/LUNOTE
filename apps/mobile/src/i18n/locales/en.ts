@@ -95,6 +95,8 @@ const en = {
     lastName: 'Last name',
     email: 'Email',
     password: 'Password',
+    confirmPassword: 'Confirm password',
+    passwordMismatch: 'Passwords don’t match.',
     submit: 'Create account',
     alreadyHaveAccount: 'Already have an account? ',
     logIn: 'Log in',

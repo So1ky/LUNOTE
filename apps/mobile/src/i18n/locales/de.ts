@@ -87,6 +87,8 @@ const de: Resources = {
     lastName: 'Nachname',
     email: 'E-Mail',
     password: 'Passwort',
+    confirmPassword: 'Passwort bestätigen',
+    passwordMismatch: 'Die Passwörter stimmen nicht überein.',
     submit: 'Konto erstellen',
     alreadyHaveAccount: 'Sie haben bereits ein Konto? ',
     logIn: 'Anmelden',

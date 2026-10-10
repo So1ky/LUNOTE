@@ -87,6 +87,8 @@ const zh: Resources = {
     lastName: '姓',
     email: '邮箱',
     password: '密码',
+    confirmPassword: '确认密码',
+    passwordMismatch: '两次输入的密码不一致。',
     submit: '注册账号',
     alreadyHaveAccount: '已有账号？ ',
     logIn: '登录',

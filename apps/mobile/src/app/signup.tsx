@@ -21,6 +21,7 @@ export default function SignupScreen() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -93,6 +94,19 @@ export default function SignupScreen() {
           value={password}
           onChangeText={setPassword}
         />
+        <TextField
+          label={t('signup.confirmPassword')}
+          placeholder={t('password.placeholder')}
+          secureTextEntry
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
+        {/* 입력 중에는 막지 않고, 값이 있을 때만 불일치 안내 */}
+        {confirmPassword !== '' && confirmPassword !== password && (
+          <ThemedText type="small" style={styles.error}>
+            {t('signup.passwordMismatch')}
+          </ThemedText>
+        )}
 
         {error && (
           <ThemedText type="small" style={styles.error}>
@@ -104,7 +118,7 @@ export default function SignupScreen() {
           label={t('signup.submit')}
           size="lg"
           loading={submitting}
-          disabled={!email.trim() || !password}
+          disabled={!email.trim() || !password || password !== confirmPassword}
           onPress={() => void onSignup()}
         />
       </View>

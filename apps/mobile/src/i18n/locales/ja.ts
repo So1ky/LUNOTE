@@ -87,6 +87,8 @@ const ja: Resources = {
     lastName: '姓',
     email: 'メール',
     password: 'パスワード',
+    confirmPassword: 'パスワード（確認）',
+    passwordMismatch: 'パスワードが一致しません。',
     submit: 'アカウント作成',
     alreadyHaveAccount: 'すでにアカウントをお持ちですか？ ',
     logIn: 'ログイン',

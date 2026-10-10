@@ -87,6 +87,8 @@ const es: Resources = {
     lastName: 'Apellido',
     email: 'Correo',
     password: 'Contraseña',
+    confirmPassword: 'Confirmar contraseña',
+    passwordMismatch: 'Las contraseñas no coinciden.',
     submit: 'Crear cuenta',
     alreadyHaveAccount: '¿Ya tienes una cuenta? ',
     logIn: 'Iniciar sesión',
