@@ -82,12 +82,40 @@ resource "aws_s3_bucket_policy" "site" {
   })
 }
 
-resource "aws_s3_object" "index" {
+locals {
+  # site/ 아래 전체를 업로드한다 (index + 법적 문서 4개 + 공용 CSS)
+  site_files = fileset("${path.module}/site", "**")
+  site_content_types = {
+    html = "text/html; charset=utf-8"
+    css  = "text/css; charset=utf-8"
+  }
+}
+
+moved {
+  from = aws_s3_object.index
+  to   = aws_s3_object.site["index.html"]
+}
+
+resource "aws_s3_object" "site" {
+  for_each = local.site_files
+
   bucket       = aws_s3_bucket.site.id
-  key          = "index.html"
-  source       = "${path.module}/site/index.html"
-  content_type = "text/html; charset=utf-8"
-  etag         = filemd5("${path.module}/site/index.html")
+  key          = each.value
+  source       = "${path.module}/site/${each.value}"
+  content_type = local.site_content_types[regex("[^.]+$", each.value)]
+  etag         = filemd5("${path.module}/site/${each.value}")
+}
+
+# CachingOptimized가 HTML을 최대 24시간 캐시하므로 파일이 바뀌면 전체 무효화한다 (월 1,000건까지 무료).
+# local-exec라 apply 셸에 AWS_PROFILE이 있어야 한다 (평소 apply 방식과 동일).
+resource "terraform_data" "site_invalidation" {
+  triggers_replace = [for f in local.site_files : filemd5("${path.module}/site/${f}")]
+
+  provisioner "local-exec" {
+    command = "aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.site.id} --paths '/*'"
+  }
+
+  depends_on = [aws_s3_object.site]
 }
 
 # --- CloudFront ---
@@ -96,6 +124,25 @@ resource "aws_cloudfront_origin_access_control" "site" {
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
+}
+
+# 확장자 없는 경로(/privacy, /delete-account)를 S3 객체 키(.html)로 바꾼다 — S3 REST 원본은 디렉터리 인덱스를 모른다.
+resource "aws_cloudfront_function" "site_rewrite" {
+  name    = "lunote-site-html-rewrite"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = <<-JS
+    function handler(event) {
+      var request = event.request;
+      var uri = request.uri;
+      if (uri.endsWith('/')) {
+        request.uri = uri === '/' ? '/index.html' : uri.slice(0, -1) + '.html';
+      } else if (!uri.includes('.')) {
+        request.uri = uri + '.html';
+      }
+      return request;
+    }
+  JS
 }
 
 resource "aws_cloudfront_distribution" "site" {
@@ -118,6 +165,11 @@ resource "aws_cloudfront_distribution" "site" {
     cached_methods         = ["GET", "HEAD"]
     # AWS 관리형 CachingOptimized 정책
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.site_rewrite.arn
+    }
   }
 
   viewer_certificate {
