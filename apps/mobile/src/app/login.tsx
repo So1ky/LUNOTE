@@ -2,6 +2,7 @@ import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { SocialSignIn } from '@/components/social-sign-in';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
@@ -84,19 +85,7 @@ export default function LoginScreen() {
         />
       </View>
 
-      <View style={styles.dividerRow}>
-        <View style={styles.divider} />
-        <ThemedText type="small" themeColor="textSecondary">
-          {t('login.orContinueWith')}
-        </ThemedText>
-        <View style={styles.divider} />
-      </View>
-
-      <View style={styles.form}>
-        {/* TODO: Google OAuth (B2 후반), Apple 로그인 (Apple Developer 가입 후) */}
-        <Button label={t('login.continueGoogle')} variant="outline" disabled />
-        <Button label={t('login.continueApple')} variant="outline" disabled />
-      </View>
+      <SocialSignIn />
 
       <View style={styles.footer}>
         <Pressable onPress={() => router.replace('/home')} hitSlop={8}>
@@ -129,16 +118,6 @@ const styles = StyleSheet.create({
   },
   forgot: {
     alignSelf: 'flex-end',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  divider: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Brand.border,
   },
   footer: {
     alignItems: 'center',

@@ -73,6 +73,11 @@ const ko: Resources = {
     continueGuest: '← 게스트로 둘러보기',
     newToLunote: 'LUNOTE가 처음이신가요? ',
     createAccount: '회원가입',
+    emailRegistered: '이 이메일은 이미 {{method}}로 가입되어 있어요. {{method}}로 로그인해 주세요.',
+    methodEMAIL: '이메일과 비밀번호',
+    methodGOOGLE: 'Google',
+    methodAPPLE: 'Apple',
+    socialFailed: '로그인하지 못했어요. 다시 시도해 주세요.',
   },
 
   signup: {
@@ -82,6 +87,8 @@ const ko: Resources = {
     lastName: '성',
     email: '이메일',
     password: '비밀번호',
+    confirmPassword: '비밀번호 확인',
+    passwordMismatch: '비밀번호가 일치하지 않아요.',
     submit: '회원가입',
     alreadyHaveAccount: '이미 계정이 있으신가요? ',
     logIn: '로그인',

@@ -73,6 +73,11 @@ const es: Resources = {
     continueGuest: '← Seguir navegando como invitado',
     newToLunote: '¿Nuevo en LUNOTE? ',
     createAccount: 'Crear cuenta',
+    emailRegistered: 'Este correo ya está registrado con {{method}}. Inicia sesión con {{method}}.',
+    methodEMAIL: 'correo y contraseña',
+    methodGOOGLE: 'Google',
+    methodAPPLE: 'Apple',
+    socialFailed: 'No se pudo iniciar sesión. Inténtalo de nuevo.',
   },
 
   signup: {
@@ -82,6 +87,8 @@ const es: Resources = {
     lastName: 'Apellido',
     email: 'Correo',
     password: 'Contraseña',
+    confirmPassword: 'Confirmar contraseña',
+    passwordMismatch: 'Las contraseñas no coinciden.',
     submit: 'Crear cuenta',
     alreadyHaveAccount: '¿Ya tienes una cuenta? ',
     logIn: 'Iniciar sesión',

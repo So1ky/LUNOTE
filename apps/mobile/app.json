@@ -9,7 +9,9 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.lunoteapp"
+      "bundleIdentifier": "com.lunoteapp",
+      "appleTeamId": "R8529642F3",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.lunoteapp",
@@ -36,7 +38,14 @@
         }
       ],
       "expo-secure-store",
-      "@portone/react-native-sdk"
+      "@portone/react-native-sdk",
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.786866774491-n0ei2tp87pre6lj6vll3a260mqe4jnpe"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

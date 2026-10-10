@@ -81,6 +81,11 @@ const en = {
     continueGuest: '← Continue browsing as guest',
     newToLunote: 'New to LUNOTE? ',
     createAccount: 'Create account',
+    emailRegistered: 'This email is already registered with {{method}}. Please sign in with {{method}}.',
+    methodEMAIL: 'email and password',
+    methodGOOGLE: 'Google',
+    methodAPPLE: 'Apple',
+    socialFailed: 'Sign-in failed. Please try again.',
   },
 
   signup: {
@@ -90,6 +95,8 @@ const en = {
     lastName: 'Last name',
     email: 'Email',
     password: 'Password',
+    confirmPassword: 'Confirm password',
+    passwordMismatch: 'Passwords don’t match.',
     submit: 'Create account',
     alreadyHaveAccount: 'Already have an account? ',
     logIn: 'Log in',

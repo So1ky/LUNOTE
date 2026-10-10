@@ -73,6 +73,11 @@ const ja: Resources = {
     continueGuest: '← ゲストのまま閲覧を続ける',
     newToLunote: 'LUNOTEは初めてですか？ ',
     createAccount: 'アカウント作成',
+    emailRegistered: 'このメールアドレスはすでに{{method}}で登録されています。{{method}}でログインしてください。',
+    methodEMAIL: 'メールアドレスとパスワード',
+    methodGOOGLE: 'Google',
+    methodAPPLE: 'Apple',
+    socialFailed: 'ログインできませんでした。もう一度お試しください。',
   },
 
   signup: {
@@ -82,6 +87,8 @@ const ja: Resources = {
     lastName: '姓',
     email: 'メール',
     password: 'パスワード',
+    confirmPassword: 'パスワード（確認）',
+    passwordMismatch: 'パスワードが一致しません。',
     submit: 'アカウント作成',
     alreadyHaveAccount: 'すでにアカウントをお持ちですか？ ',
     logIn: 'ログイン',
