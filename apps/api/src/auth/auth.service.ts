@@ -75,6 +75,7 @@ export class AuthService {
         lastName: dto.lastName,
         verificationCodeHash: hashCode(code),
         verificationCodeExpiresAt: new Date(Date.now() + this.CODE_TTL_MS),
+        termsAcceptedAt: new Date(),
       },
     });
 
@@ -287,28 +288,44 @@ export class AuthService {
   }
 
   async loginWithGoogle(dto: GoogleLoginDto) {
-    return this.socialLogin(AuthProvider.GOOGLE, await this.google.verify(dto));
+    return this.socialLogin(
+      AuthProvider.GOOGLE,
+      await this.google.verify(dto),
+      dto.termsAccepted,
+    );
   }
 
   async loginWithApple(dto: AppleLoginDto) {
     const identity = await this.apple.verify(dto);
-    return this.socialLogin(AuthProvider.APPLE, {
-      ...identity,
-      firstName: dto.firstName?.trim() || undefined,
-      lastName: dto.lastName?.trim() || undefined,
-    });
+    return this.socialLogin(
+      AuthProvider.APPLE,
+      {
+        ...identity,
+        firstName: dto.firstName?.trim() || undefined,
+        lastName: dto.lastName?.trim() || undefined,
+      },
+      dto.termsAccepted,
+    );
   }
 
   /**
    * 소셜 신원 → 로그인 또는 가입. 같은 이메일이 다른 방식으로 가입돼 있으면 409(자동 연결 없음, ARCHITECTURE §11).
    * 탈퇴 사용자는 providerId가 null로 익명화돼 같은 소셜 계정이 오면 신규 가입이 된다.
+   * 약관 동의는 신규 가입이 될 때만 요구한다 — 앱은 로그인/가입을 구분할 수 없어 항상 보내고, 기존 사용자면 무시.
    */
-  private async socialLogin(provider: AuthProvider, identity: SocialIdentity) {
+  private async socialLogin(
+    provider: AuthProvider,
+    identity: SocialIdentity,
+    termsAccepted: boolean | undefined,
+  ) {
     const existing = await this.findSocialUser(provider, identity.providerId);
     if (existing) return this.issueTokens(existing.id, existing.role);
 
     if (!identity.email) {
       throw new BadRequestException('Email is required to create an account');
+    }
+    if (termsAccepted !== true) {
+      throw new BadRequestException('TERMS_NOT_ACCEPTED');
     }
     await this.assertEmailAvailable(identity.email);
 
@@ -322,6 +339,7 @@ export class AuthService {
           lastName: identity.lastName,
           // 제공자가 검증한 이메일 — 인증 코드 단계를 건너뛴다
           emailVerifiedAt: new Date(),
+          termsAcceptedAt: new Date(),
         },
         select: { id: true, role: true },
       });

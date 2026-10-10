@@ -58,7 +58,7 @@ describe('Password reset (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password })
+      .send({ email, password, termsAccepted: true })
       .expect(201);
   });
 

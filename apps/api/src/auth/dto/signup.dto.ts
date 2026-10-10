@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  Equals,
+  IsBoolean,
   IsEmail,
   IsOptional,
   IsString,
@@ -29,4 +31,13 @@ export class SignupDto {
   @IsString()
   @MaxLength(50)
   lastName?: string;
+
+  // 약관·개인정보처리방침 동의 — 명시적 동의 없는 가입은 거부한다
+  @ApiProperty({
+    example: true,
+    description: '약관·개인정보처리방침 동의 (true만 허용)',
+  })
+  @IsBoolean()
+  @Equals(true, { message: 'termsAccepted must be true' })
+  termsAccepted: boolean;
 }

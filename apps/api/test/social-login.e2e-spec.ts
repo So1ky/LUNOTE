@@ -18,10 +18,15 @@ describe('Social login (e2e)', () => {
   let prisma: PrismaService;
   const stamp = Date.now();
 
+  // 헬퍼는 신규 가입 케이스가 섞여 있어 약관 동의를 기본으로 보낸다 — 미동의 케이스는 raw 호출로 검증
   const google = (idToken: string) =>
-    request(app.getHttpServer()).post('/auth/google').send({ idToken });
+    request(app.getHttpServer())
+      .post('/auth/google')
+      .send({ idToken, termsAccepted: true });
   const apple = (body: Record<string, string>) =>
-    request(app.getHttpServer()).post('/auth/apple').send(body);
+    request(app.getHttpServer())
+      .post('/auth/apple')
+      .send({ ...body, termsAccepted: true });
   const me = (accessToken: string) =>
     request(app.getHttpServer())
       .get('/auth/me')
@@ -66,6 +71,27 @@ describe('Social login (e2e)', () => {
     });
     expect(user.emailVerifiedAt).not.toBeNull();
     expect(user.passwordHash).toBeNull();
+    expect(user.termsAcceptedAt).toBeInstanceOf(Date);
+  });
+
+  it('Google 신규인데 약관 동의가 없으면 400, 사용자 미생성', async () => {
+    const sub = `g-noterms-${stamp}`;
+    await request(app.getHttpServer())
+      .post('/auth/google')
+      .send({ idToken: fakeToken(sub, `${sub}@gmail.test`) })
+      .expect(400);
+    const count = await prisma.user.count({
+      where: { provider: AuthProvider.GOOGLE, providerId: sub },
+    });
+    expect(count).toBe(0);
+  });
+
+  it('기존 Google 사용자는 약관 동의 없이도 로그인된다', async () => {
+    const sub = `g-new-${stamp}`;
+    await request(app.getHttpServer())
+      .post('/auth/google')
+      .send({ idToken: fakeToken(sub, `${sub}@gmail.test`) })
+      .expect(200);
   });
 
   it('같은 Google 계정 재로그인 → 같은 사용자, /auth/me에 provider', async () => {
@@ -86,7 +112,7 @@ describe('Social login (e2e)', () => {
     const email = `dup-${stamp}@test.lunote.app`;
     await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password: 'test-password-123' })
+      .send({ email, password: 'test-password-123', termsAccepted: true })
       .expect(201);
     const res = await google(fakeToken(`g-dup-${stamp}`, email)).expect(409);
     expect(res.body).toMatchObject({

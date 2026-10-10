@@ -28,7 +28,13 @@ describe('Profile settings (e2e)', () => {
 
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password, firstName: 'Before', lastName: 'Name' })
+      .send({
+        email,
+        password,
+        firstName: 'Before',
+        lastName: 'Name',
+        termsAccepted: true,
+      })
       .expect(201);
     token = (res.body as { accessToken: string }).accessToken;
   });

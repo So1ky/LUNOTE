@@ -35,7 +35,7 @@ describe('Auth refresh tokens (e2e)', () => {
   it('가입하면 access + refresh 쌍이 발급된다', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password })
+      .send({ email, password, termsAccepted: true })
       .expect(201);
     const body = res.body as { accessToken: string; refreshToken: string };
     expect(body.accessToken).toBeDefined();

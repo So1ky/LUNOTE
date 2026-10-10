@@ -58,7 +58,7 @@ describe('Email verification (e2e)', () => {
 
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password })
+      .send({ email, password, termsAccepted: true })
       .expect(201);
     token = (res.body as { accessToken: string }).accessToken;
   });
@@ -139,7 +139,11 @@ describe('Email verification (e2e)', () => {
     // 새 계정으로 확인 (기존 계정은 이미 인증됨)
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email: `verify2-${stamp}@test.lunote.app`, password })
+      .send({
+        email: `verify2-${stamp}@test.lunote.app`,
+        password,
+        termsAccepted: true,
+      })
       .expect(201);
     const t2 = (res.body as { accessToken: string }).accessToken;
 

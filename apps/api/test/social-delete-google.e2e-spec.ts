@@ -22,7 +22,10 @@ describe('Social account deletion — Google (e2e)', () => {
   const join = async (sub: string) => {
     const res = await request(app.getHttpServer())
       .post('/auth/google')
-      .send({ idToken: fakeToken(sub, `${sub}@gmail.test`) })
+      .send({
+        idToken: fakeToken(sub, `${sub}@gmail.test`),
+        termsAccepted: true,
+      })
       .expect(200);
     return (res.body as { accessToken: string }).accessToken;
   };

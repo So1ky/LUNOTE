@@ -29,6 +29,7 @@ describe('Social account deletion — Apple (e2e)', () => {
       .post('/auth/apple')
       .send({
         identityToken: fakeToken(sub, `${sub}@privaterelay.appleid.com`),
+        termsAccepted: true,
       })
       .expect(200);
     return (res.body as { accessToken: string }).accessToken;

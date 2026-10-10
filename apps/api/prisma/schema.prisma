@@ -84,6 +84,8 @@ model User {
   updatedAt DateTime @updatedAt
   // 탈퇴 시각 — 행은 거래 기록 보존용으로 남고 개인정보는 익명화된다 (ARCHITECTURE §11 계정 삭제)
   deletedAt DateTime?
+  // 약관·개인정보처리방침 동의 시각 — 어느 판에 동의했는지는 lunoteapp.com 문서의 시행일과 대조한다
+  termsAcceptedAt DateTime?
 
   requests      QuoteRequest[]
   notifications Notification[]
@@ -207,6 +209,8 @@ model Payment {
   portoneTxId String? // PortOne 거래번호(transactionId) — 분쟁/정산 대조용
   failReason  String? // 실패/불일치 사유 (PG 코드 등, 개인정보 없음)
   paidAt      DateTime?
+  // 결제 시 "수행 즉시 개시·개시 후 청약철회 제한" 명시 동의 시각 (전자상거래법 §17②5호, 분쟁 증빙)
+  withdrawalConsentAt DateTime?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 

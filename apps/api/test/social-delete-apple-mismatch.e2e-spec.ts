@@ -58,6 +58,7 @@ describe('Social account deletion — Apple code/account mismatch (e2e)', () => 
       .post('/auth/apple')
       .send({
         identityToken: fakeToken(sub, `${sub}@privaterelay.appleid.com`),
+        termsAccepted: true,
       })
       .expect(200);
     const { accessToken } = join.body as { accessToken: string };

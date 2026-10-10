@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { PrismaService } from './../src/prisma/prisma.service';
 
 // 로컬 docker compose의 PostgreSQL을 사용한다 (docker compose up -d 필요)
 describe('API (e2e)', () => {
@@ -12,6 +13,7 @@ describe('API (e2e)', () => {
   const email = `e2e-${Date.now()}@test.lunote.app`;
   const password = 'test-password-123';
   let accessToken: string;
+  let prisma: PrismaService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -19,6 +21,7 @@ describe('API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    prisma = app.get(PrismaService);
     // main.ts와 동일한 설정 유지 (테스트는 비프로덕션이므로 hsts off)
     app.use(helmet({ hsts: false }));
     app.useGlobalPipes(
@@ -52,22 +55,44 @@ describe('API (e2e)', () => {
   it('POST /auth/signup — 가입하면 토큰 발급', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password, firstName: 'E2E', lastName: 'Tester' })
+      .send({
+        email,
+        password,
+        firstName: 'E2E',
+        lastName: 'Tester',
+        termsAccepted: true,
+      })
       .expect(201);
     expect((res.body as { accessToken?: string }).accessToken).toBeDefined();
+  });
+
+  it('POST /auth/signup — 가입 시각에 약관 동의 시각을 기록한다', async () => {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(user.termsAcceptedAt).toBeInstanceOf(Date);
+  });
+
+  it('POST /auth/signup — 약관 동의 없이는 400 (false·누락 모두)', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({ email: `noterms-${email}`, password })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({ email: `noterms-${email}`, password, termsAccepted: false })
+      .expect(400);
   });
 
   it('POST /auth/signup — 중복 이메일은 409', () => {
     return request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password })
+      .send({ email, password, termsAccepted: true })
       .expect(409);
   });
 
   it('POST /auth/signup — 8자 미만 비밀번호는 400', () => {
     return request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email: `short-${email}`, password: 'short' })
+      .send({ email: `short-${email}`, password: 'short', termsAccepted: true })
       .expect(400);
   });
 

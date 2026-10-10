@@ -122,6 +122,8 @@ export class PaymentsService {
           provider,
           amount: quote.amount,
           currency: quote.currency,
+          // DTO가 withdrawalConsent=true를 보장한다 — 여기 도달 = 동의한 시점
+          withdrawalConsentAt: new Date(),
         },
         select: { id: true },
       }));
