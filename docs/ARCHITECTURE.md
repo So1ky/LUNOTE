@@ -314,8 +314,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
 - [ ] **개인정보보호법(PIPA)**: 개인정보 처리방침 게시, 수집·이용 동의 절차,
       보유기간·파기 정책, 개인정보 암호화 저장
 - [ ] 앱스토어 심사용 개인정보 처리방침 URL, 데이터 수집 항목 신고
-- [x] **앱 내 계정 삭제 기능** (App Store 5.1.1 필수) — 2026-10-09 구현(이메일 가입자). 소셜 가입자 재인증은 소셜 로그인 작업에서.
-      비활성 소셜 로그인 버튼도 심사 전 구현 또는 제거 (미완성 UI 리젝 사유)
+- [x] **앱 내 계정 삭제 기능** (App Store 5.1.1 필수) — 2026-10-09 구현(이메일·Google·Apple 가입자, Apple revoke 포함, 2026-10-10 prod 17410af47317).
 - [ ] 외국인 이용자 대상이므로 처리방침 영문 제공
 
 ### 계정 삭제·개인정보 보존 (2026-10-09 결정)
@@ -350,6 +349,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   (PAID·IN_PROGRESS면 세션 폐기 + 관리자 인앱 알림 `APPLE_ACCOUNT_DELETED` 후 수동 정리), email-* → 로그만.
   알림 주소는 번들 ID당 1개라 prod만 수신한다.
 - **설정**: 공개 식별자(`GOOGLE_WEB_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`)는 ConfigMap, `.p8`(`APPLE_PRIVATE_KEY`)만 Secrets Manager.
+- **구현 완료 2026-10-10**: PR #195(API)·#196(앱)·#197(탈퇴·알림), prod 17410af47317. 가입 화면에도 소셜 버튼(사용자 결정). 실기기 실측: Apple 가입·재로그인·탈퇴·설정 목록에서 LUNOTE 해제 확인.
 
 ## 12. 확정된 식별자·환경 결정 (구 미결정 사항)
 
