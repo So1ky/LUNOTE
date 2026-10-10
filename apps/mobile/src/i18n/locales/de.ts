@@ -468,7 +468,7 @@ const de: Resources = {
     faq2q: 'Kann ich eine Anfrage stornieren?',
     faq2a: 'Ja — öffnen Sie die Anfrage und tippen Sie jederzeit vor der Zahlung auf "Anfrage stornieren". Nach der Zahlung wenden Sie sich an den Support und wir helfen Ihnen.',
     faq3q: 'Wie bezahle ich?',
-    faq3a: 'Sobald Ihr Angebot bereit ist, können Sie in der App mit internationalen Karten bezahlen. Die Zahlungsfunktion wird gerade fertiggestellt und ist bald verfügbar.',
+    faq3a: 'Sobald Ihr Angebot vorliegt, können Sie in der App über PayPal bezahlen – mit einem PayPal-Konto oder per Kredit-/Debitkarte. Angebote in koreanischen Won werden per Banküberweisung beglichen; unser Team begleitet Sie dabei.',
     faq4q: 'Welche Sprachen unterstützen Sie?',
     faq4a: 'Die App ist in sechs Sprachen verfügbar, und unser Concierge-Team unterstützt Sie auf Englisch und Koreanisch.',
     contactLabel: 'Kontakt',

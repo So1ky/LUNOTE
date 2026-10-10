@@ -468,7 +468,7 @@ const es: Resources = {
     faq2q: '¿Puedo cancelar una solicitud?',
     faq2a: 'Sí: abre la solicitud y pulsa "Cancelar solicitud" en cualquier momento antes del pago. Después del pago, contacta con soporte y te ayudaremos.',
     faq3q: '¿Cómo pago?',
-    faq3a: 'Cuando tu presupuesto esté listo, puedes pagar en la app con tarjetas internacionales. El sistema de pago se está ultimando y estará disponible pronto.',
+    faq3a: 'Cuando tu presupuesto esté listo, puedes pagar en la app a través de PayPal, con una cuenta de PayPal o con tarjeta de crédito o débito. Los presupuestos en wones coreanos se pagan por transferencia bancaria y nuestro equipo te guiará.',
     faq4q: '¿En qué idiomas ofrecen soporte?',
     faq4a: 'La app está disponible en seis idiomas y nuestro equipo de conserjería puede atenderte en inglés y coreano.',
     contactLabel: 'Contacto',
