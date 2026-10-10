@@ -10,7 +10,7 @@ import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 
-const SUPPORT_EMAIL = 'support@lunote.app';
+const SUPPORT_EMAIL = 'contact@lunoteapp.com';
 
 export default function SupportScreen() {
   const { t } = useTranslation();

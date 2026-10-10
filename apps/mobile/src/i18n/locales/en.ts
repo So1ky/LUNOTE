@@ -477,7 +477,7 @@ const en = {
     faq2q: 'Can I cancel a request?',
     faq2a: 'Yes — open the request and tap "Cancel request" any time before payment. After payment, contact support and we will help you.',
     faq3q: 'How do I pay?',
-    faq3a: 'Once your quote is ready, you can pay in the app with international cards. Payment support is being finalized and will be available soon.',
+    faq3a: 'Once your quote is ready, you can pay in the app through PayPal — with a PayPal account or a credit/debit card. For quotes in Korean won, our team will guide you through a bank transfer.',
     faq4q: 'What languages do you support?',
     faq4a: 'The app is available in six languages, and our concierge team can assist you in English and Korean.',
     contactLabel: 'Contact',
