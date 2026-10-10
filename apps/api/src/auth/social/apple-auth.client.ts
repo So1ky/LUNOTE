@@ -5,7 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { importPKCS8, SignJWT } from 'jose';
+import { decodeJwt, importPKCS8, SignJWT } from 'jose';
 import { APPLE_ISSUER } from './apple-token.verifier';
 
 const APPLE_TOKEN_URL = 'https://appleid.apple.com/auth/token';
@@ -36,8 +36,13 @@ export class AppleAuthClient {
       config.get<string>('APPLE_PRIVATE_KEY')?.replace(/\\n/g, '\n') || null;
   }
 
-  /** authorizationCode(5분·1회용) → Apple refresh token. 탈퇴 전 단계라 실패해도 상태 변경 없음 */
-  async exchangeCode(code: string): Promise<string> {
+  /**
+   * authorizationCode(5분·1회용) → Apple refresh token + 계정 sub. 탈퇴 전 단계라 실패해도 상태 변경 없음.
+   * sub는 응답 id_token에서 읽는다 — Apple에서 TLS로 직접 받은 값이라 서명 검증 없이 디코드만 한다.
+   */
+  async exchangeCode(
+    code: string,
+  ): Promise<{ refreshToken: string; sub: string }> {
     const res = await this.post(APPLE_TOKEN_URL, {
       grant_type: 'authorization_code',
       code,
@@ -64,19 +69,26 @@ export class AppleAuthClient {
       );
     }
     let refreshToken: string | undefined;
+    let sub: string | undefined;
     try {
-      refreshToken = ((await res.json()) as { refresh_token?: string })
-        .refresh_token;
+      const body = (await res.json()) as {
+        refresh_token?: string;
+        id_token?: string;
+      };
+      refreshToken = body.refresh_token;
+      if (body.id_token) sub = decodeJwt(body.id_token).sub;
     } catch {
       this.logger.error('Apple 토큰 교환 응답 파싱 실패');
     }
-    if (!refreshToken) {
-      this.logger.error('Apple 토큰 교환 응답에 refresh_token 없음');
+    if (!refreshToken || !sub) {
+      this.logger.error(
+        'Apple 토큰 교환 응답에 refresh_token 또는 id_token sub 없음',
+      );
       throw new ServiceUnavailableException(
         'Could not confirm with Apple — please try again',
       );
     }
-    return refreshToken;
+    return { refreshToken, sub };
   }
 
   /** 연결 해제 — 최대 3회. 절대 던지지 않는다: 최종 실패·설정 오류는 false (계정은 이미 삭제됐으므로 호출자가 기록만 한다) */

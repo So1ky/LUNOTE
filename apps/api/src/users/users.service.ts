@@ -115,12 +115,19 @@ export class UsersService {
           await this.apple.verify({ identityToken: dto.identityToken }),
         );
         // 교환을 삭제보다 먼저 — Apple 장애면 아무것도 바꾸지 않고 503
-        const appleToken = await this.appleAuth.exchangeCode(
+        const exchanged = await this.appleAuth.exchangeCode(
           dto.authorizationCode,
         );
+        // 다른 Apple 세션의 code로 엉뚱한 연결이 해제되지 않게 — 아무것도 바꾸지 않고 중단(code는 소모됨, 재시도)
+        if (exchanged.sub !== user.providerId) {
+          throw new BadRequestException(
+            'Apple confirmation does not match this account',
+          );
+        }
         // 409(결제 진행 중)면 여기서 중단 — Apple 연결도 유지된다
         await this.accountDeletion.deleteAccount(userId);
-        await this.revokeApple(userId, appleToken);
+        // 응답은 삭제 직후 — revoke는 백그라운드, 실패는 로그·Sentry (앱 요청 타임아웃 10초 안에 응답)
+        void this.revokeApple(userId, exchanged.refreshToken);
         break;
       }
     }
@@ -141,14 +148,23 @@ export class UsersService {
     }
   }
 
-  /** 계정은 이미 삭제됨 — 실패해도 응답은 성공. 사용자는 iPhone 설정에서 직접 연결을 해제할 수 있다 */
+  /**
+   * 계정은 이미 삭제됨 — 응답 후 백그라운드로 실행되며 실패해도 사용자에겐 영향 없다.
+   * 사용자는 iPhone 설정에서 직접 연결을 해제할 수 있다. 처리되지 않은 reject가 되지 않도록 절대 던지지 않는다.
+   */
   private async revokeApple(userId: string, appleToken: string) {
-    if (await this.appleAuth.revoke(appleToken)) return;
-    this.logger.error(`Apple revoke 최종 실패 userId=${userId}`);
-    Sentry.captureMessage('Apple revoke failed after account deletion', {
-      level: 'error',
-      extra: { userId },
-    });
+    try {
+      if (await this.appleAuth.revoke(appleToken)) return;
+      this.logger.error(`Apple revoke 최종 실패 userId=${userId}`);
+      Sentry.captureMessage('Apple revoke failed after account deletion', {
+        level: 'error',
+        extra: { userId },
+      });
+    } catch (e) {
+      this.logger.error(
+        `Apple revoke 예외 userId=${userId} ${(e as Error).name}`,
+      );
+    }
   }
 
   private async withAvatarUrl<T extends { avatarS3Key: string | null }>(

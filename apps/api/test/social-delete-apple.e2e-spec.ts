@@ -70,7 +70,12 @@ describe('Social account deletion — Apple (e2e)', () => {
   });
 
   beforeEach(() => {
-    appleAuth.exchangeCode.mockReset().mockResolvedValue('apple-refresh');
+    appleAuth.exchangeCode.mockReset().mockImplementation((code: string) =>
+      Promise.resolve({
+        refreshToken: 'apple-refresh',
+        sub: code.replace(/^code-/, ''),
+      }),
+    );
     appleAuth.revoke.mockReset().mockResolvedValue(true);
   });
 
@@ -83,6 +88,10 @@ describe('Social account deletion — Apple (e2e)', () => {
     const token = await join(sub);
     await del(token, sub).expect(200);
     expect(appleAuth.exchangeCode).toHaveBeenCalledWith(`code-${sub}`);
+    // revoke는 응답 이후 백그라운드 — 호출될 때까지 잠시 대기
+    for (let i = 0; i < 50 && appleAuth.revoke.mock.calls.length === 0; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
     expect(appleAuth.revoke).toHaveBeenCalledWith('apple-refresh');
     expect(await userOf(sub)).toBeNull(); // providerId 익명화
   });

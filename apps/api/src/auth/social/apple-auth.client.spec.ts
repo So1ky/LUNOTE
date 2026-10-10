@@ -34,6 +34,14 @@ const client = (overrides: Record<string, string> = {}) => {
   } as unknown as ConfigService);
 };
 
+// decodeJwt는 payload만 파싱한다 — 서명 없는 문자열로 충분
+const idToken = (sub: string) =>
+  [
+    'e30',
+    Buffer.from(JSON.stringify({ sub })).toString('base64url'),
+    'sig',
+  ].join('.');
+
 const response = (status: number, body: unknown = {}) =>
   new Response(JSON.stringify(body), { status });
 
@@ -54,13 +62,17 @@ const sentForm = (call = 0) =>
   );
 
 describe('AppleAuthClient.exchangeCode', () => {
-  it('성공 → refresh token, client_secret은 .p8로 서명한 ES256 JWT', async () => {
+  it('성공 → refresh token + id_token sub, client_secret은 .p8로 서명한 ES256 JWT', async () => {
     fetchMock.mockResolvedValueOnce(
-      response(200, { refresh_token: 'apple-refresh' }),
+      response(200, {
+        refresh_token: 'apple-refresh',
+        id_token: idToken('apple-sub'),
+      }),
     );
-    await expect(client().exchangeCode('code-1')).resolves.toBe(
-      'apple-refresh',
-    );
+    await expect(client().exchangeCode('code-1')).resolves.toEqual({
+      refreshToken: 'apple-refresh',
+      sub: 'apple-sub',
+    });
 
     expect(fetchMock.mock.calls[0][0]).toBe(
       'https://appleid.apple.com/auth/token',
@@ -83,12 +95,21 @@ describe('AppleAuthClient.exchangeCode', () => {
   });
 
   it('APPLE_PRIVATE_KEY가 \\n 이스케이프 한 줄이어도 동작 (.env 형식)', async () => {
-    fetchMock.mockResolvedValueOnce(response(200, { refresh_token: 'r' }));
+    fetchMock.mockResolvedValueOnce(
+      response(200, { refresh_token: 'r', id_token: idToken('s') }),
+    );
     await expect(
       client({ APPLE_PRIVATE_KEY: pem.replace(/\n/g, '\\n') }).exchangeCode(
         'c',
       ),
-    ).resolves.toBe('r');
+    ).resolves.toEqual({ refreshToken: 'r', sub: 's' });
+  });
+
+  it('id_token 없음 → 503', async () => {
+    fetchMock.mockResolvedValueOnce(response(200, { refresh_token: 'r' }));
+    await expect(client().exchangeCode('c')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 
   it('Apple 400(invalid_grant: 만료·재사용 code) → 400', async () => {
