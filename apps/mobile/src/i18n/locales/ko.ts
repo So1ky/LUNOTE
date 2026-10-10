@@ -4,6 +4,11 @@ const ko: Resources = {
   brand: {
     tagline: '한국 생활, 쉽고 편하게',
   },
+  legal: {
+    terms: '이용약관',
+    privacy: '개인정보처리방침',
+    refund: '환불 규정',
+  },
 
   common: {
     somethingWrong: '문제가 발생했어요',
@@ -78,6 +83,7 @@ const ko: Resources = {
     methodGOOGLE: 'Google',
     methodAPPLE: 'Apple',
     socialFailed: '로그인하지 못했어요. 다시 시도해 주세요.',
+    socialConsent: 'Google 또는 Apple로 계속하면 {{terms}}과 {{privacy}}에 동의하는 것으로 봐요.',
   },
 
   signup: {
@@ -92,6 +98,7 @@ const ko: Resources = {
     submit: '회원가입',
     alreadyHaveAccount: '이미 계정이 있으신가요? ',
     logIn: '로그인',
+    agreeTerms: '{{terms}}과 {{privacy}}에 동의해요.',
   },
 
   verifyEmail: {
@@ -319,6 +326,8 @@ const ko: Resources = {
     sdkUnavailable: '결제하려면 최신 버전의 앱이 필요해요. 업데이트 후 다시 시도해 주세요.',
     webUnsupported: '결제는 LUNOTE 모바일 앱에서 할 수 있어요.',
     backToRequest: '문의로 돌아가기',
+    consent: '결제 즉시 요청 처리가 시작되고, 시작 후에는 아직 수행되지 않은 부분만 취소할 수 있다는 점을 이해했어요. {{refund}}',
+    continueToPayment: '결제 계속하기',
   },
 
   requestDetail: {

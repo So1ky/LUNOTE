@@ -4,6 +4,11 @@ const de: Resources = {
   brand: {
     tagline: 'Leben in Korea, leicht gemacht',
   },
+  legal: {
+    terms: 'Nutzungsbedingungen',
+    privacy: 'Datenschutzerklärung',
+    refund: 'Rückerstattungsrichtlinie',
+  },
 
   common: {
     somethingWrong: 'Etwas ist schiefgelaufen',
@@ -78,6 +83,7 @@ const de: Resources = {
     methodGOOGLE: 'Google',
     methodAPPLE: 'Apple',
     socialFailed: 'Die Anmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut.',
+    socialConsent: 'Wenn Sie mit Google oder Apple fortfahren, stimmen Sie den {{terms}} und der {{privacy}} zu.',
   },
 
   signup: {
@@ -92,6 +98,7 @@ const de: Resources = {
     submit: 'Konto erstellen',
     alreadyHaveAccount: 'Sie haben bereits ein Konto? ',
     logIn: 'Anmelden',
+    agreeTerms: 'Ich stimme den {{terms}} und der {{privacy}} zu.',
   },
 
   verifyEmail: {
@@ -319,6 +326,8 @@ const de: Resources = {
     sdkUnavailable: 'Für Zahlungen wird die neueste App-Version benötigt. Bitte aktualisieren und erneut versuchen.',
     webUnsupported: 'Zahlungen sind in der LUNOTE-App verfügbar.',
     backToRequest: 'Zurück zur Anfrage',
+    consent: 'Ich verstehe, dass die Bearbeitung meiner Anfrage sofort nach der Zahlung beginnt und ich danach nur den noch nicht erbrachten Teil stornieren kann. {{refund}}',
+    continueToPayment: 'Weiter zur Zahlung',
   },
 
   requestDetail: {

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { LegalText } from '@/components/legal-text';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Brand, Radius, Spacing } from '@/constants/theme';
@@ -84,6 +85,8 @@ export function SocialSignIn() {
             {error}
           </ThemedText>
         )}
+        {/* 소셜은 체크박스 없이 "계속하면 동의" 고지 — 서버로 보내는 termsAccepted의 근거 */}
+        <LegalText k="login.socialConsent" />
       </View>
     </View>
   );

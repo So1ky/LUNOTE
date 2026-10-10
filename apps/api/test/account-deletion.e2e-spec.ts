@@ -23,7 +23,7 @@ describe('Account deletion (e2e)', () => {
   const signup = async (email: string) => {
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password })
+      .send({ email, password, termsAccepted: true })
       .expect(201);
     return res.body as { accessToken: string; refreshToken: string };
   };

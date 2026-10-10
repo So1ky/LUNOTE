@@ -4,6 +4,11 @@ const zh: Resources = {
   brand: {
     tagline: '在韩生活，轻松无忧',
   },
+  legal: {
+    terms: '服务条款',
+    privacy: '隐私政策',
+    refund: '退款政策',
+  },
 
   common: {
     somethingWrong: '出了点问题',
@@ -78,6 +83,7 @@ const zh: Resources = {
     methodGOOGLE: 'Google',
     methodAPPLE: 'Apple',
     socialFailed: '登录失败，请重试。',
+    socialConsent: '使用 Google 或 Apple 继续即表示您同意{{terms}}和{{privacy}}。',
   },
 
   signup: {
@@ -92,6 +98,7 @@ const zh: Resources = {
     submit: '注册账号',
     alreadyHaveAccount: '已有账号？ ',
     logIn: '登录',
+    agreeTerms: '我同意{{terms}}和{{privacy}}。',
   },
 
   verifyEmail: {
@@ -318,6 +325,8 @@ const zh: Resources = {
     sdkUnavailable: '支付需要最新版本的应用，请更新后重试。',
     webUnsupported: '请在LUNOTE移动应用中完成支付。',
     backToRequest: '返回请求',
+    consent: '我了解付款后将立即开始处理我的请求，开始后仅可取消尚未执行的部分。{{refund}}',
+    continueToPayment: '继续付款',
   },
 
   requestDetail: {

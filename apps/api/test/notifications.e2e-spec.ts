@@ -22,7 +22,7 @@ describe('Notifications (e2e)', () => {
   const signup = async (email: string) => {
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password })
+      .send({ email, password, termsAccepted: true })
       .expect(201);
     const token = (res.body as { accessToken: string }).accessToken;
     await verifyByDb(email);

@@ -338,6 +338,15 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
 - **소셜 가입자**: 앱 탈퇴는 제공자 재로그인으로 재인증(토큰 sub = providerId, 발급 5분 이내). Apple은 재인증 code를 교환해 즉시 revoke(토큰 미저장),
   관리자 대행 삭제는 사용자에게 "설정 → Apple로 로그인에서 연결 해제"를 안내한다.
 
+### 동의 기록 (2026-10-11 결정)
+
+- **가입 동의**: `User.termsAcceptedAt`. 이메일 가입은 `SignupDto.termsAccepted=true` 필수(체크박스), 소셜은 로그인/가입이
+  한 엔드포인트라 앱이 항상 `termsAccepted: true`를 보내고 서버는 **신규 생성 시에만** 검사한다(버튼 아래 "계속하면 동의" 고지가 근거).
+- **청약철회 제한 동의**: `Payment.withdrawalConsentAt`. 결제 화면이 견적 확인 → 동의 체크 → `POST /payments`(`withdrawalConsent=true` 필수)
+  순서라 결제 시도 행 생성 시각 = 동의 시각. 전자상거래법 §17②5호(동의하에 개시된 용역)의 증빙이며 PayPal 분쟁 대응용.
+  PENDING 시도를 재사용하면 최초 동의 시각이 유지된다.
+- 약관 버전은 저장하지 않는다 — 시각을 lunoteapp.com 문서의 시행일과 대조한다. 문서 본문은 웹이 단일 원천이고 앱은 링크만 한다.
+
 ### 소셜 로그인 (2026-10-09 결정)
 
 - **방식**: 네이티브 SDK가 받은 ID 토큰을 `POST /auth/google`·`/auth/apple`로 보내고 서버가 jose로 JWKS 서명·iss·aud·exp 검증.

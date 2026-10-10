@@ -112,7 +112,7 @@ describe('Payments (e2e)', () => {
   const signup = async (email: string) => {
     const res = await request(app.getHttpServer())
       .post('/auth/signup')
-      .send({ email, password })
+      .send({ email, password, termsAccepted: true })
       .expect(201);
     await prisma.user.update({
       where: { email },
@@ -176,7 +176,10 @@ describe('Payments (e2e)', () => {
     await request(app.getHttpServer())
       .post('/payments')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ quoteId: '00000000-0000-0000-0000-000000000000' })
+      .send({
+        quoteId: '00000000-0000-0000-0000-000000000000',
+        withdrawalConsent: true,
+      })
       .expect(404);
   });
 
@@ -198,7 +201,7 @@ describe('Payments (e2e)', () => {
     await request(app.getHttpServer())
       .post('/payments')
       .set('Authorization', `Bearer ${otherToken}`)
-      .send({ quoteId })
+      .send({ quoteId, withdrawalConsent: true })
       .expect(404);
   });
 
@@ -206,17 +209,30 @@ describe('Payments (e2e)', () => {
     await request(app.getHttpServer())
       .post('/payments')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ quoteId, totalAmount: 1 })
+      .send({ quoteId, totalAmount: 1, withdrawalConsent: true })
       .expect(400);
   });
 
   let paymentId: string;
 
+  it('POST /payments — 청약철회 제한 동의 없이는 400 (false·누락 모두)', async () => {
+    await request(app.getHttpServer())
+      .post('/payments')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ quoteId })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/payments')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ quoteId, withdrawalConsent: false })
+      .expect(400);
+  });
+
   it('POST /payments — 결제 의도: 서버 견적 기준 센트 단위 금액 + 공개 식별자만 반환', async () => {
     const res = await request(app.getHttpServer())
       .post('/payments')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ quoteId })
+      .send({ quoteId, withdrawalConsent: true })
       .expect(201);
     const body = res.body as {
       paymentId: string;
@@ -239,11 +255,18 @@ describe('Payments (e2e)', () => {
     expect(JSON.stringify(body)).not.toMatch(/secret/i);
   });
 
+  it('POST /payments — 결제 행에 청약철회 제한 동의 시각이 기록된다', async () => {
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { id: paymentId },
+    });
+    expect(payment.withdrawalConsentAt).toBeInstanceOf(Date);
+  });
+
   it('POST /payments — 같은 견적을 다시 요청하면 PENDING 시도를 재사용한다', async () => {
     const res = await request(app.getHttpServer())
       .post('/payments')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ quoteId })
+      .send({ quoteId, withdrawalConsent: true })
       .expect(201);
     expect((res.body as { paymentId: string }).paymentId).toBe(paymentId);
   });
@@ -302,7 +325,7 @@ describe('Payments (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/payments')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ quoteId })
+      .send({ quoteId, withdrawalConsent: true })
       .expect(201);
     mismatchPaymentId = paymentId;
     paymentId = (res.body as { paymentId: string }).paymentId; // 이후 시나리오는 재시도 결제로 진행
@@ -376,7 +399,7 @@ describe('Payments (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/payments')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ quoteId })
+      .send({ quoteId, withdrawalConsent: true })
       .expect(409);
     expect((res.body as { message: string }).message).toBe('QUOTE_NOT_PAYABLE');
   });

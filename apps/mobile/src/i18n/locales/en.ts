@@ -12,6 +12,11 @@ const en = {
   brand: {
     tagline: 'Life in Korea, made easy',
   },
+  legal: {
+    terms: 'Terms of Service',
+    privacy: 'Privacy Policy',
+    refund: 'Refund Policy',
+  },
 
   common: {
     somethingWrong: 'Something went wrong',
@@ -86,6 +91,7 @@ const en = {
     methodGOOGLE: 'Google',
     methodAPPLE: 'Apple',
     socialFailed: 'Sign-in failed. Please try again.',
+    socialConsent: 'By continuing with Google or Apple, you agree to the {{terms}} and {{privacy}}.',
   },
 
   signup: {
@@ -100,6 +106,7 @@ const en = {
     submit: 'Create account',
     alreadyHaveAccount: 'Already have an account? ',
     logIn: 'Log in',
+    agreeTerms: 'I agree to the {{terms}} and {{privacy}}.',
   },
 
   verifyEmail: {
@@ -328,6 +335,8 @@ const en = {
     sdkUnavailable: 'Payments require the latest version of the app. Please update and try again.',
     webUnsupported: 'Payments are available in the LUNOTE mobile app.',
     backToRequest: 'Back to request',
+    consent: 'I understand that work on my request starts as soon as I pay, and that after it starts I can cancel only the part not yet performed. {{refund}}',
+    continueToPayment: 'Continue to payment',
   },
 
   requestDetail: {

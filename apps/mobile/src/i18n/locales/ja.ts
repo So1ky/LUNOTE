@@ -4,6 +4,11 @@ const ja: Resources = {
   brand: {
     tagline: '韓国での暮らしを、もっと簡単に',
   },
+  legal: {
+    terms: '利用規約',
+    privacy: 'プライバシーポリシー',
+    refund: '返金ポリシー',
+  },
 
   common: {
     somethingWrong: '問題が発生しました',
@@ -78,6 +83,7 @@ const ja: Resources = {
     methodGOOGLE: 'Google',
     methodAPPLE: 'Apple',
     socialFailed: 'ログインできませんでした。もう一度お試しください。',
+    socialConsent: 'GoogleまたはAppleで続行すると、{{terms}}と{{privacy}}に同意したものとみなされます。',
   },
 
   signup: {
@@ -92,6 +98,7 @@ const ja: Resources = {
     submit: 'アカウント作成',
     alreadyHaveAccount: 'すでにアカウントをお持ちですか？ ',
     logIn: 'ログイン',
+    agreeTerms: '{{terms}}と{{privacy}}に同意します。',
   },
 
   verifyEmail: {
@@ -319,6 +326,8 @@ const ja: Resources = {
     sdkUnavailable: 'お支払いには最新版のアプリが必要です。アップデート後にもう一度お試しください。',
     webUnsupported: 'お支払いはLUNOTEモバイルアプリからご利用いただけます。',
     backToRequest: '依頼に戻る',
+    consent: '支払い後すぐに依頼の対応が始まり、開始後は未実施の部分のみキャンセルできることを理解しました。{{refund}}',
+    continueToPayment: '支払いに進む',
   },
 
   requestDetail: {

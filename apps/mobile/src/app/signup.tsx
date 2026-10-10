@@ -2,9 +2,11 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { LegalText } from '@/components/legal-text';
 import { SocialSignIn } from '@/components/social-sign-in';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Spacing } from '@/constants/theme';
@@ -24,6 +26,7 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const onSignup = async () => {
     setError(null);
@@ -114,11 +117,22 @@ export default function SignupScreen() {
           </ThemedText>
         )}
 
+        {/* 약관·처리방침 명시 동의 — 서버도 termsAccepted 없는 가입을 거부한다 */}
+        <Checkbox
+          checked={agreed}
+          onChange={setAgreed}
+          accessibilityLabel={t('signup.agreeTerms', {
+            terms: t('legal.terms'),
+            privacy: t('legal.privacy'),
+          })}>
+          <LegalText k="signup.agreeTerms" />
+        </Checkbox>
+
         <Button
           label={t('signup.submit')}
           size="lg"
           loading={submitting}
-          disabled={!email.trim() || !password || password !== confirmPassword}
+          disabled={!agreed || !email.trim() || !password || password !== confirmPassword}
           onPress={() => void onSignup()}
         />
       </View>
