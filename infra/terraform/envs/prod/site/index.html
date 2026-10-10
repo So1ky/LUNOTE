@@ -174,6 +174,13 @@
     line-height: 1.7;
     text-align: center;
   }
+  .legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem 1.25rem;
+    margin-bottom: 1rem;
+  }
   @media (prefers-reduced-motion: no-preference) {
     .hero { animation: rise 0.9s ease-out; }
     @keyframes rise {
@@ -302,7 +309,14 @@
   <img src="https://img1.kbstar.com/img/escrow/escrowcmark.gif" border="0" alt="KB에스크로이체 매매보호 가입 확인" style="margin-bottom:1rem"/>
   </a>
   <!-- KB에스크로 이체 인증마크 적용 종료 -->
+  <p class="legal-links">
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/terms">Terms of Service</a>
+    <a href="/refund">Refund Policy</a>
+    <a href="/delete-account">Delete account</a>
+  </p>
   <p>Lunote Inc. <span lang="ko">(주식회사 루노테)</span> · Business registration no. 720-86-04050</p>
+  <!-- TODO(0-6): 통신판매업 신고번호 수령 후 아래 줄 활성화 — <p>Mail-order business registration no. 제0000-경기용인-0000호</p> -->
   <p>© 2026 Lunote Inc. All rights reserved.</p>
 </footer>
 <!-- 주소 수집 봇 대응: 소스에 메일 주소를 평문으로 두지 않고 여기서 조립한다 (스크립트 미실행 시 위 대체 표기가 보인다) -->
