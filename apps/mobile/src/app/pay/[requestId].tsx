@@ -2,8 +2,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
+import { LegalText } from '@/components/legal-text';
 import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -16,7 +19,7 @@ import {
   createPaymentIntent,
   type PaymentIntent,
 } from '@/lib/payments';
-import { formatAmount, getQuoteRequest } from '@/lib/quote-requests';
+import { formatAmount, getQuoteRequest, type Quote } from '@/lib/quote-requests';
 
 type PaymentUIComponent = typeof import('@portone/react-native-sdk').PaymentUI;
 
@@ -39,7 +42,8 @@ function loadPaymentUI(): PaymentUIComponent | null {
 // 모듈 로드 시 1회 — 렌더 중 컴포넌트를 만들지 않는다 (react-hooks/static-components)
 const PaymentUI = loadPaymentUI();
 
-type Phase = 'loading' | 'ready' | 'confirming' | 'done' | 'error';
+// consent: 견적 확인 + 청약철회 제한 동의 — 체크 후에야 결제 시도(intent)를 만든다
+type Phase = 'loading' | 'consent' | 'ready' | 'confirming' | 'done' | 'error';
 
 /** 결제 UI 콜백 직후 웹훅/조회가 아직 반영되지 않았을 수 있어 짧게 재확인한다 */
 const CONFIRM_RETRIES = 4;
@@ -52,6 +56,8 @@ export default function PayScreen() {
   const params = useLocalSearchParams<{ requestId: string }>();
   const requestId = Number(params.requestId);
 
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [consented, setConsented] = useState(false);
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -63,10 +69,9 @@ export default function PayScreen() {
       try {
         const request = await getQuoteRequest(token, requestId);
         if (!request.quote) throw new ApiError(409, t('pay.notPayable'));
-        const created = await createPaymentIntent(token, request.quote.id);
         if (cancelled) return;
-        setIntent(created);
-        setPhase('ready');
+        setQuote(request.quote);
+        setPhase('consent');
       } catch (e) {
         if (cancelled) return;
         setError(describeError(e, t));
@@ -77,6 +82,19 @@ export default function PayScreen() {
       cancelled = true;
     };
   }, [token, requestId, t]);
+
+  // 동의 후에만 서버에 결제 시도를 만든다 — 서버가 이 시점을 withdrawalConsentAt으로 기록
+  const onContinue = async () => {
+    if (!token || !quote) return;
+    setPhase('loading');
+    try {
+      setIntent(await createPaymentIntent(token, quote.id));
+      setPhase('ready');
+    } catch (e) {
+      setError(describeError(e, t));
+      setPhase('error');
+    }
+  };
 
   const onPaymentComplete = async (response: { code?: string; message?: string }) => {
     if (!token || !intent) return;
@@ -112,13 +130,13 @@ export default function PayScreen() {
       <View style={styles.body}>
         <ScreenHeader back title={t('pay.title')} />
 
-        {intent && (
+        {quote && (
           <Card style={styles.summary}>
             <ThemedText type="caption" themeColor="textSecondary">
               {t('pay.summary', { id: requestId })}
             </ThemedText>
             <ThemedText type="display" style={styles.amount}>
-              {formatAmount(intent.amount, intent.currency, locale)}
+              {formatAmount(quote.amount, quote.currency, locale)}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {t('pay.secure')}
@@ -127,6 +145,23 @@ export default function PayScreen() {
         )}
 
         {phase === 'loading' && <ActivityIndicator color={Brand.purple} style={styles.loading} />}
+
+        {phase === 'consent' && (
+          <View style={styles.consent}>
+            <Checkbox
+              checked={consented}
+              onChange={setConsented}
+              accessibilityLabel={t('pay.consent', { refund: t('legal.refund') })}>
+              <LegalText k="pay.consent" />
+            </Checkbox>
+            <Button
+              label={t('pay.continueToPayment')}
+              size="lg"
+              disabled={!consented}
+              onPress={() => void onContinue()}
+            />
+          </View>
+        )}
 
         {phase === 'error' && (
           <EmptyState
@@ -231,6 +266,9 @@ const styles = StyleSheet.create({
   },
   loading: {
     paddingVertical: Spacing.xxxl,
+  },
+  consent: {
+    gap: Spacing.lg,
   },
   checkout: {
     flex: 1,

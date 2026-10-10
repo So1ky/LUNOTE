@@ -31,7 +31,8 @@ export type Payment = {
 export function createPaymentIntent(token: string, quoteId: string) {
   return api<PaymentIntent>('/payments', {
     method: 'POST',
-    body: { quoteId },
+    // 결제 화면의 청약철회 제한 동의 체크 후에만 호출된다 — 서버가 동의 시각을 기록
+    body: { quoteId, withdrawalConsent: true },
     token,
   });
 }

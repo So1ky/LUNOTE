@@ -32,6 +32,7 @@ const ICONS = {
   lock: { sf: 'lock', ion: 'lock-closed-outline' },
   key: { sf: 'key', ion: 'key-outline' },
   checkCircle: { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
+  check: { sf: 'checkmark', ion: 'checkmark' },
   mailUnread: { sf: 'envelope.badge', ion: 'mail-unread-outline' },
   warning: { sf: 'exclamationmark.triangle', ion: 'warning-outline' },
   clock: { sf: 'clock', ion: 'time-outline' },

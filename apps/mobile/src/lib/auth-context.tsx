@@ -153,7 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) => {
       const pair = await api<TokenPair>('/auth/signup', {
         method: 'POST',
-        body: { email, password, firstName, lastName },
+        // 가입 화면 체크박스가 켜져야만 호출된다 — 서버는 false/누락을 400으로 거부
+        body: { email, password, firstName, lastName, termsAccepted: true },
       });
       await applyTokens(pair);
     },
@@ -165,7 +166,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!idToken) return false;
     const pair = await api<TokenPair>('/auth/google', {
       method: 'POST',
-      body: { idToken },
+      // 소셜은 로그인/가입을 앱이 구분할 수 없어 항상 보낸다 — 서버가 신규 가입일 때만 사용. 버튼 아래 고지 문구가 동의 근거
+      body: { idToken, termsAccepted: true },
     });
     await applyTokens(pair);
     return true;
@@ -181,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         identityToken: credential.identityToken,
         firstName: credential.firstName,
         lastName: credential.lastName,
+        termsAccepted: true,
       },
     });
     await applyTokens(pair);
