@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { SocialSignIn } from '@/components/social-sign-in';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
@@ -107,6 +108,8 @@ export default function SignupScreen() {
           onPress={() => void onSignup()}
         />
       </View>
+
+      <SocialSignIn />
 
       <Pressable style={styles.footer} onPress={() => router.back()}>
         <ThemedText type="small" themeColor="textSecondary">

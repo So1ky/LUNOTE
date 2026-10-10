@@ -74,7 +74,7 @@ const ko: Resources = {
     newToLunote: 'LUNOTE가 처음이신가요? ',
     createAccount: '회원가입',
     emailRegistered: '이 이메일은 이미 {{method}}로 가입되어 있어요. {{method}}로 로그인해 주세요.',
-    methodEMAIL: '이메일',
+    methodEMAIL: '이메일과 비밀번호',
     methodGOOGLE: 'Google',
     methodAPPLE: 'Apple',
     socialFailed: '로그인하지 못했어요. 다시 시도해 주세요.',
