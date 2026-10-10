@@ -17,7 +17,7 @@ import { languageLabel } from '@/lib/languages';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { token, profile, signOut, updateProfile } = useAuth();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -60,7 +60,7 @@ export default function ProfileScreen() {
     {
       key: 'language',
       label: t('profile.language'),
-      value: languageLabel(profile?.language ?? null),
+      value: languageLabel(locale),
       href: '/language',
     },
     {

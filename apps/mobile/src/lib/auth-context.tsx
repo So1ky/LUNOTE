@@ -5,9 +5,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { api, setAuthEventHandlers } from './api';
+import { useLanguage } from './language-context';
 import { getAppleCredential, getGoogleIdToken } from './social-auth';
 import { tokenStorage } from './token-storage';
 
@@ -74,6 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const { localLanguage } = useLanguage();
+  const syncedLanguageFor = useRef<string | null>(null);
 
   // 액세스 만료 시 api()가 자동 갱신한다 — 새 토큰을 상태에 반영하고,
   // 갱신 불가(세션 폐기/만료)면 로컬 세션을 정리해 로그인 화면으로 보낸다
@@ -106,6 +110,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
   }, []);
+
+  // 온보딩은 게스트 상태라 언어가 기기에만 저장된다 — 첫 로그인 때 서버 프로필에 맞춘다.
+  // 프로필당 1회만 시도하고, 실패해도 로컬 언어로 계속 동작하므로 조용히 넘긴다.
+  useEffect(() => {
+    if (!token || !profile || profile.language != null || !localLanguage) return;
+    if (syncedLanguageFor.current === profile.id) return;
+    syncedLanguageFor.current = profile.id;
+    void api<Profile>('/users/me', {
+      method: 'PATCH',
+      body: { language: localLanguage },
+      token,
+    })
+      .then((me) => setProfile((cur) => (cur?.id === me.id ? me : cur)))
+      .catch(() => {});
+  }, [token, profile, localLanguage]);
 
   const applyTokens = useCallback(async (pair: TokenPair) => {
     await tokenStorage.setPair(pair.accessToken, pair.refreshToken);
