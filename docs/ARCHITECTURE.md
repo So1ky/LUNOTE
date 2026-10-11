@@ -128,6 +128,10 @@ graph TB
     기한 내 미입금 시 자동 만료. 주문번호 기반 입금코드를 입금자명에 입력하게 해 매칭한다
     (입금자명·금액 불일치는 관리자 확인으로 마감). 환불은 수동 이체,
     현금영수증은 소비자 요청 시 홈택스 수동 발급. 입금 확인 자동화(가상계좌)는 국내 PG 재신청 시점에.
+    **구현(2026-10-11)**: 결제수단은 문의 때 고객이 선택(`QuoteRequest.paymentMethod`), 견적 통화는 서버가 결정(PAYPAL→USD, BANK_TRANSFER→KRW).
+    `POST /payments`는 KRW면 PortOne 없이 계좌 정보(ConfigMap)·입금자명 `LUNOTE<요청번호>`·기한(견적 만료)을 응답.
+    입금 확인은 관리자 웹 → `POST /admin/payments/:id/confirm-transfer`(멱등, 감사 로그) → PayPal 웹훅과 같은 `markPaid()`로 PAID.
+    자동 만료 잡 없음(견적 7일이 기한), 만료 후 확인 허용. 환불 REFUNDED 전이 관리자 기능은 후속.
   - 페이팔은 KRW를 받지 못하므로 **견적·결제 통화는 USD**로 확정한다.
     `Payment.provider`(PAYPAL / 추후 INICIS)는 견적 통화로 라우팅한다 (USD→PAYPAL, KRW→INICIS).
     앱은 provider에 따라 결제 UI 컴포넌트를 분기한다 (페이팔=`PaymentUI` 버튼 렌더링, 국내 PG=`Payment` 결제창).
