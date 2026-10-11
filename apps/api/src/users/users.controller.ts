@@ -3,7 +3,9 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Patch,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -17,7 +19,9 @@ import type { AuthUser } from '../auth/auth-user';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { DeleteMeDto } from './dto/delete-me.dto';
+import { DeletePushTokenDto, PutPushTokenDto } from './dto/push-token.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
+import { PushTokensService } from './push-tokens.service';
 import { UsersService } from './users.service';
 
 @ApiTags('users')
@@ -25,7 +29,10 @@ import { UsersService } from './users.service';
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly users: UsersService) {}
+  constructor(
+    private readonly users: UsersService,
+    private readonly pushTokens: PushTokensService,
+  ) {}
 
   @Get('me')
   @ApiOperation({ summary: '내 프로필 (아바타 URL 포함)' })
@@ -37,6 +44,25 @@ export class UsersController {
   @ApiOperation({ summary: '내 프로필 수정 — 이름/언어/아바타/알림 설정' })
   updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateMeDto) {
     return this.users.updateMe(user.id, dto);
+  }
+
+  @Put('me/push-token')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Expo 푸시 토큰 등록/갱신 (토큰 존재 = 푸시 opt-in)',
+  })
+  putPushToken(@CurrentUser() user: AuthUser, @Body() dto: PutPushTokenDto) {
+    return this.pushTokens.upsert(user.id, dto.token, dto.platform);
+  }
+
+  @Delete('me/push-token')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Expo 푸시 토큰 해제 (로그아웃·설정 끔)' })
+  deletePushToken(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: DeletePushTokenDto,
+  ) {
+    return this.pushTokens.remove(user.id, dto.token);
   }
 
   @Delete('me')

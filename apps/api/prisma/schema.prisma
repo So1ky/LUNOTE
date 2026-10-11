@@ -98,6 +98,7 @@ model User {
   notifications Notification[]
   auditLogs     AdminAuditLog[]
   refreshTokens RefreshToken[]
+  pushTokens    PushToken[]
 
   @@unique([provider, providerId])
   @@map("users")
@@ -241,4 +242,23 @@ model PaymentEvent {
 
   @@index([paymentId])
   @@map("payment_events")
+}
+
+enum PushPlatform {
+  IOS
+  ANDROID
+}
+
+/// Expo 푸시 토큰 — 행이 있으면 opt-in. 로그아웃·탈퇴·DeviceNotRegistered 때 삭제 (ARCHITECTURE §11 푸시 알림)
+model PushToken {
+  id         String       @id @default(uuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  token      String       @unique
+  platform   PushPlatform
+  createdAt  DateTime     @default(now())
+  lastSeenAt DateTime     @default(now())
+
+  @@index([userId])
+  @@map("push_tokens")
 }

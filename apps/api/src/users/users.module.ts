@@ -6,6 +6,7 @@ import {
   ACCOUNT_CLEANUP_QUEUE,
   AccountDeletionService,
 } from './account-deletion.service';
+import { PushTokensService } from './push-tokens.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
@@ -15,7 +16,12 @@ import { UsersService } from './users.service';
     SocialAuthModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService, AccountDeletionService, AccountCleanupProcessor],
-  exports: [UsersService, AccountDeletionService],
+  providers: [
+    UsersService,
+    AccountDeletionService,
+    AccountCleanupProcessor,
+    PushTokensService,
+  ],
+  exports: [UsersService, AccountDeletionService, PushTokensService],
 })
 export class UsersModule {}
