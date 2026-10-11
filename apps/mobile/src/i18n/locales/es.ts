@@ -384,7 +384,14 @@ const es: Resources = {
     inAppDesc: 'Novedades de presupuestos y solicitudes en tu bandeja de notificaciones.',
     alwaysOn: 'Siempre activadas',
     pushTitle: 'Notificaciones push',
-    pushDesc: 'Próximamente: recibe novedades aunque la app esté cerrada.',
+    pushDesc: 'Recibe novedades de presupuestos y pagos aunque la app esté cerrada.',
+    pushDenied: 'Las notificaciones están desactivadas en los ajustes del teléfono. Toca para abrir Ajustes.',
+  },
+  pushPrompt: {
+    title: '¿Te avisamos cuando llegue tu presupuesto?',
+    body: 'Te enviaremos un aviso cuando tu presupuesto esté listo y otro cuando se confirme el pago. Nada más.',
+    turnOn: 'Activar notificaciones',
+    notNow: 'Ahora no',
   },
 
   profile: {

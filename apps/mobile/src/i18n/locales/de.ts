@@ -384,7 +384,14 @@ const de: Resources = {
     inAppDesc: 'Angebots- und Anfrage-Updates in Ihrem Posteingang.',
     alwaysOn: 'Immer aktiv',
     pushTitle: 'Push-Benachrichtigungen',
-    pushDesc: 'Demnächst — Updates auch bei geschlossener App.',
+    pushDesc: 'Erhalten Sie Angebots- und Zahlungs-Updates, auch wenn die App geschlossen ist.',
+    pushDenied: 'Benachrichtigungen sind in den Telefoneinstellungen deaktiviert. Tippen Sie, um die Einstellungen zu öffnen.',
+  },
+  pushPrompt: {
+    title: 'Benachrichtigen, wenn Ihr Angebot da ist?',
+    body: 'Wir senden eine Benachrichtigung, wenn Ihr Angebot fertig ist, und eine, wenn Ihre Zahlung bestätigt wurde. Sonst nichts.',
+    turnOn: 'Benachrichtigungen aktivieren',
+    notNow: 'Nicht jetzt',
   },
 
   profile: {

@@ -23,7 +23,7 @@ export class ApiError extends Error {
 }
 
 type Options = {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   token?: string | null;
   /** 자동 갱신 후 1회 재시도 표시 — 무한 재귀 방지 */

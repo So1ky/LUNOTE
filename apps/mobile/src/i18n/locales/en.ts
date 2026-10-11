@@ -393,7 +393,14 @@ const en = {
     inAppDesc: 'Quote and request updates in your notification inbox.',
     alwaysOn: 'Always on',
     pushTitle: 'Push notifications',
-    pushDesc: 'Coming soon — get updates even when the app is closed.',
+    pushDesc: 'Get quote and payment updates even when the app is closed.',
+    pushDenied: 'Notifications are off in your phone settings. Tap to open Settings.',
+  },
+  pushPrompt: {
+    title: 'Get notified when your quote arrives?',
+    body: 'We’ll send one notification when your quote is ready and one when your payment is confirmed. Nothing else.',
+    turnOn: 'Turn on notifications',
+    notNow: 'Not now',
   },
 
   profile: {
