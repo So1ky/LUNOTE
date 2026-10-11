@@ -281,6 +281,64 @@ export class PaymentsService {
   }
 
   /**
+   * 관리자 입금 확인 (수동 계좌이체). PG 밖 경로라 외부 조회 없이 관리자의 확인이 곧 증빙.
+   * 만료된 견적이라도 돈이 들어왔으면 확인을 허용한다 — 문의가 QUOTED가 아니면 markPaid가 불일치로 관리자에게 알린다.
+   */
+  async confirmBankTransfer(paymentId: string, adminId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // 동시 클릭·웹훅과의 경쟁을 행 잠금으로 직렬화 (applyRemote와 같은 이유)
+      const [row] = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM payments WHERE id = ${paymentId} FOR UPDATE`;
+      if (!row) throw new NotFoundException('Payment not found');
+      const local = await tx.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          provider: true,
+          paidAt: true,
+          quote: {
+            select: { requestId: true, request: { select: { userId: true } } },
+          },
+        },
+      });
+      if (local.provider !== PaymentProvider.BANK_TRANSFER) {
+        throw new ConflictException('NOT_BANK_TRANSFER');
+      }
+      if (
+        local.status !== PaymentStatus.PENDING &&
+        local.status !== PaymentStatus.PAID
+      ) {
+        throw new ConflictException('NOT_PENDING');
+      }
+      const outcome = await this.markPaid(tx, local, { paidAt: new Date() });
+      if (outcome === 'paid') {
+        // 감사 로그 — 전이와 같은 트랜잭션 (기록 없는 입금 확인이 존재할 수 없게)
+        await tx.adminAuditLog.create({
+          data: {
+            adminId,
+            action: 'BANK_TRANSFER_CONFIRMED',
+            targetType: 'PAYMENT',
+            targetId: local.id,
+            detail: {
+              requestId: local.quote.requestId,
+              amount: local.amount.toString(),
+              currency: local.currency,
+            },
+          },
+        });
+      }
+      const payment = await tx.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+        select: { id: true, status: true, paidAt: true },
+      });
+      return { outcome, payment };
+    });
+  }
+
+  /**
    * PENDING → PAID 전이 + 문의 QUOTED → PAID + 사용자 알림 + 관리자 메일.
    * PayPal 웹훅/확인(applyRemote)과 관리자 입금 확인(confirmBankTransfer)이 공유한다 — 두 경로의 PAID는 같은 의미여야 한다.
    */

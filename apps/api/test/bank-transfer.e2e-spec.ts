@@ -155,4 +155,98 @@ describe('Bank transfer (e2e)', () => {
       .expect(201);
     expect((res.body as { paymentId: string }).paymentId).toBe(paymentId);
   });
+
+  it('관리자 상세에 PENDING 계좌이체 결제가 보인다', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/admin/quote-requests/${requestId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const payments = (
+      res.body as {
+        quote: { payments: { id: string; provider: string; status: string }[] };
+      }
+    ).quote.payments;
+    expect(payments[0]).toMatchObject({
+      id: paymentId,
+      provider: 'BANK_TRANSFER',
+      status: 'PENDING',
+    });
+  });
+
+  it('비관리자는 입금 확인 403', async () => {
+    await request(app.getHttpServer())
+      .post(`/admin/payments/${paymentId}/confirm-transfer`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(403);
+  });
+
+  it('입금 확인 → 결제 PAID·문의 PAID·감사 로그·사용자 알림', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/admin/payments/${paymentId}/confirm-transfer`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect((res.body as { outcome: string }).outcome).toBe('paid');
+
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { id: paymentId },
+    });
+    expect(payment.status).toBe('PAID');
+    expect(payment.paidAt).toBeInstanceOf(Date);
+    expect(payment.portoneTxId).toBeNull();
+
+    const req = await prisma.quoteRequest.findUniqueOrThrow({
+      where: { id: requestId },
+    });
+    expect(req.status).toBe('PAID');
+
+    const audit = await prisma.adminAuditLog.findFirst({
+      where: { action: 'BANK_TRANSFER_CONFIRMED', targetId: paymentId },
+    });
+    expect(audit).not.toBeNull();
+
+    const owner = await prisma.user.findUniqueOrThrow({
+      where: { email: `bt-owner-${stamp}@test.lunote.app` },
+    });
+    const notice = await prisma.notification.findFirst({
+      where: { userId: owner.id, type: 'PAYMENT_PAID' },
+    });
+    expect(notice).not.toBeNull();
+  });
+
+  it('입금 확인 재클릭은 noop 200', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/admin/payments/${paymentId}/confirm-transfer`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect((res.body as { outcome: string }).outcome).toBe('noop');
+    const count = await prisma.adminAuditLog.count({
+      where: { action: 'BANK_TRANSFER_CONFIRMED', targetId: paymentId },
+    });
+    expect(count).toBe(1);
+  });
+
+  it('PayPal 결제에 입금 확인은 409', async () => {
+    const paypal = await prisma.payment.create({
+      data: {
+        quoteId,
+        provider: 'PAYPAL',
+        amount: 1,
+        currency: 'USD',
+        withdrawalConsentAt: new Date(),
+      },
+    });
+    await request(app.getHttpServer())
+      .post(`/admin/payments/${paypal.id}/confirm-transfer`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(409);
+  });
+
+  it('없는 결제는 404', async () => {
+    await request(app.getHttpServer())
+      .post(
+        '/admin/payments/00000000-0000-0000-0000-000000000000/confirm-transfer',
+      )
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(404);
+  });
 });

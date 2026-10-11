@@ -56,6 +56,25 @@ const ADMIN_REQUEST_SELECT = {
 /** 상세 전용 — 첨부파일 포함 */
 const ADMIN_DETAIL_SELECT = {
   ...ADMIN_REQUEST_SELECT,
+  quote: {
+    select: {
+      ...ADMIN_REQUEST_SELECT.quote.select,
+      // 관리자 웹이 "입금 확인" 대상(PENDING 계좌이체)을 알기 위한 최근 결제 — 최신 5개
+      payments: {
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          provider: true,
+          status: true,
+          amount: true,
+          currency: true,
+          paidAt: true,
+          createdAt: true,
+        },
+      },
+    },
+  },
   attachments: {
     select: {
       id: true,
