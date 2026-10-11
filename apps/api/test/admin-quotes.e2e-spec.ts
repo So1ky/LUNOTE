@@ -213,7 +213,7 @@ describe('Admin quotes (e2e)', () => {
     });
 
     it('USD를 보내면 400 CURRENCY_MISMATCH', async () => {
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post(`/admin/quote-requests/${btRequestId}/quote`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
@@ -222,6 +222,9 @@ describe('Admin quotes (e2e)', () => {
           explanation: 'Bank account opening support',
         })
         .expect(400);
+      expect((res.body as { message: string }).message).toBe(
+        'CURRENCY_MISMATCH',
+      );
     });
 
     it('소수점 금액은 400 (KRW는 정수만)', async () => {
@@ -241,6 +244,44 @@ describe('Admin quotes (e2e)', () => {
       expect((res.body as { quote: { currency: string } }).quote.currency).toBe(
         'KRW',
       );
+    });
+  });
+
+  describe('통화별 견적 상한', () => {
+    const createRequest = async (paymentMethod: 'PAYPAL' | 'BANK_TRANSFER') => {
+      const created = await request(app.getHttpServer())
+        .post('/quote-requests')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          category: 'OTHER',
+          description: 'Large engagement to check the per-currency cap.',
+          contactMethod: 'email: cap@test.com',
+          paymentMethod,
+        })
+        .expect(201);
+      return (created.body as { id: number }).id;
+    };
+
+    it('USD 1,000,001은 400 AMOUNT_TOO_LARGE', async () => {
+      const id = await createRequest('PAYPAL');
+      const res = await request(app.getHttpServer())
+        .post(`/admin/quote-requests/${id}/quote`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ amount: 1_000_001, explanation: 'Over the USD cap' })
+        .expect(400);
+      expect((res.body as { message: string }).message).toBe(
+        'AMOUNT_TOO_LARGE',
+      );
+    });
+
+    // KRW 상한은 DTO 전체 상한과 같아 ValidationPipe가 먼저 400을 낸다(서비스 상한은 방어선)
+    it('KRW 100,000,001은 400', async () => {
+      const id = await createRequest('BANK_TRANSFER');
+      await request(app.getHttpServer())
+        .post(`/admin/quote-requests/${id}/quote`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ amount: 100_000_001, explanation: 'Over the KRW cap' })
+        .expect(400);
     });
   });
 });

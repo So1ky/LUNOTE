@@ -15,7 +15,8 @@ export class CreateQuoteDto {
   @ApiProperty({ example: 340 })
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
-  @Max(1_000_000)
+  // 전체 상한(KRW 1억 원) — 통화별 상한(USD 100만 달러)은 통화가 정해지는 서비스에서 건다
+  @Max(100_000_000)
   amount: number;
 
   // 선택 — 보내면 결제수단이 정하는 통화와 같아야 한다(다르면 400). 관리자 웹은 보내지 않는다

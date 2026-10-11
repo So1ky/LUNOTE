@@ -6,7 +6,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { RequestStatus, UserRole } from '@prisma/client';
+import {
+  PaymentProvider,
+  PaymentStatus,
+  RequestStatus,
+  UserRole,
+} from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
 import { Queue } from 'bullmq';
 import { MetricsService } from '../observability/metrics.service';
@@ -60,6 +65,30 @@ export class AccountDeletionService {
       if (user.role === UserRole.ADMIN) {
         // 관리자는 감사 로그의 주체 — 삭제 대상이 아니다
         throw new ForbiddenException('Admin accounts cannot be deleted');
+      }
+
+      // 계좌이체는 PENDING 창이 최대 7일이라, 입금 후 탈퇴하면 돈은 법인 계좌에 있는데 연락처가 익명화돼 환불이 불가능해진다.
+      // 아래 취소가 QUOTED를 CANCELLED로 바꾸기 전에 봐야 한다. 사용자가 직접 취소한 문의(CANCELLED)와 만료된 견적은 막지 않는다
+      const awaitingTransfer = await tx.quoteRequest.count({
+        where: {
+          userId,
+          status: RequestStatus.QUOTED,
+          quote: {
+            expiresAt: { gt: new Date() },
+            payments: {
+              some: {
+                provider: PaymentProvider.BANK_TRANSFER,
+                status: PaymentStatus.PENDING,
+              },
+            },
+          },
+        },
+      });
+      if (awaitingTransfer > 0) {
+        this.metrics.accountDeletion('blocked');
+        throw new ConflictException(
+          'A bank transfer is awaiting confirmation — cancel the request or wait until it is confirmed or the quote expires',
+        );
       }
 
       // 취소를 먼저 실행해 행을 잠근 뒤 차단 조건을 본다. 결제 확정이 QUOTED→PAID를 먼저 커밋했으면

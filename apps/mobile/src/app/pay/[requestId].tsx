@@ -254,6 +254,8 @@ function describeError(e: unknown, t: (k: string) => string) {
         return t('pay.unsupportedCurrency');
       case 'PAYMENTS_NOT_CONFIGURED':
         return t('pay.notConfigured');
+      case 'BANK_TRANSFER_NOT_CONFIGURED':
+        return t('pay.notConfigured');
       default:
         return e.message;
     }

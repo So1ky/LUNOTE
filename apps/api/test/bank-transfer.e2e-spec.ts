@@ -235,10 +235,29 @@ describe('Bank transfer (e2e)', () => {
         withdrawalConsentAt: new Date(),
       },
     });
-    await request(app.getHttpServer())
+    const res = await request(app.getHttpServer())
       .post(`/admin/payments/${paypal.id}/confirm-transfer`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(409);
+    expect((res.body as { message: string }).message).toBe('NOT_BANK_TRANSFER');
+  });
+
+  it('PENDING·PAID가 아닌 계좌이체 결제에 입금 확인은 409 NOT_PENDING', async () => {
+    const failed = await prisma.payment.create({
+      data: {
+        quoteId,
+        provider: 'BANK_TRANSFER',
+        status: 'FAILED',
+        amount: 150000,
+        currency: 'KRW',
+        withdrawalConsentAt: new Date(),
+      },
+    });
+    const res = await request(app.getHttpServer())
+      .post(`/admin/payments/${failed.id}/confirm-transfer`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(409);
+    expect((res.body as { message: string }).message).toBe('NOT_PENDING');
   });
 
   it('없는 결제는 404', async () => {
@@ -248,5 +267,60 @@ describe('Bank transfer (e2e)', () => {
       )
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(404);
+  });
+
+  describe('입금 대기 중 탈퇴', () => {
+    it('유효 견적의 PENDING 계좌이체가 있으면 409, 문의 취소 후에는 탈퇴된다', async () => {
+      const email = `bt-del-${stamp}@test.lunote.app`;
+      const token = await signup(email);
+      const created = await request(app.getHttpServer())
+        .post('/quote-requests')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          category: 'BANK',
+          description: 'I want to pay by bank transfer and then leave.',
+          contactMethod: 'email: leaver@test.com',
+          paymentMethod: 'BANK_TRANSFER',
+        })
+        .expect(201);
+      const id = (created.body as { id: number }).id;
+      const quoted = await request(app.getHttpServer())
+        .post(`/admin/quote-requests/${id}/quote`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ amount: 50000, explanation: 'Bank account opening' })
+        .expect(201);
+      const qid = (quoted.body as { quote: { id: string } }).quote.id;
+      await request(app.getHttpServer())
+        .post('/payments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ quoteId: qid, withdrawalConsent: true })
+        .expect(201);
+
+      const blocked = await request(app.getHttpServer())
+        .delete('/users/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ password })
+        .expect(409);
+      expect((blocked.body as { message: string }).message).toBe(
+        'A bank transfer is awaiting confirmation — cancel the request or wait until it is confirmed or the quote expires',
+      );
+      const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+      expect(user.deletedAt).toBeNull();
+      const still = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id },
+      });
+      expect(still.status).toBe('QUOTED');
+
+      await request(app.getHttpServer())
+        .patch(`/quote-requests/${id}/cancel`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      const res = await request(app.getHttpServer())
+        .delete('/users/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ password })
+        .expect(200);
+      expect(res.body).toEqual({ deleted: true });
+    });
   });
 });

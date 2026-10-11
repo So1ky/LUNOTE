@@ -17,6 +17,15 @@ const CURRENCY_BY_METHOD: Record<PaymentMethod, string> = {
   [PaymentMethod.BANK_TRANSFER]: 'KRW',
 };
 
+/**
+ * 통화별 견적 상한 — USD 100만 달러 / KRW 1억 원. 둘 다 Decimal(12,2) 범위 안이다.
+ * DTO의 @Max는 통화를 모르므로 가장 큰 상한(KRW)만 걸고, 통화가 정해진 뒤 여기서 좁힌다
+ */
+const MAX_BY_CURRENCY: Record<string, number> = {
+  USD: 1_000_000,
+  KRW: 100_000_000,
+};
+
 /** 관리자 화면용 — 사용자 요약 정보를 포함해 노출한다 */
 const ADMIN_REQUEST_SELECT = {
   id: true,
@@ -143,6 +152,9 @@ export class AdminQuoteRequestsService {
     }
 
     const currency = CURRENCY_BY_METHOD[request.paymentMethod];
+    if (dto.amount > MAX_BY_CURRENCY[currency]) {
+      throw new BadRequestException('AMOUNT_TOO_LARGE');
+    }
     if (dto.currency && dto.currency !== currency) {
       throw new BadRequestException('CURRENCY_MISMATCH');
     }

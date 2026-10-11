@@ -286,7 +286,7 @@ export class PaymentsService {
    */
   async confirmBankTransfer(paymentId: string, adminId: string) {
     return this.prisma.$transaction(async (tx) => {
-      // 동시 클릭·웹훅과의 경쟁을 행 잠금으로 직렬화 (applyRemote와 같은 이유)
+      // 동시 클릭·웹훅과의 경쟁을 행 잠금으로 직렬화 — applyRemote는 조건부 updateMany로 경쟁을 막지만, 여기는 상태를 읽고 분기하므로 행 잠금이 필요하다
       const [row] = await tx.$queryRaw<{ id: string }[]>`
         SELECT id FROM payments WHERE id = ${paymentId} FOR UPDATE`;
       if (!row) throw new NotFoundException('Payment not found');
@@ -313,9 +313,11 @@ export class PaymentsService {
       ) {
         throw new ConflictException('NOT_PENDING');
       }
-      const outcome = await this.markPaid(tx, local, { paidAt: new Date() });
-      if (outcome === 'paid') {
-        // 감사 로그 — 전이와 같은 트랜잭션 (기록 없는 입금 확인이 존재할 수 없게)
+      // 감사 로그를 markPaid보다 먼저 — 전이와 같은 트랜잭션(기록 없는 입금 확인이 존재할 수 없게)이면서,
+      // markPaid가 관리자 메일을 setImmediate로 예약하므로 그 뒤에는 실패할 수 있는 쓰기를 두지 않는다
+      // (뒤에서 실패해 롤백되면 확정되지 않은 입금의 메일이 나간다).
+      // 행을 잠근 채 PENDING을 확인했으므로 markPaid의 결과는 'paid'로 결정돼 있다. PAID(재클릭)는 감사 없이 noop
+      if (local.status === PaymentStatus.PENDING) {
         await tx.adminAuditLog.create({
           data: {
             adminId,
@@ -330,6 +332,7 @@ export class PaymentsService {
           },
         });
       }
+      const outcome = await this.markPaid(tx, local, { paidAt: new Date() });
       const payment = await tx.payment.findUniqueOrThrow({
         where: { id: paymentId },
         select: { id: true, status: true, paidAt: true },
