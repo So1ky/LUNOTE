@@ -319,7 +319,7 @@ const ko: Resources = {
 
   pay: {
     title: '결제',
-    summary: '문의 #{{id}}',
+    summary: '견적 금액',
     secure: '포트원을 통해 PayPal이 안전하게 처리해요. LUNOTE는 카드 정보를 보지 않아요.',
     payWithPaypal: 'PayPal 또는 PayPal을 통한 신용/체크카드로 결제할 수 있어요.',
     confirming: '결제를 확인하고 있어요…',
@@ -350,7 +350,7 @@ const ko: Resources = {
   },
 
   requestDetail: {
-    title: '문의 #{{id}}',
+    title: '문의 상세',
     requested: '{{date}} 요청',
     budgetSuffix: ' · 예산 {{amount}}',
     contact: '연락 수단: {{method}}',

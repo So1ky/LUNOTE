@@ -319,7 +319,7 @@ const zh: Resources = {
 
   pay: {
     title: '支付',
-    summary: '请求 #{{id}}',
+    summary: '报价金额',
     secure: '由PayPal通过PortOne安全处理。LUNOTE不会看到您的卡片信息。',
     payWithPaypal: '可使用PayPal或通过PayPal使用信用卡/借记卡支付。',
     confirming: '正在确认您的付款…',
@@ -349,7 +349,7 @@ const zh: Resources = {
   },
 
   requestDetail: {
-    title: '申请 #{{id}}',
+    title: '申请详情',
     requested: '申请于 {{date}}',
     budgetSuffix: ' · 预算 {{amount}}',
     contact: '联系方式：{{method}}',

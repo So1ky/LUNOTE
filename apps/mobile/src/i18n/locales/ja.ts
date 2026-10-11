@@ -319,7 +319,7 @@ const ja: Resources = {
 
   pay: {
     title: 'お支払い',
-    summary: '依頼 #{{id}}',
+    summary: 'お見積り金額',
     secure: 'PortOneを通じてPayPalが安全に処理します。LUNOTEはカード情報を参照しません。',
     payWithPaypal: 'PayPal、またはPayPal経由のクレジット/デビットカードでお支払いいただけます。',
     confirming: 'お支払いを確認しています…',
@@ -350,7 +350,7 @@ const ja: Resources = {
   },
 
   requestDetail: {
-    title: '依頼 #{{id}}',
+    title: '依頼の詳細',
     requested: '依頼日 {{date}}',
     budgetSuffix: ' · 予算 {{amount}}',
     contact: '連絡方法：{{method}}',

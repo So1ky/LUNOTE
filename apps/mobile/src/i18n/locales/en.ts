@@ -328,7 +328,7 @@ const en = {
 
   pay: {
     title: 'Checkout',
-    summary: 'REQUEST #{{id}}',
+    summary: 'QUOTE AMOUNT',
     secure: 'Processed securely by PayPal through PortOne. LUNOTE never sees your card details.',
     payWithPaypal: 'Pay with PayPal or a credit/debit card via PayPal.',
     confirming: 'Confirming your payment…',
@@ -359,7 +359,7 @@ const en = {
   },
 
   requestDetail: {
-    title: 'Request #{{id}}',
+    title: 'Request details',
     requested: 'Requested {{date}}',
     budgetSuffix: ' · Budget {{amount}}',
     contact: 'Contact: {{method}}',

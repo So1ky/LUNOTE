@@ -94,7 +94,7 @@ export default function PaymentScreen() {
                   {t(`categories.${item.category}`)}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  #{item.id} · {formatDate(item.quote!.createdAt, locale)}
+                  {formatDate(item.quote!.createdAt, locale)}
                 </ThemedText>
               </View>
               <ThemedText type="heading" style={styles.amount}>

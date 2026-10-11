@@ -85,7 +85,7 @@ export default function RequestDetailScreen() {
 
   return (
     <Screen>
-      <ScreenHeader back title={t('requestDetail.title', { id: params.id })} />
+      <ScreenHeader back title={t('requestDetail.title')} />
 
       {!request && !error && <ActivityIndicator color={Brand.purple} />}
 
