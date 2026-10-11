@@ -29,6 +29,9 @@ export type Quote = {
   createdAt: string;
 };
 
+export type PaymentMethod = 'PAYPAL' | 'BANK_TRANSFER';
+export const PAYMENT_METHODS: PaymentMethod[] = ['PAYPAL', 'BANK_TRANSFER'];
+
 export type QuoteRequest = {
   id: number;
   category: Category;
@@ -37,6 +40,7 @@ export type QuoteRequest = {
   currency: string;
   description: string;
   contactMethod: string;
+  paymentMethod: PaymentMethod;
   status: RequestStatus;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +55,7 @@ export type CreateQuoteRequestInput = {
   desiredAmount?: number;
   description: string;
   contactMethod: string;
+  paymentMethod: PaymentMethod;
   attachments?: AttachmentInput[];
 };
 

@@ -21,7 +21,9 @@ import { useAuth } from '@/lib/auth-context';
 import {
   CATEGORY_META,
   createQuoteRequest,
+  PAYMENT_METHODS,
   type Category,
+  type PaymentMethod,
 } from '@/lib/quote-requests';
 import { isCustomQuoteItem, type ServiceItemId } from '@/lib/service-catalog';
 
@@ -74,6 +76,7 @@ export default function QuoteRequestScreen() {
   const [description, setDescription] = useState('');
   const [channel, setChannel] = useState<ContactChannel | null>(null);
   const [contactValue, setContactValue] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [attachments, setAttachments] = useState<
     (AttachmentInput & { uri: string })[]
   >([]);
@@ -149,7 +152,7 @@ export default function QuoteRequestScreen() {
     setAttachments((prev) => prev.filter((a) => a.s3Key !== s3Key));
 
   const onSubmit = async () => {
-    if (!token || !category || !serviceItem) return;
+    if (!token || !category || !serviceItem || !paymentMethod) return;
     setError(null);
 
     // 희망 예산은 Custom Quote 항목에서만 — 항목 변경 전에 입력한 값은 무시
@@ -169,6 +172,7 @@ export default function QuoteRequestScreen() {
         desiredAmount,
         description: description.trim(),
         contactMethod: `${channel}: ${contactValue.trim()}`,
+        paymentMethod,
         attachments: attachments.length
           ? attachments.map(({ uri: _uri, ...meta }) => meta)
           : undefined,
@@ -189,6 +193,7 @@ export default function QuoteRequestScreen() {
   const canSubmit =
     !!category &&
     !!serviceItem &&
+    !!paymentMethod &&
     description.trim().length >= 10 &&
     !!channel &&
     contactValue.trim().length >= 3;
@@ -312,6 +317,23 @@ export default function QuoteRequestScreen() {
               </>
             )}
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <SelectField
+            label={t('quoteRequest.paymentMethodLabel')}
+            placeholder={t('quoteRequest.paymentMethodPlaceholder')}
+            value={paymentMethod}
+            options={PAYMENT_METHODS.map((m) => ({
+              value: m,
+              label: t(`paymentMethods.${m}`),
+              icon: m === 'PAYPAL' ? 'card' : 'bank',
+            }))}
+            onChange={setPaymentMethod}
+          />
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('quoteRequest.paymentMethodNote')}
+          </ThemedText>
         </View>
 
         <View style={styles.section}>

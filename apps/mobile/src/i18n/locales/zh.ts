@@ -9,6 +9,10 @@ const zh: Resources = {
     privacy: '隐私政策',
     refund: '退款政策',
   },
+  paymentMethods: {
+    PAYPAL: 'PayPal（美元）',
+    BANK_TRANSFER: '韩国银行转账（韩元）',
+  },
 
   common: {
     somethingWrong: '出了点问题',
@@ -170,6 +174,10 @@ const zh: Resources = {
     contactPlaceholder: '选择联系方式',
     contactNote:
       '我们的团队将通过此方式与您联系，商讨您的报价。',
+    paymentMethodLabel: '请选择付款方式',
+    paymentMethodPlaceholder: '选择付款方式',
+    paymentMethodNote:
+      '银行转账需要韩国银行账户。报价将以美元（PayPal）或韩元（银行转账）提供。',
     submit: '提交申请',
     reviewNote: '我们将审核您的申请，并在 24 小时内发送报价。',
     budgetError: '期望预算必须为正数',
@@ -335,6 +343,7 @@ const zh: Resources = {
     budgetSuffix: ' · 预算 {{amount}}',
     contact: '联系方式：{{method}}',
     yourQuote: '您的报价',
+    paymentMethod: '付款：{{method}}',
     proceedPayment: '前往支付',
     validUntil: '有效期至 {{date}}',
     quoteExpired: '报价已过期——请提交新的请求。',

@@ -17,6 +17,10 @@ const en = {
     privacy: 'Privacy Policy',
     refund: 'Refund Policy',
   },
+  paymentMethods: {
+    PAYPAL: 'PayPal (USD)',
+    BANK_TRANSFER: 'Korean bank transfer (KRW)',
+  },
 
   common: {
     somethingWrong: 'Something went wrong',
@@ -178,6 +182,10 @@ const en = {
     contactPlaceholder: 'Choose a contact method',
     contactNote:
       'Our team will reach out through this method to discuss your quote.',
+    paymentMethodLabel: 'How would you like to pay?',
+    paymentMethodPlaceholder: 'Choose a payment method',
+    paymentMethodNote:
+      'Bank transfer needs a Korean bank account. Your quote will be in USD for PayPal or KRW for bank transfer.',
     submit: 'Send a Request',
     reviewNote: 'We will review your request and send a quote within 24 hours.',
     budgetError: 'Desired budget must be a positive number',
@@ -345,6 +353,7 @@ const en = {
     budgetSuffix: ' · Budget {{amount}}',
     contact: 'Contact: {{method}}',
     yourQuote: 'Your Quote',
+    paymentMethod: 'Payment: {{method}}',
     proceedPayment: 'Proceed to payment',
     validUntil: 'Valid until {{date}}',
     quoteExpired: 'This quote has expired — please submit a new request.',

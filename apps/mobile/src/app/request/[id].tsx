@@ -167,6 +167,9 @@ export default function RequestDetailScreen() {
               <ThemedText type="caption" themeColor="textSecondary">
                 {t('requestDetail.yourQuote')}
               </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {t('requestDetail.paymentMethod', { method: t(`paymentMethods.${request.paymentMethod}`) })}
+              </ThemedText>
               <ThemedText type="display" style={styles.amount}>
                 {formatAmount(request.quote.amount, request.quote.currency, locale)}
               </ThemedText>

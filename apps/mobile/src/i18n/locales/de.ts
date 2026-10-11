@@ -9,6 +9,10 @@ const de: Resources = {
     privacy: 'Datenschutzerklärung',
     refund: 'Rückerstattungsrichtlinie',
   },
+  paymentMethods: {
+    PAYPAL: 'PayPal (USD)',
+    BANK_TRANSFER: 'Koreanische Banküberweisung (KRW)',
+  },
 
   common: {
     somethingWrong: 'Etwas ist schiefgelaufen',
@@ -170,6 +174,10 @@ const de: Resources = {
     contactPlaceholder: 'Kontaktmethode wählen',
     contactNote:
       'Unser Team meldet sich auf diesem Weg, um Ihr Angebot zu besprechen.',
+    paymentMethodLabel: 'Wie möchten Sie bezahlen?',
+    paymentMethodPlaceholder: 'Zahlungsmethode wählen',
+    paymentMethodNote:
+      'Für eine Überweisung ist ein koreanisches Bankkonto nötig. Ihr Angebot lautet auf USD bei PayPal oder KRW bei Überweisung.',
     submit: 'Anfrage senden',
     reviewNote: 'Wir prüfen Ihre Anfrage und senden innerhalb von 24 Stunden ein Angebot.',
     budgetError: 'Das Wunschbudget muss eine positive Zahl sein',
@@ -336,6 +344,7 @@ const de: Resources = {
     budgetSuffix: ' · Budget {{amount}}',
     contact: 'Kontakt: {{method}}',
     yourQuote: 'Ihr Angebot',
+    paymentMethod: 'Zahlung: {{method}}',
     proceedPayment: 'Weiter zur Zahlung',
     validUntil: 'Gültig bis {{date}}',
     quoteExpired: 'Das Angebot ist abgelaufen – bitte neue Anfrage stellen.',
