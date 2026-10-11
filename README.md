@@ -30,9 +30,10 @@ design/        # Figma에서 export한 와이어프레임
 
 | 브랜치 | 역할 |
 |---|---|
-| `main` | 프로덕션. ArgoCD 배포 기준. 직접 커밋 금지 — `develop`에서 PR로만 병합 |
-| `develop` | 통합 브랜치. feature 브랜치들이 모이는 곳 |
+| `develop` | 통합 브랜치이자 **배포 기준**. feature 브랜치들이 모이는 곳. staging은 CI가 자동 배포, prod는 승격 PR(아래) |
+| `main` | 배포에 쓰이지 않는다. 승격 PR의 대상이 아니다 (ARCHITECTURE §9 — main 추적은 버렸다) |
 | `feature/<이슈>-<설명>` | 기능 단위 작업 (예: `feature/12-portone-webhook`) |
 | `fix/<설명>` | 버그 수정 |
 
-플로우: `feature/*` → PR → `develop` → 검증 후 PR → `main` → 자동 배포
+플로우: `feature/*` → PR → `develop` → Jenkins가 staging 자동 배포 → 검증 후 **prod 승격 PR(`develop` 대상)**
+— `infra/k8s/workloads/api/overlays/prod/kustomization.yaml`의 base ref·newTag 두 줄 (절차: `infra/k8s/README.md` "prod 승격")

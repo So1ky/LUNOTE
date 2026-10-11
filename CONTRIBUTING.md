@@ -6,8 +6,9 @@
 
 `README.md`의 브랜치 전략을 따른다. 요약:
 
-- `main` — 프로덕션. **직접 push 금지.** `develop`에서 PR로만 병합. ArgoCD가 이 브랜치를 배포한다.
-- `develop` — 통합 브랜치. feature/fix 브랜치의 PR 대상.
+- `develop` — 통합 브랜치이자 배포 기준. feature/fix 브랜치의 PR 대상. ArgoCD prod 앱도 이 브랜치의 prod 오버레이를 본다.
+  **prod 승격 PR도 `develop` 대상**(2026-10-11 PR #212를 main으로 올려 반영되지 않았던 실수의 재발 방지).
+- `main` — 배포에 쓰이지 않는다. 승격 PR의 대상이 아니다.
 - `feature/<이슈번호>-<설명>` / `fix/<설명>` — 작업 단위 브랜치. 병합 후 삭제한다.
 
 ## 커밋 컨벤션 — Conventional Commits
