@@ -135,5 +135,8 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
     throw new ApiError(res.status, message, data);
   }
 
+  // 204(본문 없음, 예: push-token PUT/DELETE)를 json()으로 읽으면 throw → 서버는 성공했는데 앱은 실패로 처리하는
+  // 불일치가 생긴다(2026-10-11 prod 실측: 토큰이 서버에만 남아 로그아웃 후에도 푸시가 옴)
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
