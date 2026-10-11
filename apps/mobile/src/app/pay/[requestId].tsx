@@ -20,7 +20,12 @@ import {
   createPaymentIntent,
   type PaymentIntent,
 } from '@/lib/payments';
-import { formatAmount, getQuoteRequest, type Quote } from '@/lib/quote-requests';
+import {
+  formatAmount,
+  getQuoteRequest,
+  type PaymentMethod,
+  type Quote,
+} from '@/lib/quote-requests';
 
 type PaymentUIComponent = typeof import('@portone/react-native-sdk').PaymentUI;
 
@@ -58,6 +63,8 @@ export default function PayScreen() {
   const requestId = Number(params.requestId);
 
   const [quote, setQuote] = useState<Quote | null>(null);
+  // PayPal 안내 문구("PayPal이 안전하게 처리")는 PayPal 결제에만 — 계좌이체 문의에는 보이면 안 된다
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [consented, setConsented] = useState(false);
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
@@ -75,6 +82,7 @@ export default function PayScreen() {
         if (!request.quote) throw new ApiError(409, t('pay.notPayable'));
         if (cancelled) return;
         setQuote(request.quote);
+        setPaymentMethod(request.paymentMethod);
         setPhase('consent');
       } catch (e) {
         if (cancelled) return;
@@ -145,9 +153,11 @@ export default function PayScreen() {
             <ThemedText type="display" style={styles.amount}>
               {formatAmount(quote.amount, quote.currency, locale)}
             </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {t('pay.secure')}
-            </ThemedText>
+            {paymentMethod === 'PAYPAL' && (
+              <ThemedText type="small" themeColor="textSecondary">
+                {t('pay.secure')}
+              </ThemedText>
+            )}
           </Card>
         )}
 
