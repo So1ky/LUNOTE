@@ -345,6 +345,17 @@ const en = {
     backToRequest: 'Back to request',
     consent: 'I understand that work on my request starts as soon as I pay, and that after it starts I can cancel only the part not yet performed. {{refund}}',
     continueToPayment: 'Continue to payment',
+    bankTransfer: {
+      title: 'Transfer to this account',
+      bank: 'Bank',
+      accountNumber: 'Account number',
+      holder: 'Account holder',
+      depositorName: 'Sender name',
+      depositorNote: 'Enter this exactly as the sender name so we can match your transfer.',
+      deadline: 'Transfer by {{date}}',
+      afterNote: 'We confirm transfers within 1 business day and notify you in the app.',
+      copyHint: 'Long-press a value to copy it.',
+    },
   },
 
   requestDetail: {

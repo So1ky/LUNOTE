@@ -336,6 +336,17 @@ const de: Resources = {
     backToRequest: 'Zurück zur Anfrage',
     consent: 'Ich verstehe, dass die Bearbeitung meiner Anfrage sofort nach der Zahlung beginnt und ich danach nur den noch nicht erbrachten Teil stornieren kann. {{refund}}',
     continueToPayment: 'Weiter zur Zahlung',
+    bankTransfer: {
+      title: 'Überweisen Sie auf dieses Konto',
+      bank: 'Bank',
+      accountNumber: 'Kontonummer',
+      holder: 'Kontoinhaber',
+      depositorName: 'Absendername',
+      depositorNote: 'Geben Sie genau diesen Absendernamen an, damit wir Ihre Überweisung zuordnen können.',
+      deadline: 'Überweisen Sie bis {{date}}',
+      afterNote: 'Wir bestätigen Überweisungen innerhalb von 1 Werktag und benachrichtigen Sie in der App.',
+      copyHint: 'Halten Sie einen Wert gedrückt, um ihn zu kopieren.',
+    },
   },
 
   requestDetail: {

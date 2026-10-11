@@ -1,9 +1,8 @@
 import { api } from './api';
 
-/** 서버 PaymentsService.createIntent 응답 — 결제 UI를 띄우는 데 필요한 공개값만 온다 */
-export type PaymentIntent = {
-  paymentId: string;
+export type PayPalIntent = {
   provider: 'PAYPAL';
+  paymentId: string;
   storeId: string;
   channelKey: string;
   orderName: string;
@@ -14,12 +13,27 @@ export type PaymentIntent = {
   amount: string;
 };
 
+export type BankTransferIntent = {
+  provider: 'BANK_TRANSFER';
+  paymentId: string;
+  amount: string;
+  currency: string;
+  bank: { name: string; accountNumber: string; holder: string };
+  /** 입금자명 — 관리자가 입금 내역과 대조한다 */
+  depositorName: string;
+  /** 입금 기한(ISO) = 견적 만료 */
+  deadline: string;
+};
+
+/** 서버 PaymentsService.createIntent 응답 — provider로 분기한다. 결제 UI를 띄우는 데 필요한 공개값만 온다 */
+export type PaymentIntent = PayPalIntent | BankTransferIntent;
+
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
 
 export type Payment = {
   id: string;
   quoteId: string;
-  provider: 'PAYPAL';
+  provider: 'PAYPAL' | 'BANK_TRANSFER';
   amount: string;
   currency: string;
   status: PaymentStatus;

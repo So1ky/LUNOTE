@@ -335,6 +335,17 @@ const zh: Resources = {
     backToRequest: '返回请求',
     consent: '我了解付款后将立即开始处理我的请求，开始后仅可取消尚未执行的部分。{{refund}}',
     continueToPayment: '继续付款',
+    bankTransfer: {
+      title: '请转账至以下账户',
+      bank: '银行',
+      accountNumber: '账号',
+      holder: '户名',
+      depositorName: '付款人姓名',
+      depositorNote: '请按此填写付款人姓名，以便我们核对转账。',
+      deadline: '请在 {{date}} 前转账',
+      afterNote: '我们将在 1 个工作日内确认转账并通过应用通知您。',
+      copyHint: '长按即可复制。',
+    },
   },
 
   requestDetail: {

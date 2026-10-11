@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
+import { BankTransferCard } from '@/components/bank-transfer-card';
 import { LegalText } from '@/components/legal-text';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
@@ -103,7 +104,7 @@ export default function PayScreen() {
   };
 
   const onPaymentComplete = async (response: { code?: string; message?: string }) => {
-    if (!token || !intent) return;
+    if (!token || intent?.provider !== 'PAYPAL') return;
     if (response.code) {
       // PG/사용자 취소 등 — 서버 상태는 웹훅이 정리하므로 여기서는 표시만
       setError(response.message ?? t('pay.failed'));
@@ -136,7 +137,7 @@ export default function PayScreen() {
       <View style={styles.body}>
         <ScreenHeader back title={t('pay.title')} />
 
-        {quote && (
+        {quote && intent?.provider !== 'BANK_TRANSFER' && (
           <Card style={styles.summary}>
             <ThemedText type="caption" themeColor="textSecondary">
               {t('pay.summary', { id: requestId })}
@@ -190,7 +191,7 @@ export default function PayScreen() {
           />
         )}
 
-        {phase === 'ready' && intent && !PaymentUI && (
+        {phase === 'ready' && intent?.provider === 'PAYPAL' && !PaymentUI && (
           <EmptyState
             icon="card"
             message={Platform.OS === 'web' ? t('pay.webUnsupported') : t('pay.sdkUnavailable')}
@@ -198,7 +199,14 @@ export default function PayScreen() {
           />
         )}
 
-        {phase === 'ready' && intent && PaymentUI && (
+        {phase === 'ready' && intent?.provider === 'BANK_TRANSFER' && (
+          <View style={styles.checkout}>
+            <BankTransferCard intent={intent} />
+            <Button label={t('pay.backToRequest')} variant="outline" onPress={goToRequest} />
+          </View>
+        )}
+
+        {phase === 'ready' && intent?.provider === 'PAYPAL' && PaymentUI && (
           <View style={styles.checkout}>
             <ThemedText type="small" themeColor="textSecondary">
               {t('pay.payWithPaypal')}

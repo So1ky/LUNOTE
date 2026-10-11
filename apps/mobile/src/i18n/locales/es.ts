@@ -336,6 +336,17 @@ const es: Resources = {
     backToRequest: 'Volver a la solicitud',
     consent: 'Entiendo que el trabajo en mi solicitud comienza en cuanto pago y que, una vez iniciado, solo puedo cancelar la parte aún no realizada. {{refund}}',
     continueToPayment: 'Continuar al pago',
+    bankTransfer: {
+      title: 'Transfiere a esta cuenta',
+      bank: 'Banco',
+      accountNumber: 'Número de cuenta',
+      holder: 'Titular',
+      depositorName: 'Nombre del remitente',
+      depositorNote: 'Escribe esto exactamente como nombre del remitente para que podamos identificar tu transferencia.',
+      deadline: 'Transfiere antes del {{date}}',
+      afterNote: 'Confirmamos las transferencias en 1 día hábil y te avisamos en la app.',
+      copyHint: 'Mantén pulsado un valor para copiarlo.',
+    },
   },
 
   requestDetail: {

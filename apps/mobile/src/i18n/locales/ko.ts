@@ -336,6 +336,17 @@ const ko: Resources = {
     backToRequest: '문의로 돌아가기',
     consent: '결제 즉시 요청 처리가 시작되고, 시작 후에는 아직 수행되지 않은 부분만 취소할 수 있다는 점을 이해했어요. {{refund}}',
     continueToPayment: '결제 계속하기',
+    bankTransfer: {
+      title: '아래 계좌로 입금해 주세요',
+      bank: '은행',
+      accountNumber: '계좌번호',
+      holder: '예금주',
+      depositorName: '입금자명',
+      depositorNote: '입금 내역을 대조할 수 있도록 입금자명을 이대로 입력해 주세요.',
+      deadline: '{{date}}까지 입금',
+      afterNote: '입금은 영업일 1일 내에 확인하고 앱으로 알려 드려요.',
+      copyHint: '길게 누르면 복사할 수 있어요.',
+    },
   },
 
   requestDetail: {
