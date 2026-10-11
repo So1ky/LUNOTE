@@ -33,6 +33,9 @@ export function RequestDetailPage() {
   const [confirmingTransfer, setConfirmingTransfer] = useState(false);
   const [transferBusy, setTransferBusy] = useState(false);
   const [transferMessage, setTransferMessage] = useState<string | null>(null);
+  const [transferError, setTransferError] = useState<string | null>(null);
+  /** 확인 성공 후 재조회 전까지 확인 블록을 숨겨 중복 클릭을 막는다 */
+  const [transferDone, setTransferDone] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -120,22 +123,35 @@ export function RequestDetailPage() {
   const onConfirmTransfer = async () => {
     if (!pendingTransfer) return;
     setTransferBusy(true);
+    setTransferError(null);
+    setTransferMessage(null);
     try {
       await api(`/admin/payments/${pendingTransfer.id}/confirm-transfer`, {
         method: 'POST',
       });
+    } catch (err) {
+      setTransferError(
+        err instanceof ApiError ? err.message : 'Something went wrong',
+      );
+      setTransferBusy(false);
+      setConfirmingTransfer(false);
+      return;
+    }
+    // 입금 확인은 성공 — 이후 재조회 실패는 확인 실패와 구분한다
+    setTransferDone(true);
+    setTransferMessage('Transfer confirmed — customer notified.');
+    setTransferBusy(false);
+    setConfirmingTransfer(false);
+    try {
       const refreshed = await api<AdminQuoteRequestDetail>(
         `/admin/quote-requests/${request.id}`,
       );
       setRequest(refreshed);
-      setTransferMessage('Transfer confirmed — customer notified.');
-    } catch (err) {
-      setTransferMessage(
-        err instanceof ApiError ? err.message : 'Something went wrong',
+    } catch {
+      setTransferMessage(null);
+      setTransferError(
+        'Transfer confirmed — reload the page to see the updated status.',
       );
-    } finally {
-      setTransferBusy(false);
-      setConfirmingTransfer(false);
     }
   };
 
@@ -267,7 +283,7 @@ export function RequestDetailPage() {
             </div>
           )}
 
-          {pendingTransfer && (
+          {pendingTransfer && !transferDone && (
             <div
               style={{
                 margin: '0 0 16px',
@@ -308,6 +324,9 @@ export function RequestDetailPage() {
           )}
           {transferMessage && (
             <div style={{ color: 'var(--success)', fontSize: 14, marginBottom: 12 }}>{transferMessage}</div>
+          )}
+          {transferError && (
+            <div className="error" style={{ marginBottom: 12 }}>{transferError}</div>
           )}
 
           {canCreate ? (
