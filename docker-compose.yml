@@ -1,0 +1,64 @@
+# LUNOTE 로컬 개발 환경
+# 사용법:
+#   docker compose up -d      # 백그라운드로 전부 시작
+#   docker compose ps         # 상태 확인
+#   docker compose logs -f db # 특정 서비스 로그 보기
+#   docker compose down       # 전부 중지 (데이터는 volume에 보존)
+#   docker compose down -v    # 중지 + 데이터까지 삭제 (초기화)
+#
+# 프로덕션은 RDS/ElastiCache를 사용한다 — 이 파일은 로컬 전용.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lunote-db
+    environment:
+      POSTGRES_USER: lunote
+      POSTGRES_PASSWORD: lunote_local # 로컬 전용 비밀번호. 프로덕션은 Secrets Manager.
+      POSTGRES_DB: lunote
+    ports:
+      - '5432:5432' # 호스트:컨테이너 — 맥의 5432 → 컨테이너의 5432
+    volumes:
+      - db-data:/var/lib/postgresql/data # 컨테이너를 지워도 데이터 유지
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lunote -d lunote']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: lunote-redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # S3 호환 로컬 스토리지 (CI와 같은 이미지) — 프로덕션은 실제 S3 (env만 교체)
+  s3mock:
+    image: adobe/s3mock:5.2.3
+    container_name: lunote-s3mock
+    user: root # 이미지 기본 사용자(1000)는 named volume에 쓰지 못한다. 로컬 전용
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: lunote-attachments # 시작 시 버킷 자동 생성
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /data
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: 'true' # 재시작해도 파일 유지
+    ports:
+      - '9090:9090' # S3 API (웹 콘솔 없음)
+    volumes:
+      - s3mock-data:/data
+
+  # 로컬 메일 서버 — 보낸 메일을 http://localhost:8025 웹 UI로 확인. 프로덕션은 SES
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: lunote-mailpit
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # 웹 UI
+
+volumes:
+  db-data:
+  s3mock-data:

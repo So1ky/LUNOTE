@@ -1,0 +1,593 @@
+# 서비스 대시보드 — API RED 지표(OTel 히스토그램 http_server_request_duration, `_seconds` 접미사 없음)·이벤트 루프·에러 로그(Loki).
+# Grafana 사이드카가 label grafana_dashboard=1 ConfigMap을 읽고, annotation grafana_folder 폴더에 넣는다. 프로비저닝 대시보드라 UI 저장 불가(allowUiUpdates false, Save as 복사본은 재시작 시 사라짐) — 고칠 때는 이 JSON을 고친다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-service
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: LUNOTE
+data:
+  service.json: |
+    {
+      "uid": "lunote-service",
+      "id": null,
+      "title": "LUNOTE 서비스",
+      "description": "API RED 지표(OTel)·런타임·에러 로그. 환경은 상단 변수로 전환.",
+      "tags": [
+        "lunote"
+      ],
+      "timezone": "browser",
+      "editable": true,
+      "graphTooltip": 1,
+      "schemaVersion": 41,
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "refresh": "1m",
+      "templating": {
+        "list": [
+          {
+            "name": "env",
+            "label": "환경",
+            "type": "query",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "query": {
+              "qryType": 1,
+              "query": "label_values(up{job=\"api\"}, namespace)",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            },
+            "definition": "label_values(up{job=\"api\"}, namespace)",
+            "current": {
+              "text": "prod",
+              "value": "prod"
+            },
+            "refresh": 1,
+            "sort": 1,
+            "includeAll": false,
+            "multi": false
+          }
+        ]
+      },
+      "annotations": {
+        "list": []
+      },
+      "links": [],
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "API Pod 수 (up)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(up{job=\"api\", namespace=\"$env\"} == 1)",
+              "legendFormat": "__auto",
+              "range": false,
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value"
+          }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "컨테이너 재시작 (최근 1시간)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 12,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"$env\", container=\"api\"}[1h]))",
+              "legendFormat": "__auto",
+              "range": false,
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "0",
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value"
+          }
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "요청률 (RPS)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 4,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(rate(http_server_request_duration_count{job=\"api\", namespace=\"$env\"}[5m])) or vector(0)",
+              "legendFormat": "RPS",
+              "range": true,
+              "instant": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "/health·/metrics는 계측 제외라 ALB 헬스 체크는 잡히지 않는다."
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "5xx 비율",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 4,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "(lunote:http_5xx:rate5m{namespace=\"$env\"} or lunote:http_requests:rate5m{namespace=\"$env\"} * 0) / (lunote:http_requests:rate5m{namespace=\"$env\"} > 0)",
+              "legendFormat": "5xx 비율",
+              "range": true,
+              "instant": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "unit": "percentunit",
+              "noValue": "요청 없음",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.01
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "알림 ApiHigh5xxRatio: 1% 초과 + 5분에 5xx 5건 이상, 5분 지속."
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "응답 시간 P50 / P95 / P99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 12,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_bucket{job=\"api\", namespace=\"$env\"}[5m]))) >= 0",
+              "legendFormat": "P50",
+              "range": true,
+              "instant": false
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_bucket{job=\"api\", namespace=\"$env\"}[5m]))) >= 0",
+              "legendFormat": "P95",
+              "range": true,
+              "instant": false
+            },
+            {
+              "refId": "C",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_bucket{job=\"api\", namespace=\"$env\"}[5m]))) >= 0",
+              "legendFormat": "P99",
+              "range": true,
+              "instant": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "unit": "s",
+              "noValue": "요청 없음",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "알림 ApiHighLatency: P95 > 1s + 분당 10건 초과, 5분 지속."
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "상태 코드별 요청률",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 12,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (http_response_status_code) (rate(http_server_request_duration_count{job=\"api\", namespace=\"$env\"}[5m]))",
+              "legendFormat": "{{http_response_status_code}}",
+              "range": true,
+              "instant": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 80,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "drawStyle": "bars",
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 7,
+          "type": "bargauge",
+          "title": "느린 라우트 Top 5 (P95, 선택한 시간 범위)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 20,
+            "w": 12,
+            "h": 8
+          },
+          "description": "404는 라우트가 없어 제외. 저트래픽에서는 소수 요청이 P95를 좌우한다.",
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "topk(5, histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_bucket{job=\"api\", namespace=\"$env\", http_route!=\"\"}[$__range]))) >= 0)",
+              "legendFormat": "{{http_route}}",
+              "range": false,
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "noValue": "요청 없음",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          }
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "이벤트 루프 지연 P99 (Pod별)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 20,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "max by (pod) (nodejs_eventloop_delay_p99{job=\"api\", namespace=\"$env\"})",
+              "legendFormat": "{{pod}}",
+              "range": true,
+              "instant": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "OTel runtime-node 계측(p50·p90·p99만 있음). 지속적으로 오르면 CPU 바운드 작업이나 동기 I/O를 의심."
+        },
+        {
+          "id": 9,
+          "type": "logs",
+          "title": "에러 로그 (pino level ≥ 50 + JSON 아닌 줄)",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 28,
+            "w": 24,
+            "h": 10
+          },
+          "description": "JSON 아닌 줄(크래시 스택·Node 경고)도 보여 준다 — 숫자 필터만 쓰면 파싱 실패 줄이 빠진다(실측). Pod 기동마다 pg SSL 경고 ≈9줄이 함께 보인다.",
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "{namespace=\"$env\", app=\"api\"} |~ `\\S` | json | level >= 50 or __error__ != \"\"",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "wrapLogMessage": true,
+            "sortOrder": "Descending",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false
+          }
+        }
+      ]
+    }

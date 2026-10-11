@@ -1,0 +1,146 @@
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
+import { Button } from '@/components/ui/button';
+import { Screen } from '@/components/ui/screen';
+import { TextField } from '@/components/ui/text-field';
+import { Brand, Radius, Spacing, Type } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
+import { api, ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+
+export default function VerifyEmailScreen() {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { token, profile, refreshProfile, signOut } = useAuth();
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const onVerify = async () => {
+    if (!token) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await api('/auth/verify-email', {
+        method: 'POST',
+        body: { code: code.trim() },
+        token,
+      });
+      await refreshProfile();
+      router.replace('/welcome'); // 가입 완료 축하 + 서비스 소개 (기획 피드백)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onResend = async () => {
+    if (!token) return;
+    setError(null);
+    setInfo(null);
+    try {
+      await api('/auth/resend-verification', { method: 'POST', token });
+      setInfo(t('verifyEmail.codeSent'));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
+    }
+  };
+
+  return (
+    <Screen keyboard center narrow>
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}>
+          <AppIcon name="mailUnread" size={26} color={Brand.purpleSoft} />
+        </View>
+        <ThemedText type="title">{t('verifyEmail.title')}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+          {t('verifyEmail.subtitle')}{'\n'}
+          {profile?.email ?? t('verifyEmail.yourEmail')}
+        </ThemedText>
+      </View>
+
+      <TextField
+        placeholder="123456"
+        keyboardType="number-pad"
+        maxLength={6}
+        value={code}
+        onChangeText={setCode}
+        style={styles.codeInput}
+      />
+
+      {error && (
+        <ThemedText type="small" style={styles.error}>
+          {error}
+        </ThemedText>
+      )}
+      {info && (
+        <ThemedText type="small" style={styles.info}>
+          {info}
+        </ThemedText>
+      )}
+
+      <Button
+        label={t('verifyEmail.verify')}
+        size="lg"
+        loading={submitting}
+        disabled={code.trim().length !== 6}
+        onPress={() => void onVerify()}
+      />
+
+      <View style={styles.secondary}>
+        <Button
+          label={t('verifyEmail.resendCode')}
+          variant="ghost"
+          onPress={() => void onResend()}
+        />
+
+        {/* 인증 완료 전에는 앱 진입 불가 (강제 잠금) — 탈출구는 로그아웃뿐 */}
+        <Button
+          label={t('verifyEmail.logOut')}
+          variant="ghost"
+          onPress={() => {
+            void signOut().then(() => router.replace('/login'));
+          }}
+        />
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  hero: {
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  heroIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.purpleTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centered: {
+    textAlign: 'center',
+  },
+  codeInput: {
+    textAlign: 'center',
+    fontSize: Type.heading.fontSize,
+    letterSpacing: 8,
+  },
+  error: {
+    color: Brand.danger,
+  },
+  info: {
+    color: Brand.success,
+  },
+  secondary: {
+    gap: Spacing.xxs,
+  },
+});

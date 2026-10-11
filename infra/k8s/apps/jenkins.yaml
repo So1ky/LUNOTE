@@ -1,0 +1,28 @@
+# Jenkins(CI). 네임스페이스·시크릿·가드레일은 namespaces 앱(infra/k8s/platform/namespaces/jenkins*.yaml).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jenkins
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.jenkins.io
+      chart: jenkins
+      targetRevision: 5.9.65
+      helm:
+        releaseName: jenkins
+        valueFiles:
+          - $values/infra/k8s/platform/jenkins/values.yaml
+    - repoURL: https://github.com/So1ky/LUNOTE.git
+      targetRevision: develop
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jenkins
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - ServerSideApply=true

@@ -1,0 +1,105 @@
+# Loki — 단일 바이너리(Monolithic) 1개, 저장소 S3(IRSA), 보존 14일. 캐시(memcached)·gateway·canary·ruler는 끈다(코어 노드 메모리).
+deploymentMode: Monolithic
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+    # 차트 기본은 자기 Service(ClusterIP:9095) — Service 경유 자기 호출은 NetworkPolicy가 막는다(Pod IP 직접은 lo라 무관)
+    compactor_grpc_address: 127.0.0.1:9095
+  storage:
+    type: s3
+    bucketNames:
+      chunks: lunote-loki-695019457880
+      ruler: lunote-loki-695019457880
+      admin: lunote-loki-695019457880
+    s3:
+      region: ap-northeast-2
+      # 자격 증명 없음 — SA의 IRSA 토큰(lunote-loki 롤)
+  schemaConfig:
+    configs:
+      - from: "2026-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  limits_config:
+    retention_period: 336h # 14일
+    # 라벨은 namespace·app·pod·container뿐(Alloy relabel) — 카디널리티 상한은 안전망
+    max_label_names_per_series: 15
+    ingestion_rate_mb: 8
+    ingestion_burst_size_mb: 16
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+  # S3 만료(15일)가 loki_cluster_seed.json을 지우므로 사용 통계 전송을 끈다
+  analytics:
+    reporting_enabled: false
+
+singleBinary:
+  replicas: 1
+  automountServiceAccountToken: false # Pod 쪽 값이 SA 값보다 우선 — 둘 다 끈다
+  # 룰 ConfigMap 감시 사이드카 — 로그 기반 알림은 쓰지 않는다(카운터는 앱이 OTel로)
+  sidecar: false
+  # WAL·인덱스 캐시 — S3에 쓰기 전 데이터를 재시작에도 잃지 않게
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 50m # 결정 17: 코어 CPU 예약량 병목
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
+
+serviceAccount:
+  create: true
+  name: loki # Task 1 IRSA 신뢰 정책의 SA 이름
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-loki
+  # Loki는 K8s API를 쓰지 않는다. IRSA 토큰은 EKS 웹훅이 별도 projected 볼륨으로 넣으므로 무관
+  automountServiceAccountToken: false
+
+# 차트 기본은 룰 사이드카용 ClusterRole(전 클러스터 configmaps·secrets 읽기) — 사이드카를 끄고 RBAC도 만들지 않는다
+rbac:
+  namespaced: true
+sidecar:
+  rules:
+    enabled: false
+
+# 헤드리스 loki-memberlist에 NotReady Pod도 싣는다 — 기본(false)이면 재시작 때 Ready가 ≈3분 늦어질 경우
+# 자기 자신 join 실패 → abort_if_cluster_join_fails로 exit 1 크래시루프(리뷰 시 로컬 실측)
+memberlist:
+  service:
+    publishNotReadyAddresses: true
+
+# 분산 모드 컴포넌트는 0
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+ruler:
+  enabled: false
+# 부가 컴포넌트 끔
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+gateway:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false

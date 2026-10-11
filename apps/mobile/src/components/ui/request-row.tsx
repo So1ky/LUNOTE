@@ -1,0 +1,58 @@
+import { StyleSheet, View } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
+import { Badge, STATUS_TONE } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
+import { CATEGORY_META, formatDate, type QuoteRequest } from '@/lib/quote-requests';
+
+type RequestRowProps = {
+  request: QuoteRequest;
+  onPress: () => void;
+};
+
+/** 요청 목록 한 행 — 홈 최근 요청과 Quote 탭 목록이 공유한다 */
+export function RequestRow({ request, onPress }: RequestRowProps) {
+  const { t, locale } = useTranslation();
+  const meta = CATEGORY_META[request.category];
+
+  return (
+    <Card style={styles.row} onPress={onPress}>
+      <View style={styles.iconTile}>
+        <AppIcon name={meta.icon} size={19} color={Brand.purpleSoft} />
+      </View>
+      <View style={styles.text}>
+        <ThemedText type="bodyStrong" numberOfLines={1}>
+          {t(`categories.${request.category}`)}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          #{request.id} · {formatDate(request.createdAt, locale)}
+        </ThemedText>
+      </View>
+      <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />
+    </Card>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+  },
+  iconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.purpleTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: {
+    flex: 1,
+    gap: 2,
+  },
+});

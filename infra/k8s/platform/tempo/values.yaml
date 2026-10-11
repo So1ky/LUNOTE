@@ -1,0 +1,76 @@
+# Tempo 3.x — 단일 바이너리 1개(StatefulSet), 저장소 S3(IRSA), 보존 7일. OTLP gRPC 4317로 받는다(Alloy가 보낸다).
+# 3.0부터 ingester·compactor가 없다 — 최근 데이터는 live-store, 압축·보존은 backend-scheduler/worker(단일 바이너리는 Kafka 불필요).
+fullnameOverride: tempo
+
+tempo:
+  reportingEnabled: false
+  # 차트는 이 값을 backend_scheduler 쪽에만 넣는데, 3.1.0에서 실제 삭제는 worker의 compaction.block_retention(기본 336h)을
+  # 따른다(tempodb/retention.go) — 둘 다 7일로. 버킷 만료 8일은 안전망(Tempo가 먼저 지워야 조회 시 없는 블록 참조가 없다)
+  retention: 168h
+  backendWorker:
+    compaction:
+      block_retention: 168h
+  # 단일 바이너리는 live-store가 완료 블록을 곧바로 S3에 쓴다 — 기본 30초면 저트래픽에서 작은 블록이
+  # 하루 수천 개(객체 수·압축 부하·blocklist 길이). WAL은 PV(/var/tempo)라 길게 잡아도 재시작에 안전
+  liveStore:
+    max_block_duration: 5m
+  # Go 힙이 limit(1Gi)에 닿기 전에 GC가 먼저 조이게 — 없으면 압축·검색 중 순간 증가가 곧바로 OOMKill
+  extraEnv:
+    - name: GOMEMLIMIT
+      value: 900MiB
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: lunote-tempo-695019457880
+        endpoint: s3.ap-northeast-2.amazonaws.com
+        region: ap-northeast-2
+        # 자격 증명 없음 — SA의 IRSA 토큰(lunote-tempo 롤)
+      wal:
+        path: /var/tempo/wal
+  # 수신기는 차트 기본(OTLP gRPC·HTTP + jaeger 4종) 유지 — 차트 템플릿이 jaeger 키를 필수로 참조하고
+  # containerPort도 고정이라 끌 수 없다. 실제로 열리는 것은 NetworkPolicy tempo의 4317(Alloy)·3200(Grafana)뿐
+  resources:
+    requests:
+      cpu: 50m # 결정 17: 코어 CPU 예약량 병목
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
+
+# Pod 수준 — 차트 기본(10001)에 seccomp만 더한다
+securityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# WAL·live-store 블록 — S3에 쓰기 전 데이터를 재시작에도 잃지 않게
+persistence:
+  enabled: true
+  storageClassName: gp3
+  size: 10Gi
+
+serviceAccount:
+  create: true
+  name: tempo # Task 1 IRSA 신뢰 정책의 SA 이름
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-tempo
+  # Tempo는 K8s API를 쓰지 않는다. IRSA 토큰은 EKS 웹훅이 별도 projected 볼륨으로 넣으므로 무관
+  automountServiceAccountToken: false
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: karpenter.sh/nodepool
+              operator: DoesNotExist

@@ -1,0 +1,264 @@
+// LUNOTE 도메인 스키마
+// 주문 상태 머신과 결제 멱등성 설계는 docs/ARCHITECTURE.md §7 참조
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  APPLE
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum Category {
+  HOUSING
+  VISA
+  HOSPITAL
+  BANK
+  TELECOM
+  OTHER
+}
+
+// 상태 머신: REVIEWING → QUOTED → PAID → IN_PROGRESS → COMPLETED (+ CANCELLED, REFUNDED)
+enum RequestStatus {
+  REVIEWING
+  QUOTED
+  PAID
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+// 결제 채널. PortOne 위의 PG를 구분한다 — 통화 라우팅(USD→PAYPAL)과 정산 대조에 쓴다
+enum PaymentProvider {
+  PAYPAL
+  BANK_TRANSFER // 수동 계좌이체 — PG 밖, 관리자 입금 확인으로 PAID (ARCHITECTURE §7)
+}
+
+/// 고객이 문의 때 고르는 결제수단 — 견적 통화를 결정한다 (PAYPAL→USD, BANK_TRANSFER→KRW)
+enum PaymentMethod {
+  PAYPAL
+  BANK_TRANSFER
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  passwordHash String? // EMAIL 가입자만. 소셜 로그인은 null
+  provider     AuthProvider
+  providerId   String? // 소셜 로그인 계정 식별자
+  // 실명 — 관리자가 고객을 식별하는 기준 (국제 사용자라 given/family 분리)
+  firstName    String?
+  lastName     String?
+  nationality  String? // ISO 3166-1 alpha-2
+  language     String? // BCP 47 (예: en, ko, vi)
+  role         UserRole     @default(CUSTOMER)
+
+  // 프로필 사진 — 파일은 S3, DB에는 키만 (attachments와 동일 패턴)
+  avatarS3Key String?
+
+  // 이메일 인증 — 코드는 sha256 해시로만 저장 (원문 미저장)
+  emailVerifiedAt           DateTime?
+  verificationCodeHash      String?
+  verificationCodeExpiresAt DateTime?
+  verificationAttempts      Int       @default(0)
+
+  // 비밀번호 재설정 — 이메일 인증과 동일한 코드 정책 (해시 저장, TTL, 시도 제한)
+  passwordResetCodeHash      String?
+  passwordResetCodeExpiresAt DateTime?
+  passwordResetAttempts      Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // 탈퇴 시각 — 행은 거래 기록 보존용으로 남고 개인정보는 익명화된다 (ARCHITECTURE §11 계정 삭제)
+  deletedAt DateTime?
+  // 약관·개인정보처리방침 동의 시각 — 어느 판에 동의했는지는 lunoteapp.com 문서의 시행일과 대조한다
+  termsAcceptedAt DateTime?
+
+  requests      QuoteRequest[]
+  notifications Notification[]
+  auditLogs     AdminAuditLog[]
+  refreshTokens RefreshToken[]
+  pushTokens    PushToken[]
+
+  @@unique([provider, providerId])
+  @@map("users")
+}
+
+/// 리프레시 토큰 — 원문 미저장(sha256 해시), 사용 시마다 회전, 재사용 탐지 시 전체 폐기
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime? // 회전·로그아웃·강제 폐기 시각
+  replacedBy String? // 회전으로 대체된 새 토큰 id (재사용 탐지 추적용)
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// 관리자 행위 감사 로그 — 실결제 분쟁 대응 근거 (ARCHITECTURE §11)
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id])
+  action     String // 예: QUOTE_CREATED
+  targetType String // 예: QUOTE_REQUEST
+  targetId   String
+  detail     Json? // 행위 시점의 핵심 값 스냅샷 (금액/통화 등)
+  createdAt  DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([targetType, targetId])
+  @@map("admin_audit_logs")
+}
+
+// 인앱 알림함 — 관리자(신규 문의)와 사용자(견적 도착) 공용.
+// OS 푸시(APNs)는 Apple Developer 가입 후 이 위에 추가한다.
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String // 수신자
+  user      User      @relation(fields: [userId], references: [id])
+  type      String // REQUEST_CREATED | QUOTE_SENT ...
+  title     String
+  body      String
+  requestId Int? // 관련 문의 (탭하면 상세로 이동)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model QuoteRequest {
+  id            Int           @id @default(autoincrement())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  category      Category
+  serviceItem   String?       @db.VarChar(40) // 카테고리별 정형 서비스 항목 (예: HOUSING_1) — 구버전 앱은 미전송
+  desiredAmount Decimal?      @db.Decimal(12, 2) // 사용자가 제시한 희망 예산 (Custom Quote 항목에서만 선택 입력)
+  currency      String        @default("USD")
+  paymentMethod PaymentMethod @default(PAYPAL)
+  description   String
+  contactMethod String // 관리자가 회신할 연락 수단 (이메일 등)
+  status        RequestStatus @default(REVIEWING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  attachments Attachment[]
+  quote       Quote?
+
+  @@index([userId, status])
+  @@map("quote_requests")
+}
+
+model Attachment {
+  id        String       @id @default(uuid())
+  requestId Int
+  request   QuoteRequest @relation(fields: [requestId], references: [id])
+  s3Key     String // 파일 본문은 S3. DB에는 키만 저장
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime     @default(now())
+
+  @@index([requestId]) // 상세 조회 시 requestId로 첨부를 모은다
+  @@map("attachments")
+}
+
+model Quote {
+  id          String       @id @default(uuid())
+  requestId   Int          @unique
+  request     QuoteRequest @relation(fields: [requestId], references: [id])
+  amount      Decimal      @db.Decimal(12, 2)
+  currency    String       @default("USD")
+  explanation String // 가격 책정 근거 (와이어프레임의 explanation)
+  // 발행 + QUOTE_VALIDITY_DAYS(기본 7일). 만료된 견적으로는 결제 불가 (ARCHITECTURE §7)
+  expiresAt   DateTime
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  payments Payment[]
+
+  @@map("quotes")
+}
+
+// 결제 시도 1건 = 1행. id를 PortOne paymentId로 그대로 쓴다 (PortOne은 완료된 paymentId 재사용 불가).
+// 같은 견적에 PAID가 2건 생기는 것은 마이그레이션의 부분 유니크 인덱스(payments_one_paid_per_quote)가 DB 수준에서 막는다.
+model Payment {
+  id          String          @id @default(uuid()) // PortOne paymentId로 사용하는 우리 쪽 식별자
+  quoteId     String
+  quote       Quote           @relation(fields: [quoteId], references: [id])
+  provider    PaymentProvider // 결제 채널 — 통화/PG 확장 시 여기서 분기 (PAYPAL=USD, 추후 INICIS=KRW)
+  amount      Decimal         @db.Decimal(12, 2)
+  currency    String
+  status      PaymentStatus   @default(PENDING)
+  portoneTxId String? // PortOne 거래번호(transactionId) — 분쟁/정산 대조용
+  failReason  String? // 실패/불일치 사유 (PG 코드 등, 개인정보 없음)
+  paidAt      DateTime?
+  // 결제 시 "수행 즉시 개시·개시 후 청약철회 제한" 명시 동의 시각 (전자상거래법 §17②5호, 분쟁 증빙)
+  withdrawalConsentAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  events PaymentEvent[]
+
+  @@index([quoteId, status])
+  @@map("payments")
+}
+
+// PortOne 웹훅 멱등성의 핵심: eventId UNIQUE.
+// 같은 이벤트가 중복 전송되면 INSERT가 충돌하고, 그 경우 200으로 무시한다 (ARCHITECTURE §7).
+model PaymentEvent {
+  id        Int      @id @default(autoincrement())
+  eventId   String   @unique // PortOne 웹훅 이벤트 ID
+  paymentId String?
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+  type      String // 이벤트 종류 (Transaction.Paid 등)
+  payload   Json // 원문 보존 (감사/재처리용)
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
+  @@map("payment_events")
+}
+
+enum PushPlatform {
+  IOS
+  ANDROID
+}
+
+/// Expo 푸시 토큰 — 행이 있으면 opt-in. 로그아웃·탈퇴·DeviceNotRegistered 때 삭제 (ARCHITECTURE §11 푸시 알림)
+model PushToken {
+  id         String       @id @default(uuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  token      String       @unique
+  platform   PushPlatform
+  createdAt  DateTime     @default(now())
+  lastSeenAt DateTime     @default(now())
+
+  @@index([userId])
+  @@map("push_tokens")
+}

@@ -1,0 +1,40 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+
+export class CreateQuoteDto {
+  // 결제 금액의 유일한 원천 — 앱/사용자가 보내는 금액은 절대 신뢰하지 않는다 (ARCHITECTURE §7)
+  @ApiProperty({ example: 340 })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  // 전체 상한(KRW 1억 원) — 통화별 상한(USD 100만 달러)은 통화가 정해지는 서비스에서 건다
+  @Max(100_000_000)
+  amount: number;
+
+  // 선택 — 보내면 결제수단이 정하는 통화와 같아야 한다(다르면 400). 관리자 웹은 보내지 않는다
+  @ApiPropertyOptional({
+    example: 'USD',
+    description: '생략 권장 — 결제수단이 통화를 결정',
+  })
+  @IsOptional()
+  @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO code' })
+  currency?: string;
+
+  @ApiProperty({
+    example:
+      'Includes 3 apartment viewings, contract translation, and move-in support.',
+    description: '가격 책정 근거 — 사용자에게 그대로 노출된다',
+  })
+  @IsString()
+  @MinLength(5)
+  @MaxLength(2000)
+  explanation: string;
+}

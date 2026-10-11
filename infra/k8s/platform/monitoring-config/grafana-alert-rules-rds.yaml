@@ -1,0 +1,122 @@
+# RDS 지표는 CloudWatch에만 있다 — Grafana 규칙으로 평가하고, Grafana 내장 Alertmanager가 아래 contact point로 우리 Alertmanager에 넘긴다(디스코드 경로 하나).
+# 데이터소스 경로(handleGrafanaManagedAlerts)는 kps values에서 끔 — 두 경로가 다 열리면 같은 알림이 두 번 간다.
+# Grafana 사이드카가 label grafana_alert=1 ConfigMap을 /etc/grafana/provisioning/alerting에 넣고 reload API를 부른다. UI 수정은 재시작 시 원복(PVC 없음).
+# 임계치: 여유 스토리지 2GiB(allocated 20GiB, 자동 확장 50GiB), 커넥션 80(db.t4g.micro max_connections ≈112의 ~70%).
+# 2GiB는 20GiB의 10% = RDS 자동 확장 시작 조건과 같다 — 첫 확장 때 함께 뜰 수 있고, 확장 뒤에는 "50GiB 한도 근접 또는 확장 쿨다운(6시간) 중"이라는 뜻.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alert-rules-rds
+  namespace: monitoring
+  labels:
+    grafana_alert: "1"
+data:
+  contact-points.yaml: |
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: alertmanager
+        receivers:
+          - uid: alertmanager-forward
+            type: prometheus-alertmanager
+            settings:
+              url: http://kube-prometheus-stack-alertmanager.monitoring.svc:9093
+  policies.yaml: |
+    apiVersion: 1
+    policies:
+      - orgId: 1
+        receiver: alertmanager
+        group_by: [alertname]
+        # 묶기·재알림은 우리 Alertmanager가 한다 — 여기선 자주 다시 넘겨 발화 중 알림의 endsAt을 갱신한다.
+        # 실측(Grafana 13.2.3 → AM v0.34.1): endsAt = 전송 시각 +5분, 실제 재전송 ≈2분(group_interval 틱마다 repeat 검사).
+        # repeat_interval을 2m 이상으로 올리면 재전송 ≈4분으로 5분 한도에 붙는다 — 1m 유지.
+        # (재전송이 5분 넘게 끊기면 우리 AM이 RESOLVED를 보냈다가 다음 전송 때 다시 FIRING. Grafana 재시작 시 for 재대기 동안에도 같은 현상)
+        group_wait: 0s
+        group_interval: 1m
+        repeat_interval: 1m
+  rds.yaml: |
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: rds
+        folder: LUNOTE
+        interval: 1m
+        rules:
+          - uid: rds-low-storage
+            title: RdsLowStorage
+            condition: C
+            for: 10m
+            # 재운 뒤 깨어날 때 CloudWatch 공백으로 DatasourceNoData가 뜨지 않게 OK. 권한·쿼리 오류는 Error 상태로 남긴다
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            # 값 없음(OK 상태)에도 주석 템플릿이 평가된다 — $values.B가 nil이면 humanize1024가 오류를 내므로 with로 감싼다
+            annotations:
+              summary: "RDS lunote 여유 스토리지 2GiB 미만"
+              description: "FreeStorageSpace {{ with $values.B }}{{ humanize1024 .Value }}B{{ end }} — 자동 확장(50GiB) 한도와 느린 쿼리·로그 적재 확인"
+            data:
+              - refId: A
+                relativeTimeRange: { from: 900, to: 0 }
+                datasourceUid: cloudwatch
+                model:
+                  refId: A
+                  queryMode: Metrics
+                  metricQueryType: 0
+                  metricEditorMode: 0
+                  namespace: AWS/RDS
+                  metricName: FreeStorageSpace
+                  dimensions: { DBInstanceIdentifier: lunote }
+                  matchExact: true
+                  statistic: Average
+                  period: "300"
+                  region: default
+              - refId: B
+                datasourceUid: __expr__
+                model: { refId: B, type: reduce, expression: A, reducer: last }
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions:
+                    - evaluator: { type: lt, params: [2147483648] }
+          - uid: rds-high-connections
+            title: RdsHighConnections
+            condition: C
+            for: 5m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: "RDS lunote 커넥션 80 초과"
+              description: "DatabaseConnections {{ with $values.B }}{{ .Value }}{{ end }} — Pod 수×Prisma 풀 크기 확인(max_connections ≈112)"
+            data:
+              - refId: A
+                relativeTimeRange: { from: 600, to: 0 }
+                datasourceUid: cloudwatch
+                model:
+                  refId: A
+                  queryMode: Metrics
+                  metricQueryType: 0
+                  metricEditorMode: 0
+                  namespace: AWS/RDS
+                  metricName: DatabaseConnections
+                  dimensions: { DBInstanceIdentifier: lunote }
+                  matchExact: true
+                  statistic: Maximum
+                  period: "60"
+                  region: default
+              - refId: B
+                datasourceUid: __expr__
+                model: { refId: B, type: reduce, expression: A, reducer: last }
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions:
+                    - evaluator: { type: gt, params: [80] }

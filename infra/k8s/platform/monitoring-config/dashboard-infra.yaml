@@ -1,0 +1,385 @@
+# 인프라 대시보드 — RDS(CloudWatch, Grafana IRSA 읽기 전용). 노드·K8s 리소스는 kps 기본 대시보드를 쓴다.
+# 커뮤니티 대시보드(gnetId)는 넣지 않는다: 차트 init 컨테이너가 기동마다 grafana.com에서 받는데(`set -e` + `curl -f`) 받기 실패면 Grafana가 뜨지 않고(`-k`라 TLS 검증도 없음), 내용도 kps 기본과 겹친다(Plan 8 Task 7).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-infra
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: LUNOTE
+data:
+  infra.json: |
+    {
+      "uid": "lunote-infra",
+      "id": null,
+      "title": "LUNOTE 인프라 (RDS)",
+      "description": "RDS 지표(CloudWatch, 패널 period 5분 — RDS 원본은 1분 해상도). 노드·K8s 리소스는 kps 기본 대시보드(Node Exporter / Nodes, Kubernetes / Compute Resources / *)를 쓴다.",
+      "tags": [
+        "lunote"
+      ],
+      "timezone": "browser",
+      "editable": true,
+      "graphTooltip": 1,
+      "schemaVersion": 41,
+      "time": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "refresh": "5m",
+      "templating": {
+        "list": []
+      },
+      "annotations": {
+        "list": []
+      },
+      "links": [],
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "RDS CPU",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "cloudwatch"
+              },
+              "queryMode": "Metrics",
+              "metricQueryType": 0,
+              "metricEditorMode": 0,
+              "namespace": "AWS/RDS",
+              "metricName": "CPUUtilization",
+              "dimensions": {
+                "DBInstanceIdentifier": "lunote"
+              },
+              "matchExact": true,
+              "statistic": "Average",
+              "period": "300",
+              "region": "default",
+              "id": "",
+              "expression": "",
+              "label": "CPU"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "db.t4g.micro는 버스터블 — 기준선 초과가 길면 CPU 크레딧이 줄어든다."
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "RDS 커넥션 (최대)",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "cloudwatch"
+              },
+              "queryMode": "Metrics",
+              "metricQueryType": 0,
+              "metricEditorMode": 0,
+              "namespace": "AWS/RDS",
+              "metricName": "DatabaseConnections",
+              "dimensions": {
+                "DBInstanceIdentifier": "lunote"
+              },
+              "matchExact": true,
+              "statistic": "Maximum",
+              "period": "300",
+              "region": "default",
+              "id": "",
+              "expression": "",
+              "label": "커넥션"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1,
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "알림 RdsHighConnections: 80 초과 5분(max_connections ≈112)."
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "RDS 여유 스토리지",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "cloudwatch"
+              },
+              "queryMode": "Metrics",
+              "metricQueryType": 0,
+              "metricEditorMode": 0,
+              "namespace": "AWS/RDS",
+              "metricName": "FreeStorageSpace",
+              "dimensions": {
+                "DBInstanceIdentifier": "lunote"
+              },
+              "matchExact": true,
+              "statistic": "Average",
+              "period": "300",
+              "region": "default",
+              "id": "",
+              "expression": "",
+              "label": "여유 공간"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "알림 RdsLowStorage: 2GiB 미만 10분(= 자동 확장 시작 조건, 최대 50GiB)."
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "RDS 여유 메모리",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 8,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "cloudwatch"
+              },
+              "queryMode": "Metrics",
+              "metricQueryType": 0,
+              "metricEditorMode": 0,
+              "namespace": "AWS/RDS",
+              "metricName": "FreeableMemory",
+              "dimensions": {
+                "DBInstanceIdentifier": "lunote"
+              },
+              "matchExact": true,
+              "statistic": "Average",
+              "period": "300",
+              "region": "default",
+              "id": "",
+              "expression": "",
+              "label": "여유 메모리"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "RDS 읽기·쓰기 지연",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 16,
+            "w": 24,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "cloudwatch"
+              },
+              "queryMode": "Metrics",
+              "metricQueryType": 0,
+              "metricEditorMode": 0,
+              "namespace": "AWS/RDS",
+              "metricName": "ReadLatency",
+              "dimensions": {
+                "DBInstanceIdentifier": "lunote"
+              },
+              "matchExact": true,
+              "statistic": "Average",
+              "period": "300",
+              "region": "default",
+              "id": "",
+              "expression": "",
+              "label": "읽기"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "cloudwatch"
+              },
+              "queryMode": "Metrics",
+              "metricQueryType": 0,
+              "metricEditorMode": 0,
+              "namespace": "AWS/RDS",
+              "metricName": "WriteLatency",
+              "dimensions": {
+                "DBInstanceIdentifier": "lunote"
+              },
+              "matchExact": true,
+              "statistic": "Average",
+              "period": "300",
+              "region": "default",
+              "id": "",
+              "expression": "",
+              "label": "쓰기"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineWidth": 1
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        }
+      ]
+    }

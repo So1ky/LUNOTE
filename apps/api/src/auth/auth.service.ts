@@ -1,0 +1,453 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { AuthProvider, Prisma } from '@prisma/client';
+import { hash as argonHash, verify as argonVerify } from 'argon2';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
+import { MailService } from '../notifications/mail.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { AppleLoginDto } from './dto/apple-login.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
+import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/signup.dto';
+import { AppleTokenVerifier } from './social/apple-token.verifier';
+import { GoogleTokenVerifier } from './social/google-token.verifier';
+import type { SocialIdentity } from './social/social-identity';
+
+const hashCode = (code: string) =>
+  createHash('sha256').update(code).digest('hex');
+
+export interface JwtPayload {
+  sub: string; // user id
+  role: string;
+}
+
+@Injectable()
+export class AuthService {
+  // 인증 코드 정책 — 기본값과 근거는 env.validation.ts POLICY_DEFAULTS 참고
+  private readonly CODE_TTL_MS: number;
+  private readonly MAX_VERIFY_ATTEMPTS: number;
+  private readonly RESEND_COOLDOWN_MS: number;
+  private readonly REFRESH_TTL_MS: number;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+    private readonly mail: MailService,
+    private readonly google: GoogleTokenVerifier,
+    private readonly apple: AppleTokenVerifier,
+    config: ConfigService,
+  ) {
+    this.CODE_TTL_MS =
+      Number(config.getOrThrow('AUTH_CODE_TTL_MIN')) * 60 * 1000;
+    this.MAX_VERIFY_ATTEMPTS = Number(
+      config.getOrThrow('AUTH_CODE_MAX_ATTEMPTS'),
+    );
+    this.RESEND_COOLDOWN_MS =
+      Number(config.getOrThrow('AUTH_RESEND_COOLDOWN_SEC')) * 1000;
+    this.REFRESH_TTL_MS =
+      Number(config.getOrThrow('REFRESH_TTL_DAYS')) * 24 * 60 * 60 * 1000;
+  }
+
+  async signup(dto: SignupDto) {
+    const exists = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      select: { id: true },
+    });
+    if (exists) {
+      throw new ConflictException('Email already registered');
+    }
+
+    // argon2의 .d.cts가 구현 시그니처를 Promise<any>로 내보내서 단언 필요 (encoded hash는 string)
+    const passwordHash = (await argonHash(dto.password)) as string;
+    const code = this.generateCode();
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        provider: AuthProvider.EMAIL,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        verificationCodeHash: hashCode(code),
+        verificationCodeExpiresAt: new Date(Date.now() + this.CODE_TTL_MS),
+        termsAcceptedAt: new Date(),
+      },
+    });
+
+    await this.sendVerificationMail(user.email, code);
+
+    return this.issueTokens(user.id, user.role);
+  }
+
+  /** 인증 코드 검증 — 성공 시 emailVerifiedAt 기록 */
+  async verifyEmail(userId: string, code: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+
+    if (user.emailVerifiedAt) {
+      return { verified: true }; // 이미 인증됨 — 멱등
+    }
+    if (
+      !user.verificationCodeHash ||
+      !user.verificationCodeExpiresAt ||
+      user.verificationCodeExpiresAt < new Date()
+    ) {
+      throw new BadRequestException('Code expired — request a new one');
+    }
+    if (user.verificationAttempts >= this.MAX_VERIFY_ATTEMPTS) {
+      throw new BadRequestException('Too many attempts — request a new code');
+    }
+
+    if (hashCode(code) !== user.verificationCodeHash) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { verificationAttempts: { increment: 1 } },
+      });
+      throw new BadRequestException('Invalid code');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailVerifiedAt: new Date(),
+        verificationCodeHash: null,
+        verificationCodeExpiresAt: null,
+        verificationAttempts: 0,
+      },
+    });
+    return { verified: true };
+  }
+
+  /** 인증 코드 재발송 — 1분 쿨다운 (만료시각-TTL = 마지막 발송시각) */
+  async resendVerification(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+    if (user.emailVerifiedAt) {
+      return { sent: false, reason: 'already verified' };
+    }
+
+    if (user.verificationCodeExpiresAt) {
+      const lastSentAt =
+        user.verificationCodeExpiresAt.getTime() - this.CODE_TTL_MS;
+      if (Date.now() - lastSentAt < this.RESEND_COOLDOWN_MS) {
+        throw new BadRequestException('Please wait before requesting again');
+      }
+    }
+
+    const code = this.generateCode();
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        verificationCodeHash: hashCode(code),
+        verificationCodeExpiresAt: new Date(Date.now() + this.CODE_TTL_MS),
+        verificationAttempts: 0,
+      },
+    });
+    await this.sendVerificationMail(user.email, code);
+    return { sent: true };
+  }
+
+  /**
+   * 재설정 코드 발송. 계정 존재 여부를 노출하지 않기 위해 어떤 경우에도
+   * 동일한 응답을 돌려준다 — 미가입/소셜 계정/쿨다운이면 조용히 건너뛴다.
+   */
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    // 소셜 가입 계정(passwordHash null)은 재설정할 비밀번호가 없다
+    if (user?.passwordHash) {
+      const inCooldown =
+        user.passwordResetCodeExpiresAt &&
+        Date.now() -
+          (user.passwordResetCodeExpiresAt.getTime() - this.CODE_TTL_MS) <
+          this.RESEND_COOLDOWN_MS;
+
+      if (!inCooldown) {
+        const code = this.generateCode();
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            passwordResetCodeHash: hashCode(code),
+            passwordResetCodeExpiresAt: new Date(Date.now() + this.CODE_TTL_MS),
+            passwordResetAttempts: 0,
+          },
+        });
+        await this.mail.send(
+          user.email,
+          `[LUNOTE] Your password reset code: ${code}`,
+          `Your password reset code is: ${code}\n\nEnter this code in the app to set a new password. It expires in 15 minutes.\n\nIf you didn't request this, you can ignore this email — your password stays unchanged.`,
+        );
+      }
+    }
+
+    return { sent: true };
+  }
+
+  /** 코드 검증 후 새 비밀번호 저장 — 검증 정책은 verifyEmail과 동일 */
+  async resetPassword(email: string, code: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    // 어떤 실패든 동일한 에러 — 이메일/코드 중 무엇이 틀렸는지 노출하지 않는다
+    const invalid = () => new BadRequestException('Invalid or expired code');
+
+    if (!user?.passwordResetCodeHash || !user.passwordResetCodeExpiresAt) {
+      throw invalid();
+    }
+    if (user.passwordResetCodeExpiresAt < new Date()) {
+      throw invalid();
+    }
+    if (user.passwordResetAttempts >= this.MAX_VERIFY_ATTEMPTS) {
+      throw invalid();
+    }
+
+    if (hashCode(code) !== user.passwordResetCodeHash) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordResetAttempts: { increment: 1 } },
+      });
+      throw invalid();
+    }
+
+    const passwordHash = (await argonHash(newPassword)) as string;
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        passwordResetCodeHash: null,
+        passwordResetCodeExpiresAt: null,
+        passwordResetAttempts: 0,
+      },
+    });
+    // 비밀번호가 바뀌면 모든 기기의 세션 무효화 — 탈취범이 세션으로 버티는 것 차단
+    await this.revokeAllRefreshTokens(user.id);
+    return { reset: true };
+  }
+
+  /** 비밀번호 변경 — 현재 비밀번호를 확인한 뒤에만 */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { passwordHash: true },
+    });
+    // 소셜 가입 계정은 변경할 비밀번호가 없다
+    if (!user.passwordHash) {
+      throw new BadRequestException('This account has no password');
+    }
+    const valid = await argonVerify(user.passwordHash, currentPassword);
+    if (!valid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const passwordHash = (await argonHash(newPassword)) as string;
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+    // 비밀번호가 바뀌면 모든 기기의 세션 무효화 (현재 기기는 재로그인 대신 새 로그인 플로우로)
+    await this.revokeAllRefreshTokens(userId);
+    return { changed: true };
+  }
+
+  private generateCode() {
+    return String(randomInt(0, 1_000_000)).padStart(6, '0');
+  }
+
+  private sendVerificationMail(email: string, code: string) {
+    return this.mail.send(
+      email,
+      `[LUNOTE] Your verification code: ${code}`,
+      `Welcome to LUNOTE!\n\nYour verification code is: ${code}\n\nEnter this code in the app to verify your email. It expires in 15 minutes.\n\nIf you didn't create an account, you can ignore this email.`,
+    );
+  }
+
+  async login(dto: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    // 소셜 가입 계정(passwordHash null)도 동일한 에러로 응답 — 계정 존재 여부를 노출하지 않는다
+    if (!user?.passwordHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const valid = await argonVerify(user.passwordHash, dto.password);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return this.issueTokens(user.id, user.role);
+  }
+
+  async loginWithGoogle(dto: GoogleLoginDto) {
+    return this.socialLogin(
+      AuthProvider.GOOGLE,
+      await this.google.verify(dto),
+      dto.termsAccepted,
+    );
+  }
+
+  async loginWithApple(dto: AppleLoginDto) {
+    const identity = await this.apple.verify(dto);
+    return this.socialLogin(
+      AuthProvider.APPLE,
+      {
+        ...identity,
+        firstName: dto.firstName?.trim() || undefined,
+        lastName: dto.lastName?.trim() || undefined,
+      },
+      dto.termsAccepted,
+    );
+  }
+
+  /**
+   * 소셜 신원 → 로그인 또는 가입. 같은 이메일이 다른 방식으로 가입돼 있으면 409(자동 연결 없음, ARCHITECTURE §11).
+   * 탈퇴 사용자는 providerId가 null로 익명화돼 같은 소셜 계정이 오면 신규 가입이 된다.
+   * 약관 동의는 신규 가입이 될 때만 요구한다 — 앱은 로그인/가입을 구분할 수 없어 항상 보내고, 기존 사용자면 무시.
+   */
+  private async socialLogin(
+    provider: AuthProvider,
+    identity: SocialIdentity,
+    termsAccepted: boolean | undefined,
+  ) {
+    const existing = await this.findSocialUser(provider, identity.providerId);
+    if (existing) return this.issueTokens(existing.id, existing.role);
+
+    if (!identity.email) {
+      throw new BadRequestException('Email is required to create an account');
+    }
+    if (termsAccepted !== true) {
+      throw new BadRequestException('TERMS_NOT_ACCEPTED');
+    }
+    await this.assertEmailAvailable(identity.email);
+
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          email: identity.email,
+          provider,
+          providerId: identity.providerId,
+          firstName: identity.firstName,
+          lastName: identity.lastName,
+          // 제공자가 검증한 이메일 — 인증 코드 단계를 건너뛴다
+          emailVerifiedAt: new Date(),
+          termsAcceptedAt: new Date(),
+        },
+        select: { id: true, role: true },
+      });
+      return this.issueTokens(user.id, user.role);
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        // 같은 소셜 계정의 동시 가입 — 먼저 커밋된 쪽으로 로그인
+        const winner = await this.findSocialUser(provider, identity.providerId);
+        if (winner) return this.issueTokens(winner.id, winner.role);
+        // 같은 이메일의 다른 방식 가입이 먼저 커밋됨
+        await this.assertEmailAvailable(identity.email);
+      }
+      throw e;
+    }
+  }
+
+  private findSocialUser(provider: AuthProvider, providerId: string) {
+    return this.prisma.user.findFirst({
+      where: { provider, providerId },
+      select: { id: true, role: true },
+    });
+  }
+
+  /** 409 본문의 provider는 검증된 토큰 소유자(= 이메일 주인)에게만 보이므로 계정 존재 노출이 아니다 */
+  private async assertEmailAvailable(email: string) {
+    const taken = await this.prisma.user.findUnique({
+      where: { email },
+      select: { provider: true },
+    });
+    if (taken) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'This email is registered with another sign-in method',
+        code: 'EMAIL_REGISTERED',
+        provider: taken.provider,
+      });
+    }
+  }
+
+  /**
+   * 액세스(30m JWT) + 리프레시(불투명 랜덤, 30d) 쌍 발급.
+   * 리프레시 원문은 응답으로만 나가고 DB에는 sha256 해시만 저장한다.
+   */
+  private async issueTokens(userId: string, role: string) {
+    const payload: JwtPayload = { sub: userId, role };
+    const refreshToken = randomBytes(48).toString('hex');
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash: hashCode(refreshToken),
+        expiresAt: new Date(Date.now() + this.REFRESH_TTL_MS),
+      },
+    });
+    return { accessToken: this.jwt.sign(payload), refreshToken };
+  }
+
+  /**
+   * 리프레시 회전: 유효한 리프레시 토큰 → 새 쌍 발급 + 기존 토큰 폐기.
+   * 이미 폐기된 토큰이 다시 오면 탈취 신호로 보고 해당 사용자의 모든 세션을 폐기한다.
+   */
+  async refresh(refreshToken: string) {
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: hashCode(refreshToken) },
+      include: { user: { select: { id: true, role: true } } },
+    });
+    if (!stored) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    if (stored.revokedAt) {
+      // 회전된 토큰의 재사용 = 원본 또는 사본 중 하나는 탈취범 — 전 세션 무효화
+      await this.revokeAllRefreshTokens(stored.userId);
+      throw new UnauthorizedException('Session revoked — please log in again');
+    }
+    if (stored.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    const next = await this.issueTokens(stored.user.id, stored.user.role);
+    await this.prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: {
+        revokedAt: new Date(),
+        replacedBy: hashCode(next.refreshToken).slice(0, 16), // 추적용 축약 해시
+      },
+    });
+    return next;
+  }
+
+  /** 로그아웃 — 제시된 리프레시 토큰 폐기 (없거나 이미 폐기됐어도 성공: 멱등) */
+  async logout(refreshToken: string) {
+    await this.prisma.refreshToken.updateMany({
+      where: { tokenHash: hashCode(refreshToken), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  /** 모든 기기의 세션 무효화 — 비밀번호 변경/재설정, Apple 연결 해제 알림에서 호출 */
+  async revokeAllRefreshTokens(userId: string) {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    // 분실 기기 보호: 비밀번호 변경·재설정·Apple 연결 해제 뒤 옛 기기가 금액이 든 푸시를 받지 않게.
+    // 현재 기기는 다음 앱 시작(로그인) 때 조용히 재등록된다
+    await this.prisma.pushToken.deleteMany({ where: { userId } });
+  }
+}

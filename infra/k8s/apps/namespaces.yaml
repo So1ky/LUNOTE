@@ -1,0 +1,26 @@
+# staging/prod 네임스페이스 + 환경별 SecretStore(eso-reader SA, IRSA는 infra/terraform/envs/prod/eso.tf).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: namespaces
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/So1ky/LUNOTE.git
+    targetRevision: develop
+    path: infra/k8s/platform/namespaces
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - SkipDryRunOnMissingResource=true # 재해복구 시 ESO CRD보다 먼저 sync돼도 실패하지 않게
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

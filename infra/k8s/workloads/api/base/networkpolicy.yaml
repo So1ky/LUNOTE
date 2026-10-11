@@ -1,0 +1,76 @@
+# 네임스페이스는 기본 거부(platform/namespaces/*-guardrails.yaml). API와 마이그레이션 Job에 필요한 통신만 연다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api
+  annotations:
+    # 마이그레이션 Job(wave -1)보다 먼저 — 네임스페이스는 기본 거부라 정책 없이는 Job이 RDS에 닿지 못한다(첫 배포에서 드러남)
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: api
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # ALB(퍼블릭 서브넷)에서만 — target-type ip라 ALB가 파드 IP로 직접 보낸다
+    - from:
+        - ipBlock:
+            cidr: 10.0.0.0/20
+        - ipBlock:
+            cidr: 10.0.16.0/20
+      ports:
+        - protocol: TCP
+          port: 3000
+    # Prometheus가 메트릭을 긁는다 — Pod IP로 직접. Pod까지 지정(AND): 네임스페이스만 지정하면 hostNetwork인
+    # node-exporter 때문에 VPC CNI가 모든 노드 IP까지 허용 목록에 넣는다
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9464
+  egress:
+    # RDS·Redis (프라이빗 서브넷)
+    - to:
+        - ipBlock:
+            cidr: 10.0.128.0/20
+        - ipBlock:
+            cidr: 10.0.144.0/20
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    # 클러스터 내 Redis(staging — platform/namespaces/staging-redis.yaml). Service ClusterIP(172.20.0.0/16)는 위 ipBlock에
+    # 없고, VPC CNI는 ipBlock을 DNAT 전에 평가하므로 셀렉터 규칙이 필요하다(allow-dns와 같은 방식). prod에는 매칭 Pod가 없다.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # 트레이스 → Alloy(OTLP/gRPC). Service ClusterIP는 ipBlock에 없으므로 셀렉터로(allow-dns와 같은 이유)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: alloy
+      ports:
+        - protocol: TCP
+          port: 4317
+    # 외부 HTTPS(PortOne·S3·STS·Sentry)와 SMTP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 587

@@ -1,0 +1,14 @@
+# 차트 버전은 infra/k8s/apps/karpenter.yaml의 targetRevision. ArgoCD가 관리한다.
+replicas: 1 # 기본 2는 hostname anti-affinity 필수라 코어 노드 1대에선 1개가 Pending — 증설 시 2로
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-karpenter-controller
+settings:
+  clusterName: lunote
+  interruptionQueue: Karpenter-lunote
+controller:
+  resources:
+    requests:
+      # 코어 노드 CPU 예약량이 병목(93%) — 실사용은 3일 최대 21m(2026-10-08). limit은 없어 throttle 없음
+      cpu: 100m
+      memory: 256Mi

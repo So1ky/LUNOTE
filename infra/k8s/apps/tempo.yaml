@@ -1,0 +1,28 @@
+# 트레이스 저장소(S3, 7일). 수집은 alloy 앱(OTLP 4317), 조회는 Grafana 데이터소스 Tempo(uid tempo).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://grafana-community.github.io/helm-charts
+      chart: tempo
+      targetRevision: 3.1.0
+      helm:
+        releaseName: tempo
+        valueFiles:
+          - $values/infra/k8s/platform/tempo/values.yaml
+    - repoURL: https://github.com/So1ky/LUNOTE.git
+      targetRevision: develop
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - ServerSideApply=true

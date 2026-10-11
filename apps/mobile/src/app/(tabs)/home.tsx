@@ -1,0 +1,227 @@
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import { AppIcon } from '@/components/ui/app-icon';
+
+import { ThemedText } from '@/components/themed-text';
+import { Card } from '@/components/ui/card';
+import { RequestRow } from '@/components/ui/request-row';
+import { Screen } from '@/components/ui/screen';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
+import { useAuth } from '@/lib/auth-context';
+import { listNotifications } from '@/lib/notifications';
+import {
+  CATEGORY_META,
+  listQuoteRequests,
+  type Category,
+  type QuoteRequest,
+} from '@/lib/quote-requests';
+
+const CATEGORIES = Object.keys(CATEGORY_META) as Category[];
+
+export default function HomeScreen() {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { token, profile } = useAuth();
+  const [recent, setRecent] = useState<QuoteRequest[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!token) return;
+      void listQuoteRequests(token)
+        .then((all) => setRecent(all.slice(0, 2)))
+        .catch(() => setRecent([]));
+      void listNotifications(token)
+        .then((data) => setUnreadCount(data.unreadCount))
+        .catch(() => setUnreadCount(0));
+    }, [token]),
+  );
+
+  const firstName = profile?.firstName;
+
+  // 게스트가 실사용 진입점을 누르면 로그인으로 유도
+  const goRequest = (category?: string) => {
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    router.push(
+      category
+        ? { pathname: '/quote-request', params: { category } }
+        : '/quote-request',
+    );
+  };
+
+  return (
+    <Screen tabInset>
+      <ScreenHeader
+        title={
+          firstName
+            ? t('home.greetingNamed', { name: firstName })
+            : t('home.greeting')
+        }
+        subtitle={t('home.subtitle')}
+        right={
+          token ? (
+            <Pressable
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('home.notifications')}
+              onPress={() => router.push('/notifications')}
+              style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}>
+              <AppIcon
+                name={unreadCount > 0 ? 'bellBadge' : 'bell'}
+                size={20}
+                color={Brand.textSecondary}
+              />
+              {unreadCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <ThemedText style={styles.bellBadgeText}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </ThemedText>
+                </View>
+              )}
+            </Pressable>
+          ) : undefined
+        }
+      />
+
+      <Card style={styles.cta} onPress={() => goRequest()}>
+        <View style={styles.ctaText}>
+          <ThemedText type="heading">{t('home.requestQuote')}</ThemedText>
+          <ThemedText type="small" style={styles.ctaSub}>
+            {t('home.requestQuoteSub')}
+          </ThemedText>
+        </View>
+        <View style={styles.ctaArrow}>
+          <AppIcon name="arrowRight" size={18} color={Brand.text} />
+        </View>
+      </Card>
+
+      <View style={styles.section}>
+        <ThemedText type="caption" themeColor="textSecondary">
+          {t('home.categoriesLabel')}
+        </ThemedText>
+        <View style={styles.grid}>
+          {CATEGORIES.map((c) => (
+            <Card key={c} style={styles.categoryCard} onPress={() => goRequest(c)}>
+              <View style={styles.categoryIcon}>
+                <AppIcon
+                  name={CATEGORY_META[c].icon}
+                  size={20}
+                  color={Brand.purpleSoft}
+                />
+              </View>
+              <ThemedText type="smallStrong">{t(`categories.${c}`)}</ThemedText>
+            </Card>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="caption" themeColor="textSecondary">
+          {t('home.recentLabel')}
+        </ThemedText>
+        {recent.length === 0 && (
+          <ThemedText type="small" themeColor="textSecondary">
+            {token ? t('home.recentEmptyAuthed') : t('home.recentEmptyGuest')}
+          </ThemedText>
+        )}
+        {recent.map((r) => (
+          <RequestRow
+            key={r.id}
+            request={r}
+            onPress={() => router.push(`/request/${r.id}`)}
+          />
+        ))}
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  // 헤더 우측 벨 — 뒤로가기 버튼(ScreenHeader)과 같은 원형 서피스 규격
+  bell: {
+    position: 'relative',
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellPressed: {
+    backgroundColor: Brand.surfaceAlt,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: Radius.full,
+    backgroundColor: Brand.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xxs,
+  },
+  bellBadgeText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  cta: {
+    backgroundColor: Brand.purple,
+    borderColor: Brand.purple,
+    borderRadius: Radius.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    padding: Spacing.xl,
+  },
+  ctaText: {
+    flex: 1,
+    gap: Spacing.xxs,
+  },
+  ctaSub: {
+    color: 'rgba(244, 245, 251, 0.8)',
+  },
+  ctaArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(245, 246, 251, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  section: {
+    gap: Spacing.sm,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  categoryCard: {
+    flexBasis: '30%',
+    flexGrow: 1,
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
+  },
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.purpleTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

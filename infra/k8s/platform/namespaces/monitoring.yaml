@@ -1,0 +1,105 @@
+# 관측성 네임스페이스 + Secrets Manager 읽기 경로. 스택 자체는 infra/k8s/apps/{kube-prometheus-stack,loki,alloy,tempo}.yaml(차트).
+# 가드레일(ResourceQuota/LimitRange/NetworkPolicy)은 monitoring-guardrails.yaml.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    # node-exporter가 노드의 /proc·/sys를 hostPath로 읽고 hostNetwork를 써서 baseline을 통과하지 못한다(jenkins와 같은 사정).
+    # 그 외 Pod는 restricted 기준으로 작성하고, baseline 위반은 경고·감사 로그로 남겨 새 위반이 생기면 보이게 한다.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/audit: baseline
+---
+# ESO가 이 SA의 토큰으로 lunote-eso-monitoring 롤을 맡는다 (lunote/shared/{grafana,grafana-db,alertmanager} 읽기 전용)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eso-reader
+  namespace: monitoring
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::695019457880:role/lunote-eso-monitoring
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: aws-secrets-manager
+  namespace: monitoring
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: ap-northeast-2
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: eso-reader
+---
+# Grafana 관리자 — 차트 grafana.admin.existingSecret가 읽는 키 이름
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-admin
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: aws-secrets-manager
+  target:
+    name: grafana-admin
+    template:
+      data:
+        admin-user: admin
+        admin-password: "{{ .adminPassword }}"
+  data:
+    - secretKey: adminPassword
+      remoteRef:
+        key: lunote/shared/grafana
+        property: admin-password
+---
+# Grafana PostgreSQL 데이터소스 자격 증명 — 차트 grafana.envFromSecret로 환경 변수가 되고, 데이터소스 프로비저닝이 $GF_DS_PG_*로 참조한다
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-datasource-db
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: aws-secrets-manager
+  target:
+    name: grafana-datasource-db
+    template:
+      data:
+        GF_DS_PG_USER: "{{ .username }}"
+        GF_DS_PG_PASSWORD: "{{ .password }}"
+  data:
+    - secretKey: username
+      remoteRef:
+        key: lunote/shared/grafana-db
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: lunote/shared/grafana-db
+        property: password
+---
+# 디스코드 웹훅 URL — Alertmanager가 파일로 읽는다(alertmanagerSpec.secrets → /etc/alertmanager/secrets/alertmanager-discord/webhook-url)
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: alertmanager-discord
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: aws-secrets-manager
+  target:
+    name: alertmanager-discord
+  data:
+    - secretKey: webhook-url
+      remoteRef:
+        key: lunote/shared/alertmanager
+        property: webhook-url

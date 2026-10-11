@@ -1,0 +1,91 @@
+import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps, type ViewStyle } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+import { Brand, Radius, Spacing } from '@/constants/theme';
+
+type ButtonProps = Omit<PressableProps, 'style'> & {
+  label: string;
+  variant?: 'primary' | 'outline' | 'ghost' | 'danger';
+  size?: 'md' | 'lg';
+  loading?: boolean;
+  icon?: React.ReactNode;
+  style?: ViewStyle;
+};
+
+export function Button({
+  label,
+  variant = 'primary',
+  size = 'md',
+  loading = false,
+  disabled,
+  icon,
+  style,
+  ...rest
+}: ButtonProps) {
+  const textColor =
+    variant === 'primary' ? Brand.text : variant === 'danger' ? Brand.danger : Brand.text;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled || loading}
+      style={({ pressed }) => [
+        styles.base,
+        size === 'lg' && styles.lg,
+        variant === 'primary' && { backgroundColor: pressed ? Brand.purplePressed : Brand.purple },
+        variant === 'outline' && [styles.outline, pressed && styles.outlinePressed],
+        variant === 'ghost' && pressed && styles.ghostPressed,
+        variant === 'danger' && [styles.outline, pressed && styles.dangerPressed],
+        (disabled || loading) && styles.disabled,
+        style,
+      ]}
+      {...rest}>
+      {loading ? (
+        <ActivityIndicator color={textColor} />
+      ) : (
+        <View style={styles.content}>
+          {icon}
+          <ThemedText type="smallStrong" style={{ color: textColor }}>
+            {label}
+          </ThemedText>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  base: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    minHeight: 48,
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  lg: {
+    minHeight: 56,
+  },
+  outline: {
+    borderWidth: 1,
+    borderColor: Brand.border,
+    backgroundColor: Brand.surface,
+  },
+  outlinePressed: {
+    backgroundColor: Brand.surfaceAlt,
+  },
+  ghostPressed: {
+    backgroundColor: Brand.surface,
+  },
+  dangerPressed: {
+    backgroundColor: 'rgba(248, 113, 113, 0.1)',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+});

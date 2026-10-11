@@ -1,0 +1,28 @@
+# 로그 저장소(S3, 14일). 수집은 alloy 앱, 조회는 Grafana 데이터소스 Loki(uid loki).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://grafana-community.github.io/helm-charts
+      chart: loki
+      targetRevision: 18.13.8
+      helm:
+        releaseName: loki
+        valueFiles:
+          - $values/infra/k8s/platform/loki/values.yaml
+    - repoURL: https://github.com/So1ky/LUNOTE.git
+      targetRevision: develop
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - ServerSideApply=true

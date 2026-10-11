@@ -1,0 +1,102 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Category, PaymentMethod } from '@prisma/client';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import {
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE_BYTES,
+} from '../../attachments/dto/presign.dto';
+
+export class AttachmentInputDto {
+  @ApiProperty({ example: 'uploads/<userId>/<uuid>/contract.pdf' })
+  @IsString()
+  @MaxLength(500)
+  s3Key: string;
+
+  @ApiProperty({ example: 'contract.pdf' })
+  @IsString()
+  @MaxLength(200)
+  fileName: string;
+
+  @ApiProperty({ enum: ALLOWED_MIME_TYPES })
+  @IsString()
+  mimeType: string;
+
+  @ApiProperty({ example: 123456 })
+  @IsInt()
+  @Min(1)
+  @Max(MAX_FILE_SIZE_BYTES)
+  sizeBytes: number;
+}
+
+export class CreateQuoteRequestDto {
+  @ApiProperty({ enum: Category, example: Category.HOUSING })
+  @IsEnum(Category)
+  category: Category;
+
+  // 카테고리별 정형 서비스 항목 — 형식은 {CATEGORY}_{1..5}, 카테고리 일치는 서비스에서 검증
+  @ApiPropertyOptional({ example: 'HOUSING_1' })
+  @IsOptional()
+  @Matches(/^(HOUSING|VISA|HOSPITAL|BANK|TELECOM|OTHER)_[1-5]$/, {
+    message: 'serviceItem must match {CATEGORY}_{1-5}',
+  })
+  serviceItem?: string;
+
+  // 사용자가 제시하는 희망 예산 (선택) — 실제 결제 금액은 관리자 견적(Quote)이 결정한다
+  @ApiPropertyOptional({ example: 400, description: '희망 예산 (선택)' })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  @Max(1_000_000)
+  desiredAmount?: number;
+
+  @ApiPropertyOptional({ example: 'USD', default: 'USD' })
+  @IsOptional()
+  @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO code' })
+  currency?: string;
+
+  // 결제수단 — 견적 통화를 결정한다. 구버전 앱은 보내지 않으므로 선택(기본 PAYPAL)
+  @ApiPropertyOptional({ enum: PaymentMethod, default: PaymentMethod.PAYPAL })
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
+
+  @ApiProperty({
+    example:
+      'Looking for a one-room apartment near Hongdae, budget $400/month.',
+  })
+  @IsString()
+  @MinLength(10)
+  @MaxLength(2000)
+  description: string;
+
+  @ApiProperty({ example: 'email: me@example.com' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(100)
+  contactMethod: string;
+
+  // presign → 업로드 완료 후 메타데이터를 함께 제출
+  @ApiPropertyOptional({ type: [AttachmentInputDto], description: '최대 5개' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentInputDto)
+  attachments?: AttachmentInputDto[];
+}

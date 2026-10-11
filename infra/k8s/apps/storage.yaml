@@ -1,0 +1,18 @@
+# 기본 StorageClass(gp3, 암호화).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: storage
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/So1ky/LUNOTE.git
+    targetRevision: develop
+    path: infra/k8s/platform/storage
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false

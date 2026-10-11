@@ -1,0 +1,97 @@
+# ArgoCD가 api-prod 앱을 다룰 때 가장(impersonate)하는 SA — 권한을 이 네임스페이스의 Role로 묶는다.
+# 컨트롤러 SA는 ClusterRole *라서, AppProject 허용 목록(리소스 종류)만으로는 "종류 밖"을 막을 뿐 권한 자체는 그대로였다.
+# 스위치는 platform/argocd/values.yaml(configs.cm application.sync.impersonation.*), 연결은 apps/project-prod-api.yaml의
+# destinationServiceAccounts. 가장이 적용되는 경로는 셋 — sync(apply·hook·prune), 앱 cascade 삭제, UI의 리소스 조회·조작
+# (로그·이벤트·live manifest·액션). diff·health 캐시(list/watch)는 계속 컨트롤러 SA.
+# 오버레이에 새 종류를 넣으면 AppProject 허용 목록과 이 Role 둘 다 고쳐야 sync된다(README "변경 방법").
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-sync
+  namespace: prod
+# Pod가 쓰는 계정이 아니다. 이 필드는 기본값일 뿐이라 Pod spec이 덮어쓸 수 있다 — 워크로드 Pod가 이 SA를
+# 쓰는 것은 admission-policies.yaml(lunote-workload-pod-placement)이 막는다.
+automountServiceAccountToken: false
+---
+# 쓰기는 오버레이(workloads/api/overlays/prod)가 실제로 만드는 종류만(staging + HPA·PDB). Pod·ReplicaSet·Secret 쓰기 없음 —
+# 프로젝트 허용 목록의 Pod·ReplicaSet은 UI 트리 표시용이고, 이 Role 때문에 매니페스트로 넣어도 만들 수 없다.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-sync
+  namespace: prod
+rules:
+  # sync: apply = get + patch/create, hook finalizer 제거 = update, prune·hook(BeforeHookCreation)·앱 삭제 = delete
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps", "serviceaccounts"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  - apiGroups: ["external-secrets.io"]
+    resources: ["externalsecrets"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  # prod 오버레이 추가분
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  # UI(argocd-server)의 읽기 경로: Pod 로그·이벤트·live manifest. 쓰기는 없다 — UI에서 Pod 삭제는 안 되고 kubectl로.
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-sync
+  namespace: prod
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-sync
+subjects:
+  - kind: ServiceAccount
+    name: argocd-sync
+    namespace: prod
+---
+# argocd-server(UI/API)가 argocd-sync를 가장할 수 있게 — 컨트롤러는 ClusterRole *라 불필요하지만 서버 ClusterRole에는
+# impersonate가 없다. 이 SA 하나로 한정(resourceNames).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-server-impersonate
+  namespace: prod
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    resourceNames: ["argocd-sync"]
+    verbs: ["impersonate"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-server-impersonate
+  namespace: prod
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-server-impersonate
+subjects:
+  - kind: ServiceAccount
+    name: argocd-server
+    namespace: argocd

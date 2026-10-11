@@ -1,0 +1,11 @@
+# 노드 교체(Karpenter 통합·만료, 업그레이드) 때 한 번에 내려갈 수 있는 Pod를 제한한다 — 항상 1개는 남긴다.
+# Spot 회수 자체는 막지 못한다(그래서 노드 분산을 함께 건다).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api

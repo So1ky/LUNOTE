@@ -1,0 +1,20 @@
+# App of Apps 루트 — 이 파일만 kubectl로 직접 적용한다 (infra/k8s/README.md).
+# infra/k8s/apps/ 의 Application 매니페스트를 감시해 생성/갱신한다.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/So1ky/LUNOTE.git
+    targetRevision: develop
+    path: infra/k8s/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false # git에서 Application 파일을 지워도 자동 삭제하지 않는다 — 삭제는 수동

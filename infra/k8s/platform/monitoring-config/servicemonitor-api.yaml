@@ -1,0 +1,17 @@
+# staging·prod API의 OTel 메트릭(9464) 수집. Service는 platform/namespaces/*-api-service.yaml(metrics 포트), 컨테이너 포트는 workloads/api/base.
+# 라벨 namespace로 환경이 구분된다(Prometheus가 대상 메타데이터에서 붙인다).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: api
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames: [staging, prod]
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: api
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s

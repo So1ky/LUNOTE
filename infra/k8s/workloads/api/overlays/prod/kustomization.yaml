@@ -1,0 +1,90 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: prod
+resources:
+  # base를 커밋 SHA로 고정한다(로컬 ../../base 아님). base는 staging과 공유하므로, 로컬 경로면 base 변경이 staging
+  # 검증 전에 prod에 바로 들어간다. 승격 = 아래 ref와 newTag를 바꾸는 PR (절차: infra/k8s/README.md "prod 승격").
+  - https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=4fed921996586ef56f61922be792cc5334d34e49
+  - externalsecret.yaml
+  - hpa.yaml
+  - pdb.yaml
+images:
+  - name: lunote-api
+    newName: 695019457880.dkr.ecr.ap-northeast-2.amazonaws.com/lunote/api
+    newTag: 4fed92199658 # staging이 실제로 돌린 태그만 — 사람이 승격 PR로 바꾼다(CI는 건드리지 않는다)
+configMapGenerator:
+  - name: api-config
+    options:
+      annotations:
+        argocd.argoproj.io/sync-wave: "-2"
+    literals:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+      - LOG_LEVEL=info
+      - S3_BUCKET=lunote-attachments-prod-695019457880
+      - S3_REGION=ap-northeast-2
+      - CORS_ORIGINS=https://admin.lunoteapp.com
+      - SMTP_HOST=smtp-relay.brevo.com
+      - SMTP_PORT=587
+      # 수동 계좌이체 법인 계좌 — 비밀 아님(앱 결제 화면에 그대로 노출). 미설정이면 계좌이체 결제 시도만 503.
+      - BANK_TRANSFER_BANK_NAME=KB Kookmin Bank (국민은행)
+      - BANK_TRANSFER_ACCOUNT_NUMBER=290301-04-112936
+      - BANK_TRANSFER_ACCOUNT_HOLDER=주식회사 루노테 (Lunote Inc.)
+      # Sentry 이벤트의 environment(NODE_ENV는 staging·prod 모두 production). DSN은 시크릿 lunote/prod/app
+      - SENTRY_ENVIRONMENT=prod
+      # OpenTelemetry(Plan 8). 트레이스: 앱 → Alloy(OTLP 4317) → Tempo, 부모 기반 20% 샘플링
+      - OTEL_SERVICE_NAME=lunote-api
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=prod
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy.monitoring.svc:4317
+      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      - OTEL_TRACES_SAMPLER_ARG=0.2
+      # 소셜 로그인 공개 식별자 (ARCHITECTURE §11 소셜 로그인). .p8 개인키(APPLE_PRIVATE_KEY)는 시크릿 lunote/<env>/app
+      - GOOGLE_WEB_CLIENT_ID=786866774491-390g35n6o1g1op6huo949v84cn75ibhp.apps.googleusercontent.com
+      - APPLE_TEAM_ID=R8529642F3
+      - APPLE_KEY_ID=7MC6QTSKKW
+patches:
+  - target:
+      kind: ServiceAccount
+      name: api
+    patch: |-
+      - op: add
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::695019457880:role/lunote-api-prod
+  - target:
+      kind: Deployment
+      name: api
+    patch: |-
+      - op: add
+        path: /spec/template/spec/priorityClassName
+        value: lunote-prod
+      # Pod 수는 HPA가 정한다 — 필드가 git에 있으면 ArgoCD selfHeal과 HPA가 서로 되돌린다
+      - op: remove
+        path: /spec/replicas
+      # HPA의 CPU 70% 기준이 유휴 변동에 흔들리지 않게 (base 100m)
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 250m
+      # Spot 노드 1대 회수로 전부 내려가지 않게: 노드는 반드시 나누고, AZ는 가능하면 나눈다.
+      # minDomains 2 — 노드가 1대뿐이면 편차가 0이라 같은 노드에 몰린다(2026-10-06 첫 배포에서 확인). 없는 도메인을 0개로 셈해 Pending → Karpenter가 노드를 띄운다.
+      # matchLabelKeys — 롤링 중 옛 세대 Pod를 빼고 센다. 안 빼면 새 Pod가 모두 빈 노드로 가 롤링 후 한 노드에 모인다(2026-10-06 확인).
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints
+        value:
+          - maxSkew: 1
+            minDomains: 2
+            matchLabelKeys: [pod-template-hash]
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: api
+          - maxSkew: 1
+            matchLabelKeys: [pod-template-hash]
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: api

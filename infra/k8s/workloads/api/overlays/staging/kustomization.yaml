@@ -1,0 +1,59 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: staging
+resources:
+  - ../../base
+  - externalsecret.yaml
+images:
+  - name: lunote-api
+    newName: 695019457880.dkr.ecr.ap-northeast-2.amazonaws.com/lunote/api
+    newTag: cd4a5ecffc67 # 자리표시 — 실제 배포 태그는 배포 저장소(So1ky/lunote-deploy)의 이 줄이다(CI가 갱신)
+configMapGenerator:
+  - name: api-config
+    options:
+      annotations:
+        argocd.argoproj.io/sync-wave: "-2"
+    literals:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+      - LOG_LEVEL=info
+      - S3_BUCKET=lunote-attachments-staging-695019457880
+      - S3_REGION=ap-northeast-2
+      - CORS_ORIGINS=https://admin-staging.lunoteapp.com
+      - SMTP_HOST=smtp-relay.brevo.com
+      - SMTP_PORT=587
+      # 수동 계좌이체 법인 계좌 — 비밀 아님(앱 결제 화면에 그대로 노출). 미설정이면 계좌이체 결제 시도만 503.
+      - BANK_TRANSFER_BANK_NAME=KB Kookmin Bank (국민은행)
+      - BANK_TRANSFER_ACCOUNT_NUMBER=290301-04-112936
+      - BANK_TRANSFER_ACCOUNT_HOLDER=주식회사 루노테 (Lunote Inc.)
+      # Sentry 이벤트의 environment(NODE_ENV는 staging·prod 모두 production). DSN은 시크릿 lunote/staging/app
+      - SENTRY_ENVIRONMENT=staging
+      # OpenTelemetry(Plan 8). 트레이스: 앱 → Alloy(OTLP 4317) → Tempo, 부모 기반 20% 샘플링
+      - OTEL_SERVICE_NAME=lunote-api
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=staging
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy.monitoring.svc:4317
+      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      - OTEL_TRACES_SAMPLER_ARG=0.2
+      - REDIS_URL=redis://redis:6379 # staging 전용 클러스터 내 Redis(platform/namespaces/staging-redis.yaml) — 비밀이 아니다
+      # 소셜 로그인 공개 식별자 (ARCHITECTURE §11 소셜 로그인). .p8 개인키(APPLE_PRIVATE_KEY)는 시크릿 lunote/<env>/app
+      - GOOGLE_WEB_CLIENT_ID=786866774491-390g35n6o1g1op6huo949v84cn75ibhp.apps.googleusercontent.com
+      - APPLE_TEAM_ID=R8529642F3
+      - APPLE_KEY_ID=7MC6QTSKKW
+patches:
+  - target:
+      kind: ServiceAccount
+      name: api
+    patch: |-
+      - op: add
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::695019457880:role/lunote-api-staging
+  - target:
+      kind: Deployment
+      name: api
+    patch: |-
+      - op: add
+        path: /spec/template/spec/priorityClassName
+        value: lunote-staging

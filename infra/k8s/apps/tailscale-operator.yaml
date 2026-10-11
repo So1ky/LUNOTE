@@ -1,0 +1,36 @@
+# 관리 UI(ArgoCD·Grafana·Jenkins)를 tailnet에만 노출하는 Operator. 네임스페이스·OAuth 시크릿·가드레일은 namespaces 앱
+# (platform/namespaces/tailscale*.yaml), ProxyClass·Ingress는 platform/namespaces/tailscale-ingress.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailscale-operator
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://pkgs.tailscale.com/helmcharts
+      chart: tailscale-operator
+      targetRevision: 1.102.4
+      helm:
+        releaseName: tailscale-operator
+        valueFiles:
+          - $values/infra/k8s/platform/tailscale-operator/values.yaml
+    - repoURL: https://github.com/So1ky/LUNOTE.git
+      targetRevision: develop
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tailscale
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - ServerSideApply=true # CRD 8개(ProxyClass 등)가 크다 — annotation 262KB 한도
+    # 재해복구 시 tailscale 네임스페이스(namespaces 앱)보다 먼저 sync돼도 재시도한다 — IngressClass가 생겨야 namespaces 앱의 Ingress도 들어간다
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

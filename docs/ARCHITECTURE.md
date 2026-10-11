@@ -16,17 +16,18 @@
 
 | 분류 | 선택 | 비고 |
 |---|---|---|
-| 모바일 앱 | React Native (Expo, EAS Build) | iOS/Android 동시 출시 |
+| 모바일 앱 | React Native (Expo SDK 57) | iOS/Android 동시 출시. Expo Go 불가 — 개발 빌드 사용 |
+| 관리자 웹 | **Vite + React SPA** (`apps/admin-web`) | 내부 운영 도구. SSR 불필요 → 정적 빌드(S3/CloudFront 또는 nginx 컨테이너)로 배포 단순화. 기존 관리자 API(JWT + RolesGuard)만 소비, 백엔드 변경 없음 |
 | 백엔드 | **NestJS (TypeScript)** | 프론트와 언어 통일, 1인 운영 속도 최우선 |
 | ORM | **Prisma** | 타입 안전 쿼리 + 마이그레이션 관리 |
-| DB | AWS RDS PostgreSQL, Single-AZ + PITR(5분) | 파일은 S3 (presigned URL) |
+| DB | AWS RDS PostgreSQL, **Single-AZ** + PITR(5분) | 파일은 S3 (presigned URL). 2026-10-04 결정: 출시 후에도 Single-AZ 유지, **누적 실결제 10건 도달 시 Multi-AZ 전환**(속성 하나, 온라인 변경). 유실 위험은 PITR로 동일, 잃는 건 장애 시 자동 페일오버뿐 |
 | 큐/캐시 | **Redis + BullMQ** | 푸시 알림 발송, 웹훅 재처리 잡 |
-| 인증 | Passport (Google / Apple OAuth) + JWT | |
-| 결제 | PortOne (해외카드/Apple Pay 허브) | 웹훅 서명 검증 + 멱등성 필수 |
+| 인증 | 이메일/비밀번호 + Google·Apple(네이티브 SDK ID 토큰을 서버가 jose로 검증) + JWT(Passport 가드) | 비밀번호는 argon2 해싱, 재설정은 이메일 링크 방식. 소셜 결정은 §11 소셜 로그인 |
+| 결제 | PortOne (페이팔 SPB) + 수동 계좌이체 | 웹훅 서명 검증 + 멱등성 필수, 계좌이체는 관리자 확인 흐름 |
 | 컨테이너 오케스트레이션 | AWS EKS | 코어 노드그룹 On-Demand + 워커 Spot(Karpenter) |
-| CI/CD | Jenkins(동적 에이전트 Pod) + ArgoCD | GitOps 무중단 배포 |
+| CI/CD | Jenkins(동적 에이전트 Pod) + ArgoCD, PR 검사는 GitHub Actions | GitOps 무중단 배포. PR 검사에는 배포 권한이 없다 |
 | IaC | Terraform | 콘솔 수동 조작 금지 |
-| 관측성 | Prometheus + Grafana + Loki + Alertmanager | kube-prometheus-stack Helm 차트 |
+| 관측성 | Prometheus + Grafana + Alertmanager + Loki + Tempo, 수집 Alloy, 앱 계측 OpenTelemetry | kube-prometheus-stack·loki·alloy·tempo Helm 차트. 알림은 디스코드 |
 | 시크릿 | AWS Secrets Manager + External Secrets Operator | 앱 Pod에는 IRSA로 최소권한 부여 |
 
 ## 3. 시스템 아키텍처
@@ -46,7 +47,7 @@ graph TB
             subgraph "Private Subnet (2 AZ)"
                 subgraph EKS
                     API[NestJS API Pods]
-                    WORKER[BullMQ Worker Pods]
+                    WORKER[BullMQ Worker<br/>현재는 API 프로세스에 통합]
                     OBS[Prometheus/Grafana/Loki]
                     CICD[Jenkins + ArgoCD]
                 end
@@ -72,6 +73,9 @@ graph TB
 - 보안그룹은 최소권한: `RDS SG ← EKS 노드 SG(5432)`, `Redis SG ← EKS 노드 SG(6379)`처럼
   SG 참조 방식으로만 연다. CIDR 전체 개방 금지.
 - NAT Gateway는 비용 절감을 위해 초기 1개(단일 AZ)로 시작하고, 트래픽 성장 시 AZ별로 확장.
+- S3 Gateway VPC 엔드포인트(무료)를 프라이빗 라우팅 테이블에 붙여 같은 리전 S3 트래픽을 NAT 밖으로 뺀다
+  — Loki·Tempo 저장, ECR 이미지 레이어(ECR은 레이어를 S3에서 내려받음). ECR API 등 Interface 엔드포인트는
+  시간 요금이 절감액보다 커서 두지 않는다(2026-10-08).
 - DB 로컬 접근이 필요할 때는 SSM Session Manager 포트포워딩 사용 (Bastion EC2 두지 않음).
 
 ## 5. 시크릿 관리
@@ -81,6 +85,13 @@ graph TB
 - EKS에는 **External Secrets Operator**를 설치해 Secrets Manager → K8s Secret 동기화.
 - Pod의 AWS 권한은 **IRSA**(IAM Roles for Service Accounts)로 부여. 노드 롤에 권한 몰아주기 금지.
 - **시크릿은 어떤 형태로든 git에 커밋하지 않는다.** `.env`는 로컬 개발 전용이며 `.gitignore` 대상.
+  추가 방어선으로 `.githooks/pre-commit`이 시크릿 파일(.env/.pem/.key/.tfvars)과
+  시크릿 패턴(AWS 액세스 키, 개인키 헤더, 긴 SECRET 값)을 커밋 단계에서 차단한다.
+  로컬 `.env`는 권한 600으로 제한한다.
+- **JWT는 암호화가 아니라 서명이다.** 페이로드는 base64로 누구나 읽을 수 있으므로
+  사용자 ID와 role 외의 개인정보를 넣지 않는다. 서명키(JWT_SECRET)가 유출되면
+  임의 사용자로 위장 가능하므로 프로덕션 값은 Secrets Manager에서만 관리하고
+  환경별로 다른 값을 쓴다.
 
 ## 6. Terraform 상태 관리
 
@@ -105,37 +116,375 @@ graph TB
   4. 처리 실패 시 5xx를 반환해 PortOne 재전송을 유도하고, BullMQ로 자체 재처리 잡도 등록.
 - 주문 상태 머신: `REVIEWING → QUOTED → PAID → IN_PROGRESS → COMPLETED` (+ `CANCELLED`, `REFUNDED`).
   허용되지 않은 전이는 서비스 레이어에서 거부.
+- **PG 전략 (2026-09-07 확정, 2026-09-23 개정)**: 1차 출시는 **페이팔(PortOne V2, SPB 일반결제)과
+  수동 계좌이체(법인계좌)** 두 가지. 페이팔은 심사 없이 즉시 개통되고 무형 서비스 업종 제한이 없기 때문.
+  국내 카드(KG이니시스)는 가계약을 진행하지 않고 소멸시킨다(2026-09-23) —
+  국내 카드 수요가 지표로 입증되면 재신청한다(가계약→카드사 심사 리드타임 2~3주).
+  엑심베이(해외카드 직접·Apple Pay)는 매출 검증 후 검토.
+  - 페이팔은 판매자·구매자가 모두 한국 계정이면 결제 불가 — **해외 결제수단 보유자(입국 전/직후) 전용**이다.
+    한국 계좌를 보유한 정착 외국인은 계좌이체가 커버한다.
+  - **수동 계좌이체 (2026-09-23 확정)**: KRW 견적은 INICIS 도입 전까지 BANK_TRANSFER로 라우팅.
+    PG 파이프라인(웹훅+교차검증) 밖의 별도 흐름: `입금 대기 → 관리자 입금 확인 → PAID`,
+    입금 기한은 견적 유효기간(7일)과 같고 자동 만료 잡은 두지 않는다(만료 후 입금 확인 허용). 주문번호 기반 입금코드를 입금자명에 입력하게 해 매칭한다
+    (입금자명·금액 불일치는 관리자 확인으로 마감). 환불은 수동 이체,
+    현금영수증은 소비자 요청 시 홈택스 수동 발급. 입금 확인 자동화(가상계좌)는 국내 PG 재신청 시점에.
+    **구현(2026-10-11)**: 결제수단은 문의 때 고객이 선택(`QuoteRequest.paymentMethod`), 견적 통화는 서버가 결정(PAYPAL→USD, BANK_TRANSFER→KRW).
+    `POST /payments`는 KRW면 PortOne 없이 계좌 정보(ConfigMap)·입금자명 `LUNOTE<요청번호>`·기한(견적 만료)을 응답.
+    입금 확인은 관리자 웹 → `POST /admin/payments/:id/confirm-transfer`(멱등, 감사 로그) → PayPal 웹훅과 같은 `markPaid()`로 PAID.
+    자동 만료 잡 없음(견적 7일이 기한), 만료 후 확인 허용. 환불 REFUNDED 전이 관리자 기능은 후속.
+  - 페이팔은 KRW를 받지 못하므로 PayPal 견적은 USD, 계좌이체 견적은 KRW다(통화는 결제수단이 결정).
+    `Payment.provider`(PAYPAL / BANK_TRANSFER, 추후 INICIS)는 견적 통화로 라우팅한다 (USD→PAYPAL, KRW→BANK_TRANSFER).
+    앱은 provider에 따라 결제 UI 컴포넌트를 분기한다 (페이팔=`PaymentUI` 버튼 렌더링, 국내 PG=`Payment` 결제창).
+  - PortOne `totalAmount`는 통화 최소 단위 정수(USD 센트)다. 변환은 서버 `payments/currency.ts` 한 곳에서만.
+  - 결제 의도(`POST /payments`)는 `quoteId`만 받는다 — 금액/통화의 원천은 서버의 Quote.
+    응답에는 storeId/channelKey(공개 식별자)만 나가고 API Secret·웹훅 시크릿은 서버 밖으로 나가지 않는다.
+  - 앱 콜백 후 `POST /payments/:id/confirm`은 웹훅과 **같은 전이 함수**를 호출한다
+    (앱 결과는 신뢰하지 않고 PortOne 조회 API로 재검증). 상태 조건을 `updateMany`의 where에 넣어
+    웹훅·confirm이 동시에 와도 전이는 한 번만 일어난다.
+  - 같은 견적에 PAID 결제가 2건 생기는 것은 DB 부분 유니크 인덱스(`payments_one_paid_per_quote`)가 막는다.
+  - 취소/환불은 PortOne 콘솔에서 실행하고 `Transaction.Cancelled` 웹훅으로 REFUNDED를 반영한다
+    (관리자 환불 API는 필요가 입증될 때 추가). PAID뿐 아니라 PENDING 결제(금액·통화 불일치,
+    PAID 웹훅 유실)도 같은 경로로 REFUNDED가 된다 — 불일치 기록(`failReason='MISMATCH: …'`)은
+    감사용으로 남기고, "미해결 불일치" = PENDING + MISMATCH.
+  - 결제 의도 재사용은 사유 없는 PENDING(`failReason` null)만 — PG에 이미 결제된 불일치 결제의
+    paymentId를 다시 내주지 않는다.
+  - PortOne 외부 호출은 `PortOneGateway` 한 클래스로만 나간다 — e2e는 이 클래스를 가짜로 바꿔
+    실 API 없이 서명 검증·불일치·중복·환불 시나리오를 검증한다.
+- **견적 정책 (2026-07-24 확정)**: 견적은 발행 후 **불변** — 수정 API를 두지 않는다
+  (관리자 임의 변경으로 인한 분쟁 방지). `Quote.expiresAt = 발행 + 7일`,
+  만료된 견적으로는 결제할 수 없다. 관리자 행위(견적 발행 등)는 감사 로그 테이블에 기록한다.
+- **알림 전달 보장 (2026-07-24 확정)**: 인앱 알림 행 생성은 유발 이벤트와 **같은 DB
+  트랜잭션**에서 수행한다(DB-first — Redis 장애와 무관하게 유실 불가).
+  BullMQ 큐는 이메일 등 외부 부수효과 전용 (재시도 3회, 최종 실패 허용).
 
 ## 8. 관측성 (Observability)
 
-- **메트릭**: kube-prometheus-stack (Prometheus + Grafana + Alertmanager).
-  NestJS는 `/metrics` 엔드포인트 노출 (prom-client).
-- **로그**: Loki + Promtail. 앱 로그는 JSON 구조화 로그(pino)로 출력.
-- **핵심 알림 (Alertmanager → 텔레그램 또는 Slack)**:
-  - API 5xx 비율 > 1% (5분), P95 지연 > 1s
-  - 웹훅 처리 실패, 결제 금액 불일치 감지 (비즈니스 알림)
-  - Pod CrashLoopBackOff, 노드 NotReady, RDS 스토리지/커넥션 임계치
-- 대시보드: ① 서비스(요청량/에러/지연) ② 비즈니스(결제 성공률, 문의→결제 전환) ③ 인프라(노드/DB).
+- **메트릭**: kube-prometheus-stack(Prometheus 보존 14일·PVC 20Gi, Grafana, Alertmanager). API는 OpenTelemetry SDK의
+  Prometheus exporter로 **9464 포트**에 `/metrics`를 연다(ALB 경로 밖). `ServiceMonitor` 1개가 staging·prod를 함께 긁는다.
+- **로그**: Loki(SingleBinary, 저장소 S3, 보존 14일) + **Alloy**(Deployment 1개, K8s API로 Pod 로그 수집 — Promtail은 2026-03 EOL).
+  앱 로그는 `nestjs-pino` JSON(요청별 request-id, 민감 필드 redaction) + `trace_id`·`span_id` 필드.
+  Loki·Tempo 차트는 `grafana-community` 저장소(`grafana/loki`는 2026-03부터 엔터프라이즈 전용, `grafana/tempo`는 폐기).
+- **트레이스**: Tempo(SingleBinary, S3, 보존 7일). 앱 → OTLP/gRPC → Alloy → Tempo. 부모 기반 20% 샘플링.
+- **앱 계측 (2026-10-06 확정)**: `@opentelemetry/sdk-node` + http·nestjs-core·ioredis·pg·prisma 자동 계측이 메트릭·트레이스를 소유한다.
+  **Sentry는 에러 트래킹만**(`skipOpenTelemetrySetup: true`) — 둘 다 계측하면 스팬이 이중으로 잡힌다.
+  이벤트의 요청 정보는 **허용 목록(method·쿼리 뺀 URL)만** 보낸다(`beforeSend`) — SDK 기본값도 Authorization·쿠키·요청 본문을
+  싣기 때문(2026-10-08 실측). environment는 `SENTRY_ENVIRONMENT`(staging·prod). 비즈니스 카운터
+  `lunote_payment_mismatch_total`, `lunote_portone_webhook_failures_total`.
+- **핵심 알림 (Alertmanager → 디스코드)**: API 5xx 비율 > 1%(5분, 분당 요청 10건 이상일 때), P95 > 1s(5분 지속, warning),
+  **P95 > 3s 1분 지속(초당 1건 이상일 때, critical — 2026-10-08 부하 테스트에서 ≈1분 폭증이 warning 경로(for 5m + group_wait 1m)에 묻혀
+  디스코드 0건이었다. 저트래픽의 느린 요청 몇 건은 5분 warning이 맡는다)**, 결제 금액 불일치, 웹훅 처리 실패,
+  Pod CrashLoopBackOff, 노드 NotReady, RDS 여유 스토리지 < 2GiB·커넥션 > 80(CloudWatch — Grafana 규칙이 Alertmanager로 전달).
+- **대시보드(git ConfigMap)**: ① 서비스(OTel http 메트릭) ② 비즈니스(결제 성공률·문의→결제 전환 — Grafana PostgreSQL 데이터소스,
+  읽기 전용 사용자 `grafana_ro`, `payments`·`quote_requests`만) ③ 인프라(노드·클러스터 + CloudWatch RDS).
+- **접속**: Grafana·ArgoCD·Jenkins UI는 Tailscale Operator Ingress(`https://<name>.<tailnet>.ts.net`) — 인터넷 노출 0, port-forward 불필요.
+- 외부 사활 감시(UptimeRobot)와 데드맨 스위치(Alertmanager Watchdog 외부 수신)는 출시 직전(Phase 6)에 등록한다
+  — 수면 모드 중에는 API·클러스터가 내려가 매일 다운 알림이 되기 때문.
 
 ## 9. CI/CD 파이프라인
 
 ```
-git push → Jenkins (동적 에이전트 Pod: lint/test/build → ECR push)
-        → 매니페스트 레포의 이미지 태그 업데이트 (커밋)
-        → ArgoCD가 감지 → EKS에 동기화 (RollingUpdate 무중단)
+PR(develop·main 대상) → GitHub Actions: 세 앱 lint·타입 검사 + api 단위 테스트 (시크릿·배포 권한 없음)
+develop push → GitHub 웹훅 → Jenkins (웹훅 경로만 공개: GitHub 발신 IP + HMAC 서명 검증)
+  → 에이전트 Pod(Spot): lint → test → e2e → BuildKit rootless 빌드 → Trivy 스캔 → ECR push (git SHA)
+  → 배포 저장소(So1ky/lunote-deploy)에 커밋: 그 커밋의 workloads/api 매니페스트 + newTag (deploy key)
+  → ArgoCD가 감지 → EKS에 동기화 (RollingUpdate 무중단)
+prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사람이 머지 → ArgoCD(api-prod)가 동기화.
+롤백 = staging은 배포 저장소의 그 커밋 revert, prod는 승격 PR revert.
 ```
 
 - 앱 코드 레포와 K8s 매니페스트(GitOps) 디렉토리를 분리: `infra/k8s/`가 ArgoCD의 소스.
+- Jenkins는 git에 태그 커밋만 남기고 배포는 ArgoCD만 한다. Jenkins에는 클러스터 자격 증명이 없다. 단, deploy key는
+  ArgoCD를 거치는 **간접 배포 권한**이다 — 그래서 키는 외부 코드(npm 의존성, Dockerfile)가
+  돌지 않는 전용 최소 Pod에서만 쓰고, 빌드 Pod에는 내려보내지 않는다. ECR 권한(IRSA)도 빌드 Pod의 aws 컨테이너에만.
+- **deploy key가 닿는 범위 = staging 네임스페이스 (2026-10-05 결정)**: CI의 deploy key는 배포 전용 저장소
+  `So1ky/lunote-deploy`(public, Actions 끔)에만 등록한다 — 이 저장소(앱·플랫폼 매니페스트)에는 쓸 수 없다.
+  CI는 빌드한 커밋의 `infra/k8s/workloads/api`를 배포 저장소에 통째로 복사하고 `newTag`만 바꿔 커밋한다(병합 없음,
+  매니페스트만 바뀐 커밋은 이미지 태그를 유지한 채 옮긴다). 이 저장소의 `newTag`는 자리표시다. 울타리는 세 겹:
+  ① `api-staging` 앱만 배포 저장소를 보며 AppProject `staging-api`(staging 네임스페이스, 오버레이가 만드는 리소스
+  종류만, 클러스터 범위 금지)에 묶인다. `root`와 플랫폼 앱은 develop(PR 필수 + PR 검사 3종 필수)을 본다.
+  ② staging 네임스페이스는 Pod Security `restricted` — 프로젝트는 리소스의 종류만 막고 Pod의 내용(hostPath,
+  privileged)은 못 막기 때문이다. ③ staging API의 Service와 Ingress는 배포 저장소가 아니라 `namespaces` 앱에 두고
+  프로젝트 허용 목록에서 뺀다 — Service의 `externalIPs`(다른 네임스페이스의 트래픽 가로채기)·type=LoadBalancer,
+  Ingress의 공유 ALB 규칙으로 네임스페이스 밖에 닿을 수 없게. 같은 저장소의 배포 브랜치 방식은 버렸다: 그 브랜치에
+  워크플로 파일을 넣으면 GitHub Actions가 실행돼 저장소 쓰기 토큰을 얻는다.
+  **prod 앱은 CI 키로 쓸 수 있는 저장소를 읽지 않는다** — prod 승격은 사람이 머지하는 PR로만 한다(CI가 배포 저장소에
+  복사하는 `workloads/api`에 prod 오버레이가 섞여 있어도 prod 앱의 소스가 아니다).
+  남는 위험: staging 안에서는 (restricted 범위의) 임의 워크로드를 띄울 수 있고 staging 시크릿에 닿는다.
+  Jenkins 컨트롤러가 탈취되면 키는 여전히 샌다 — 줄어든 것은 키로 할 수 있는 일의 범위다.
+  **2026-10-06 보강(#128 일부, prod 구축 전)**: ① staging·prod의 Pod는 Karpenter 노드에만 뜬다 —
+  ValidatingAdmissionPolicy가 `nodeName` 직접 지정을 막고 `karpenter.sh/nodepool: default` nodeSelector를 요구하며,
+  PriorityClass는 자기 환경 것만 허용한다(코어 노드의 플랫폼 Pod를 압박하던 경로). ② Service `externalIPs`는 클러스터
+  전역에서 금지. ③ IngressClass `alb`는 그룹 `lunote`·허용 네임스페이스(staging·prod·jenkins)로 고정. ④ prod
+  네임스페이스도 Pod Security `restricted`. ⑤ 공용 Redis 분리 — staging은 클러스터 내 Redis, ElastiCache와 그
+  시크릿은 prod 전용(§12). ⑥ argocd 네임스페이스도 Pod Security `restricted`(차트 기본 securityContext가 만족).
+  jenkins는 `privileged` 명시 + `warn/audit: baseline` — 빌드 Pod의 BuildKit rootless가 seccomp/AppArmor
+  Unconfined라 baseline enforce가 빌드를 막는다(EKS는 PSA 예외 설정이 없다). 등급을 올리려면 빌드 Pod 네임스페이스
+  분리가 선행(#125와 함께). argocd repo-server NetworkPolicy는 차트 기본값(`global.networkPolicy.create`)이
+  이미 만들어 둔 것을 확인했다 — repo-server gRPC는 server·controller만, redis는 세 컴포넌트만 허용하고, server
+  정책은 전체 허용(접속은 port-forward 전제 — 2026-10-08부터 Tailscale Ingress), metrics 포트는 모든 네임스페이스에 열려 있다.
+  ⑦ **sync impersonation(#128 마지막 항목)**: ArgoCD의 sync(apply·hook·prune)는 원래 컨트롤러 SA(ClusterRole `*`)로
+  돈다 — 프로젝트 허용 목록은 리소스 "종류"만 막고 권한 자체는 그대로였다. `application.sync.impersonation.enabled`를 켜고
+  워크로드 프로젝트에 `destinationServiceAccounts`(네임스페이스의 `argocd-sync` SA, 오버레이가 만드는 종류의 쓰기 +
+  Pod·ReplicaSet·로그·이벤트 읽기만 가진 Role)를 달아 권한을 Role 범위로 묶었다. 가장은 sync만이 아니라 **앱 cascade 삭제와
+  UI의 리소스 조회·조작**(로그·이벤트·live manifest·액션)에도 적용된다 — argocd-server ClusterRole에는 `impersonate`가 없어
+  네임스페이스 Role로 `argocd-sync` 하나만 가장하게 줬다. UI에서 Pod 삭제는 안 된다(쓰기 권한 없음 → kubectl). `enforced: false`
+  — SA가 없는 플랫폼 앱(`default` 프로젝트, argocd 자기 관리 포함)은 컨트롤러 SA로 폴백한다. Role이 틀려 sync가 Forbidden이
+  나도 Role은 `namespaces` 앱(폴백 대상)이 관리하므로 git으로 항상 고칠 수 있다(잠금 없음). diff·health 캐시는 계속 컨트롤러 SA.
+  SA 토큰 우회(Pod spec의 `serviceAccountName: argocd-sync`, ESO 템플릿으로 SA 토큰 Secret 생성)는 ValidatingAdmissionPolicy로
+  막았다. staging(PR #146)에서 수동 sync·권한 매트릭스로 검증한 뒤 prod에도 같은 구조(+HPA·PDB)를 적용했다.
+- **prod는 base를 커밋 SHA로 고정한다 (2026-10-06 결정)**: `api-prod` 앱은 이 저장소 develop의
+  `workloads/api/overlays/prod`를 자동 동기화하지만, 오버레이는 base를 로컬 경로가 아니라
+  `https://github.com/So1ky/LUNOTE//infra/k8s/workloads/api/base?ref=<커밋 SHA>`로 가져온다. base는 staging과
+  공유하므로 로컬 경로로 참조하면 base 변경이 staging 검증 전에 prod에 바로 들어간다. 승격 PR은 두 줄을 바꾼다 —
+  base ref(매니페스트를 가져올 커밋)와 `newTag`(이미지). 값은 배포 저장소 최신 커밋(staging이 실제로 돌린 것)에서
+  읽는다. 매니페스트만 바뀐 커밋은 이미지를 다시 만들지 않으므로 두 SHA는 다를 수 있다. 이미지는 다시 빌드하지 않는다.
+  prod 전용 설정(오버레이의 설정값·HPA·PDB·패치)은 SHA 고정 대상이 아니다 — 머지 즉시 prod에 반영된다.
+  main 브랜치 추적(승격마다 PR 2개, main 보호 규칙 정비 필요)과 수동 Sync(PR 머지가 승인이 아니게 됨)는 버렸다.
 - Jenkins 에이전트는 상시 띄우지 않고 빌드 시에만 Pod로 생성 (Kubernetes 플러그인).
+- `apps/api/`가 바뀐 커밋만 이미지를 만든다. fork PR은 빌드하지 않는다(public 저장소).
+- **PR 검사는 GitHub Actions (2026-10-05 결정)**: public 저장소라 fork PR의 코드를 Jenkins 빌드 Pod(ECR 권한)에서
+  실행하지 않는다. Actions는 fork PR을 시크릿 없이 격리 실행한다. 역할 분리 — PR 검사 = Actions(`contents: read`만),
+  배포 파이프라인 = Jenkins + ArgoCD. `pull_request_target`은 쓰지 않는다.
+- Actions의 서드파티 액션은 태그가 아니라 **커밋 SHA로 고정**한다(태그는 변조될 수 있다 — 2026-03 trivy-action 사고).
 - 이미지 태그는 git SHA 기반. `latest` 태그 사용 금지 (롤백 가능성 확보).
+- **스캔한 이미지 = 올리는 이미지**: BuildKit이 OCI 레이아웃으로 한 번만 빌드하고, Trivy가 그 산출물을 스캔하고,
+  crane이 같은 산출물을 변환 없이 ECR에 올린다(다시 빌드하지 않는다). push는 빌드 직후 기록한 매니페스트
+  다이제스트를 지정해서 하고(내용이 다르면 레지스트리가 거부) 태그는 그 다이제스트에만 붙인다. 산출물은 빌드·스캔·push
+  컨테이너만 보는 볼륨에 둔다. 한계: 빌드 컨텍스트(`apps/api`)는 테스트가 돈 작업 폴더라, 같은 Pod의 외부 코드에 대한
+  보안 경계는 아니다 — 그 분리는 빌드를 깨끗한 체크아웃의 별도 Pod로 옮겨야 한다.
 
 ## 10. 비용 전략
 
 - 워커 노드: Karpenter + Spot. 코어 노드그룹(On-Demand 소형)에는 CoreDNS, ArgoCD 등 필수 컴포넌트만.
 - 예상 월 비용 $150~250 (EKS $73 + 노드 + NAT + RDS + ALB). 매출 발생 전 고정비이므로 월 단위로 실측·기록한다.
+- **(2026-09-29) 데이터 계층 구축분**: RDS Multi-AZ db.t4g.micro ≈$38 + gp3 스토리지 ≈$5 +
+  Redis cache.t4g.micro ≈$15 ≈ 합계 **$58/월** (청구서 실측 전 추정치). S3/ECR은 종량, 바스천은 검증 시간만 과금.
+- **(2026-10-04) RDS Single-AZ 전환**: 비용 재검토로 Multi-AZ 해제 (≈-$20/월, 데이터 계층 ≈$38/월).
+  누적 실결제 10건 도달 시 `multi_az = true` 복원 (§12 가용성 방침).
+- **(2026-10-04) EKS 구축분**: 컨트롤플레인 $73 + NAT 재개 ≈$44 + 코어 노드 t4g.medium×1 ≈$30 +
+  EBS·KMS ≈$3 ≈ **$150/월** (추정치). Spot 노드는 워크로드가 있을 때만 과금. 전체 합계 ≈$190/월.
+- **(2026-10-06) prod 워크로드**: API Pod 2개를 서로 다른 노드에 두기 위한 Spot 노드 1대 ≈ +$10~15/월(추정치).
+  metrics-server·staging Redis는 기존 노드에 얹어 추가 비용 없음.
+- **(2026-10-06) 관측성**: 코어 노드 t4g.medium→t4g.large ≈ +$30/월(깨어 있는 시간) + EBS 40Gi(Prometheus 20·Loki 10·Tempo 10) ≈$4 +
+  S3·CloudWatch GetMetricData ≈$1~2 ≈ **+$35/월**. Tailscale·디스코드·Sentry 무료 티어.
 - 전체 스택은 Terraform만으로 재현 가능해야 한다 — 리전 장애 등 최악의 상황에서 RDS 백업 + `terraform apply`로 복구하는 것이 DR 전략의 기본이다.
 
-## 11. 로드맵
+## 11. 보안 체크리스트
+
+시크릿 관리(§5)는 보안의 일부일 뿐이다. 실결제 서비스로서 갖춰야 할 항목을 단계별로 관리한다.
+
+### 애플리케이션
+
+- [x] 비밀번호 argon2 해싱 (원문 미저장)
+- [x] 로그인 실패 시 계정 존재 여부 비노출 (모두 401)
+- [x] 가입 이메일 인증 (6자리 코드, 해시 저장, 15분 만료, 시도 5회 제한) — 미인증 시 문의/업로드 차단
+- [x] 입력 검증: 전역 ValidationPipe (whitelist + forbidNonWhitelisted)
+- [x] SQL 인젝션: Prisma 파라미터 바인딩 (raw 쿼리 사용 시 반드시 `$queryRaw` 태그드 템플릿)
+- [x] JWT 페이로드에 개인정보 미포함 (§5)
+- [x] rate limiting — 로그인/가입은 강하게, 전역은 완만하게
+- [x] 보안 HTTP 헤더 (helmet), CORS 허용 출처 명시
+- [x] **리소스 소유권 검증(IDOR 방지)** — 문의 API에 적용 완료 (타인 접근 404, e2e 검증). 견적/결제 API에도 동일 패턴 적용 예정
+- [ ] 파일 업로드: S3 presigned URL, 용량/MIME 제한, 실행 가능 확장자 차단
+      — 용량 제한은 presigned POST의 `content-length-range` 조건으로 서버가 강제한다
+- [ ] 토큰 무효화 — **refresh token rotation으로 확정(2026-07-24)**: 액세스 30분 +
+      리프레시 30일, 리프레시는 해시로 DB 저장·사용 시마다 회전·재사용 탐지 시 세션 전체 폐기
+- [x] 관리자 API에 role 기반 가드 (RolesGuard) — admin 견적 API 적용, e2e 검증
+
+### 결제 (§7과 연동)
+
+- [x] 웹훅 서명 검증 + 이벤트ID UNIQUE 멱등성 (구현·e2e 검증 완료 — `payments.e2e-spec.ts`)
+- [x] 결제 확정 전 PortOne 조회 API로 금액/통화 교차검증 (`PaymentsService.applyRemote`)
+- [x] **카드 정보는 어떤 형태로도 저장하지 않는다** — PortOne이 처리 (PCI-DSS 범위 회피).
+      Payment 행에는 금액·통화·상태·PortOne 거래번호만 있다
+- [x] 금액 불일치 감지 시 상태 변경 없이 알림 발송 (관리자 인앱 알림 + Sentry)
+- [ ] 프로덕션 웹훅 URL 등록 + PortOne 발신 IP(52.78.5.241) 허용 검토 (A4)
+
+### 인프라 (A2~A4)
+
+- [x] RDS 저장 시 암호화(KMS), S3 SSE + 퍼블릭 액세스 차단 — RDS는 aws/rds 관리형 키,
+      첨부 S3(staging/prod 2개)는 SSE-S3 + 퍼블릭 전면 차단 (2026-09-29, `infra/terraform/modules/rds`, `s3`)
+- [x] 전 구간 TLS (ACM + ALB), HSTS — ALB가 80→443 리다이렉트·TLS 1.2+ 정책, API가 HSTS 헤더, RDS는 CA 검증,
+      Redis는 TLS(prod ElastiCache) (2026-10-06 prod 확인)
+- [x] RDS/Redis 프라이빗 서브넷, 보안그룹 SG 참조 최소권한 (§4) — RDS Single-AZ(db.t4g.micro, §12) +
+      Redis 7.1(TLS+AUTH, cache.t4g.micro)까지 SG 참조 인그레스로 구축 완료. ECR(`lunote/api`)은
+      IMMUTABLE 태그로 latest 금지 규칙을 레지스트리 단에서 강제 (2026-09-29, `infra/terraform/modules/{rds,elasticache,ecr}`)
+- [x] K8s: 비root 컨테이너, RBAC 최소권한, NetworkPolicy (2026-10-04 staging 적용 — 워크로드 SA는 K8s API 권한 없음)
+- [x] 이미지 취약점 스캔 — CI가 Trivy(HIGH/CRITICAL, 수정본 있는 것만)로 차단, `npm audit`은 경고 (2026-10-05 Phase 4).
+      한계: `apps/api` 변경이 있는 커밋만 스캔한다 — 배포된 이미지의 신규 CVE는 잡지 못한다(2026-10-06 proxy-addr 사례), 주기 스캔은 Phase 5-2 후보
+- [ ] 감사 로그: 결제 상태 전이·관리자 행위 기록 (분쟁 대응 근거)
+
+### 법적 요구사항 (출시 전 필수)
+
+- [ ] **개인정보보호법(PIPA)**: 개인정보 처리방침 게시, 수집·이용 동의 절차,
+      보유기간·파기 정책, 개인정보 암호화 저장
+- [ ] 앱스토어 심사용 개인정보 처리방침 URL, 데이터 수집 항목 신고
+- [x] **앱 내 계정 삭제 기능** (App Store 5.1.1 필수) — 2026-10-09 구현(이메일·Google·Apple 가입자, Apple revoke 포함, 2026-10-10 prod 17410af47317).
+- [ ] 외국인 이용자 대상이므로 처리방침 영문 제공
+
+### 계정 삭제·개인정보 보존 (2026-10-09 결정)
+
+- **즉시 익명화 + 거래 기록 보존**: 탈퇴 시 User 행은 남기고 `deletedAt` 표시, 이메일은
+  `deleted+{id}@deleted.lunoteapp.invalid`로 대체, 이름·국적·언어·비밀번호 해시·providerId·아바타·인증 코드는 null.
+  리프레시 토큰·알림(사용자 본인 + 해당 문의를 가리키는 관리자 `REQUEST_CREATED` 알림 — 본문에 이메일 포함) 삭제.
+  `PAYMENT_*` 관리자 알림은 환불 신호이고 개인정보가 없어 보존.
+- **보존 범위 = 결제 행이 하나라도 있는 문의**(전자상거래법 시행령 §6 계약·결제 5년/분쟁 3년, 국세기본법 §85의3 5년):
+  문의·견적·결제·결제 이벤트 유지, `contactMethod` 비움, 첨부 행 삭제. 결제 행이 없는 문의는 견적·첨부와 함께 삭제.
+- **차단**: PAID·IN_PROGRESS 문의가 있으면 409(완료·환불 후 탈퇴). REVIEWING·QUOTED는 탈퇴 시 CANCELLED.
+  취소를 먼저 실행해 행을 잠근 뒤 차단 조건을 검사한다 — 결제 확정과 경쟁해도 PAID 문의가 남은 채 탈퇴되지 않는다.
+- **파일**: 커밋 후 BullMQ `account-cleanup`이 S3 `uploads/{userId}/` 전체를 삭제(버킷 버전 관리 없음 = 영구 삭제), 5회 재시도.
+- **분리 보관(개인정보보호법 §21③)**: 접근 통제로 논리 분리 — 관리자 문의 API는 탈퇴 사용자 문의를 제외, 분쟁 대응 시에만 DB 직접 조회.
+- **경로**: 앱 `DELETE /users/me`(비밀번호 재입력), 앱 없이 요청(Google Play 요건)은 이메일 → 관리자 `DELETE /admin/users/:id`(감사 로그).
+- **잡 payload**: 알림 메일 잡에는 이메일을 싣지 않는다(발송 시 조회) — 완료 잡이 Redis에 남기 때문(개인정보보호법 §21 지체 없는 파기).
+- **관리자 조회**: `POST /admin/users/lookup`(본문 `{ email }`) — 이메일을 URL에 싣지 않는다(요청 로그·트레이스에 남음).
+- **운영**: 정리 잡이 실패하면 같은 jobId로 add해도 무시되므로 `job.retry()` 또는 삭제 후 재등록한다. IRSA 권한 apply가 이미지 롤아웃보다 먼저여야 한다.
+- **시스템 밖 잔존**: PortOne/PayPal의 결제자 정보, 관리자 메일함의 신규 문의 메일 — 처리방침(6-2)에 고지.
+- **TODO(2031-10)**: 보존기간 5년이 지난 거래 기록 파기 배치 — 첫 만료 전까지 구현.
+- **소셜 가입자**: 앱 탈퇴는 제공자 재로그인으로 재인증(토큰 sub = providerId, 발급 5분 이내). Apple은 재인증 code를 교환해 즉시 revoke(토큰 미저장),
+  관리자 대행 삭제는 사용자에게 "설정 → Apple로 로그인에서 연결 해제"를 안내한다.
+
+### 동의 기록 (2026-10-11 결정)
+
+- **가입 동의**: `User.termsAcceptedAt`. 이메일 가입은 `SignupDto.termsAccepted=true` 필수(체크박스), 소셜은 로그인/가입이
+  한 엔드포인트라 앱이 항상 `termsAccepted: true`를 보내고 서버는 **신규 생성 시에만** 검사한다(버튼 아래 "계속하면 동의" 고지가 근거).
+- **청약철회 제한 동의**: `Payment.withdrawalConsentAt`. 결제 화면이 견적 확인 → 동의 체크 → `POST /payments`(`withdrawalConsent=true` 필수)
+  순서라 결제 시도 행 생성 시각 = 동의 시각. 전자상거래법 §17②5호(동의하에 개시된 용역)의 증빙이며 PayPal 분쟁 대응용.
+  PENDING 시도를 재사용하면 최초 동의 시각이 유지된다.
+- 약관 버전은 저장하지 않는다 — 시각을 lunoteapp.com 문서의 시행일과 대조한다. 문서 본문은 웹이 단일 원천이고 앱은 링크만 한다.
+
+### 푸시 알림 (2026-10-11 결정)
+
+- **Expo Push Service** 경유(`exp.host`, fetch, 의존성 없음). 대상은 사용자 인앱 알림과 동일(`QUOTE_SENT`·`PAYMENT_PAID`) —
+  인앱 생성 함수가 돌려주는 제목·본문을 그대로 `USER_PUSH` 잡으로 넣는다(커밋 후, 기존 관리자 메일과 같은 fire-and-forget).
+- **토큰 존재 = opt-in**: `PushToken`(토큰 UNIQUE, 사용자당 N기기). `PUT/DELETE /users/me/push-token`. 로그아웃·탈퇴·`DeviceNotRegistered`·**세션 전체 폐기**(비밀번호 변경·재설정, 리프레시 재사용 탐지 — 분실 기기 보호)에 삭제.
+  같은 토큰이 다른 사용자로 오면 소유자를 옮긴다(기기 공유).
+- **권한 시점**: 첫 문의 제출 직후 안내 화면(1회) → OS 팝업. 이미 허용된 기기는 로그인 때 조용히 upsert(단, 설정에서 끈 기기는 기기 플래그 `optedOut`으로 제외). 설정 화면 토글, 거절 상태면 OS 설정으로.
+- 자격증명: iOS APNs 키·Android FCM V1은 EAS credentials. `EXPO_PUSH_ACCESS_TOKEN`(선택, 시크릿)은 Enhanced push security용.
+- 범위 밖: 유형별 on/off, 뱃지, 영수증 폴링, 관리자 푸시.
+
+### 소셜 로그인 (2026-10-09 결정)
+
+- **방식**: 네이티브 SDK가 받은 ID 토큰을 `POST /auth/google`·`/auth/apple`로 보내고 서버가 jose로 JWKS 서명·iss·aud·exp 검증.
+  Passport OAuth 리다이렉트는 쓰지 않는다 — 딥링크 토큰 전달 구간 제거, Google client secret 불필요.
+- **이메일 충돌**: 다른 방식으로 가입된 이메일이면 409 + 기존 provider. 자동 연결 없음(Google 비-Gmail 계정의 email_verified 신뢰 함정).
+- **Apple은 iOS만**: Android Apple 로그인은 웹 리다이렉트가 필요해 제외. App Store 4.8 의무는 iOS만.
+- **nonce 미사용**: 클라이언트 생성 nonce는 토큰과 함께 탈취돼 효과가 없다. 보호는 TLS·aud·Apple 토큰 10분 만료·탈퇴 재인증 5분·요청 본문 비기록.
+- **Apple 서버 간 알림** `POST /auth/apple/notifications`: consent-revoked → 전 세션 폐기, account-delete → 자동 탈퇴
+  (PAID·IN_PROGRESS면 세션 폐기 + 관리자 인앱 알림 `APPLE_ACCOUNT_DELETED` 후 수동 정리), email-* → 로그만.
+  알림 주소는 번들 ID당 1개라 prod만 수신한다.
+- **설정**: 공개 식별자(`GOOGLE_WEB_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`)는 ConfigMap, `.p8`(`APPLE_PRIVATE_KEY`)만 Secrets Manager.
+- **구현 완료 2026-10-10**: PR #195(API)·#196(앱)·#197(탈퇴·알림), prod 17410af47317. 가입 화면에도 소셜 버튼(사용자 결정). 실기기 실측: Apple 가입·재로그인·탈퇴·설정 목록에서 LUNOTE 해제 확인.
+
+## 12. 확정된 식별자·환경 결정 (구 미결정 사항)
+
+- **도메인 `lunoteapp.com` / 번들 식별자 `com.lunoteapp` 확정 (2026-09-22)** — iOS/Android 동일.
+  App Store 최초 등록 후 변경 불가하므로 등록 시 이 값 사용.
+  (`app.json` 적용 완료 2026-10-09 — 소셜 콘솔 등록이 번들 ID에 묶이므로 등록 전에 교체했다.)
+- **환경 분리 (2026-09-17)**: EKS 클러스터 1개 + `staging`/`prod` 네임스페이스 분리.
+  근거·완화책은 배포 설계 스펙(`docs/superpowers/specs/` — 로컬 전용, git 추적 제외) §0.
+- **EKS 구성 (2026-10-04 구축)**: 클러스터 `lunote`, K8s **1.36**(Karpenter 1.14 지원 상한에 맞춤),
+  코어 노드그룹 AL2023 arm64 `t4g.medium` 1대(→ 2026-10-06 `t4g.large` 교체 결정, min 1/max 2, taint 없음), vpc-cni prefix delegation,
+  EBS CSI + gp3 기본 StorageClass. Karpenter NodePool `default`는 Spot 우선(on-demand 폴백)·arm64 전용·
+  c/m/r 5세대+·한도 16 vCPU/32Gi. Karpenter 노드 maxPods 20(2026-10-07 — EC2NodeClass에 없으면 ENI 기준
+  기본값이라 medium이 8개에서 막혀 DaemonSet이 못 뜬다. 110은 kube-reserved 메모리(11×maxPods+255Mi)가 2Gi 노드에 과함).
+  권한은 전부 IRSA(Karpenter·LBC·EBS CSI).
+  **책임 분리**: Terraform은 AWS 리소스만(`infra/terraform`), 클러스터 내부(Karpenter 1.14.1·AWS Load
+  Balancer Controller 3.5.0 차트, NodePool)는 `infra/k8s/platform/`의 커밋 파일을 ArgoCD가 관리(아래).
+  플랫폼 컴포넌트는 `karpenter.sh/nodepool DoesNotExist` affinity로 코어 노드에 고정.
+- **GitOps·시크릿 (2026-10-04 구축)**: ArgoCD 3.5(차트 10.9.6) **App of Apps** — 루트
+  (`infra/k8s/bootstrap/root-app.yaml`)가 `infra/k8s/apps/`를 감시하고, 플랫폼 컴포넌트 전부(ArgoCD 자신,
+  Karpenter, LBC, ESO, StorageClass, 환경 네임스페이스)를 `develop` 브랜치 기준으로 동기화한다.
+  automated + selfHeal, **자동 prune은 끔**(실수로 지운 파일이 NodePool 삭제로 이어지지 않게).
+  비HA 최소 구성(dex·notifications 없음), 외부 노출 없이 접속(2026-10-08부터 Tailscale Ingress — 아래 '관리 UI 접속').
+  External Secrets Operator 2.11.0: 컨트롤러에는 AWS 권한이 없고, 환경 네임스페이스의 SA `eso-reader`가
+  **환경별 IRSA 롤**(`lunote-eso-{staging,prod}` — `lunote/<env>/*` + `lunote/shared/redis` 읽기 전용)을
+  맡는다. 네임스페이스 `SecretStore`만 쓰므로 staging에서 prod 시크릿은 읽을 수 없다(AccessDenied 검증).
+  Redis 논리 DB: prod `/0`, staging `/1`. 코어 노드는 1대 유지(설치 후 메모리 requests ≈55%) —
+  Jenkins 도입 시 실측으로 재확인(아래 CI 항목), Prometheus 도입 시 재측정.
+- **staging 배포 (2026-10-04)**: `https://api-staging.lunoteapp.com`. 워크로드는
+  `infra/k8s/workloads/api/`의 Kustomize base + `overlays/staging`(prod overlay는 prod 배포 때 추가),
+  ArgoCD Application `api-staging`이 동기화한다(워크로드 앱은 prune 켬 — 해시 ConfigMap 정리).
+  - **워커는 API 프로세스에 통합 유지**(결정 변경 — 기존 구상은 별도 Worker Deployment): 큐가 관리자
+    이메일 전용이고 규모 가정이 ~50 MAU라 분리 이점이 작다. 큐 부하가 생기면 워커 진입점을 분리한다.
+  - **배포 순서**: sync-wave로 ExternalSecret·설정(−2) → `prisma migrate deploy` Job(Sync hook, −1) →
+    Deployment(0). 마이그레이션이 실패하면 롤아웃하지 않는다. PreSync hook은 같은 앱의 ExternalSecret보다
+    먼저 실행돼 최초 배포에서 Secret이 없어 실패하므로 쓰지 않는다.
+  - **배치**: 앱 파드는 Karpenter 노드에만(`nodeSelector karpenter.sh/nodepool: default`) — RDS/Redis
+    인그레스가 참조하는 `lunote-app` SG는 Karpenter 노드에만 붙는다. 비root(uid 1000)·읽기 전용 루트·
+    capabilities drop ALL. probe는 readiness만 `/health`, liveness는 TCP(DB 장애로 재시작 루프 방지).
+  - **DB TLS**: node-postgres는 `sslmode=require`에서 인증서를 검증한다. RDS CA 번들을 ConfigMap으로
+    마운트하고 `NODE_EXTRA_CA_CERTS`로 신뢰시킨다(검증을 끄지 않는다).
+  - **Redis**: `REDIS_URL`의 스킴(rediss=TLS)·AUTH·경로(논리 DB)를 BullMQ 연결 옵션으로 변환.
+  - **격리**: 네임스페이스별 ResourceQuota·LimitRange·NetworkPolicy 기본 거부(vpc-cni
+    `enableNetworkPolicy`), PriorityClass(prod 1000 / staging 100). API에는 ALB 서브넷→3000, DNS,
+    프라이빗 서브넷 5432/6379, 외부 443/587만 허용.
+  - **진입**: ALB 1대를 staging/prod가 공유(Ingress group·이름 `lunote`), 서울 리전 `*.lunoteapp.com`
+    ACM을 호스트명으로 자동 탐색, DNS는 Terraform이 ALB를 이름으로 조회해 alias. PortOne 웹훅 경로는
+    `/payments/portone/webhook`(발신 IP allowlist는 미적용 — 서명 검증 + 조회 교차검증으로 방어).
+  - **권한**: API IRSA 롤 `lunote-api-{staging,prod}` — 자기 환경 첨부 버킷의 객체 Put/Get만.
+  - 첫 이미지는 로컬 수동 빌드(arm64, git SHA 태그). CI 자동화는 A3. 신규 비용 ≈$30/월(ALB + Spot 노드 1대).
+- **CI (2026-10-05 결정)**: Jenkins(차트 5.9.65) 컨트롤러 1개를 코어 노드에 둔다. **코어 노드는 1대 유지** —
+  실측(설치 전 노드 실사용 1447Mi/3.8GiB, 설치·빌드 후 가용 1341Mi)상 컨트롤러(requests 1Gi, limit 1.5Gi)가
+  들어간다. 단 스케줄링 기준인 requests는 2964Mi/3288Mi(90%)라 남은 예약 여유는 ≈320Mi — 코어 노드에 컴포넌트를
+  더 올리려면 증설이 먼저다. t4g는 가격이 메모리에
+  정비례해 scale up(t4g.large)과 2대 증설의 비용이 같으므로(≈+$30/월) 증설은 Phase 5로 미룬다(→ 2026-10-06 t4g.large 교체 결정). 설정은 JCasC + Job DSL로 `infra/k8s/platform/jenkins/values.yaml`에 둔다.
+  트리거는 **GitHub 웹훅** — 공유 ALB에 `ci-hooks.lunoteapp.com/github-webhook/` 규칙 하나만 열고(GitHub 발신
+  IP 조건 + HMAC-SHA256 서명 검증), UI는 노출하지 않는다(tailnet 전용 — '관리 UI 접속'). 빌더는 **BuildKit rootless**
+  (기존 구상 Kaniko는 2025-06 아카이브). GitHub 쓰기는 deploy key(배포 저장소 `So1ky/lunote-deploy` 전용), ECR push는 에이전트 SA의
+  IRSA(`lunote-jenkins-agent`). 시크릿은 `lunote/shared/jenkins` → ESO(`lunote-eso-jenkins`).
+  e2e 의존 서비스는 빌드 Pod 사이드카(S3는 S3Mock — MinIO 공개 이미지 배포 중단).
+- **staging Redis 분리 (2026-10-06 결정)**: staging은 네임스페이스 안의 Redis Pod(`redis:7.4-alpine`, 비영속,
+  NetworkPolicy로 api Pod만 접속)를 쓰고 ElastiCache는 prod 전용이다. 논리 DB 번호(`/0`·`/1`)는 같은 비밀번호로
+  서로 접속할 수 있어 권한 경계가 아니었다. `lunote-eso-staging` 롤에서 `lunote/shared/redis` 읽기를 뺐다.
+  잃는 것: staging이 ElastiCache(TLS+AUTH) 접속 경로를 검증하지 않는다 — URL 변환은 단위 테스트가 본다.
+  위의 "Redis 논리 DB: prod `/0`, staging `/1`"은 prod `/0`만 유효하다.
+- **prod 배포 (2026-10-06)**: `https://api.lunoteapp.com`. `overlays/prod` = HPA(2~4, CPU 70%) + PDB(minAvailable 1)
+  + 노드 분산(hostname 강제 — `minDomains: 2`로 노드가 1대뿐이면 Pending, `matchLabelKeys: [pod-template-hash]`로 롤링 중 옛 세대 제외; AZ는 가능하면) + CPU request 250m. Deployment의 `replicas`는 오버레이가 지운다(HPA와
+  ArgoCD selfHeal이 서로 되돌리지 않게) — 그래서 `infra-power.sh` wake가 prod API를 2로 직접 올린다(HPA는 0에서
+  동작하지 않는다). Service·Ingress는 staging처럼 `namespaces` 앱, `api-prod`는 AppProject `prod-api`(prod
+  네임스페이스, 오버레이가 만드는 8종 + 표시용 Pod·ReplicaSet). HPA용 metrics-server는 EKS 애드온(replicas 1, 코어 노드, requests 100Mi) —
+  적용 후 코어 메모리 requests 실측 2924Mi/3288Mi(89%)라 **Prometheus 도입 전에 코어 증설이 필요하다**.
+  Redis는 ElastiCache 논리 DB `/0`. BullMQ 워커는 Pod마다 돈다(경쟁 소비).
+- **rate limit 저장소 (2026-10-06 결정)**: 프로덕션은 카운터를 Redis에 둔다(`@nest-lab/throttler-storage-redis`) —
+  Pod마다 메모리에 세면 한도가 Pod 수만큼 느슨해진다. Redis 장애 시에는 통과(fail-open)시키고 요청이 대기하지 않게
+  오프라인 큐를 끈다. 로컬·테스트는 인메모리.
+- **prod 부하 테스트·HPA 수치 (2026-10-08 실측)**: 사용자 Mac → ALB, k6 도착률 실행기, 읽기 위주 + 메일 없는 쓰기(테스트 창 동안만
+  전역 한도 `THROTTLE_DEFAULT_LIMIT` 상향). 20 RPS 10분: 클라이언트 P95 111ms·에러율 0%(합격 기준 500ms·1%), 서버 P95 24ms.
+  계단 스트레스에서 172 RPS(Pod 4, 서버 P95 140ms)까지 정상, ≈218 RPS에서 P95 3.3s로 꺾임. 첫 병목은 **노드 CPU** — Karpenter가 고른
+  1 vCPU 노드 2대에 API Pod가 2개씩 들어가 노드 CPU 100%(RDS CPU 18%, 메모리 Pod당 최대 199Mi). 파생 증상: 트랜잭션 풀 대기 초과(P2028) 500,
+  readiness 타임아웃(1s)으로 Pod가 ALB에서 빠지는 연쇄. **HPA는 2~4·CPU 70%·requests 250m 그대로 둔다** — 한계가 예상 트래픽의 수백 배이고,
+  maxReplicas를 올리면 5번째 Pod부터 새 노드가 붙어 늘어나지만 출시 초기에는 불필요(사용자 결정). 재측정 시점: 실사용 피크가 80 RPS를 넘을 때
+  또는 데이터가 쌓여 서버 P95가 눈에 띄게 오를 때. 측정에서 빠진 것: 결제·실제 S3 업로드·메일, 빈 DB(쿼리가 가벼움).
+- **코어 노드 t4g.large (2026-10-06 결정)**: 관측성 스택(≈2.4GiB requests)을 올리기 위해 코어 노드그룹 인스턴스를 t4g.medium→**t4g.large**(1대 유지)로
+  교체한다. 2대 증설과 비용이 같고(+$30/월), 1대면 전원 스크립트·PV·AZ 구조가 그대로다. 노드 교체 시 플랫폼 컴포넌트만 수 분 중단 — API Pod는
+  Karpenter 노드라 사용자 서비스는 영향 없다. 잃는 것: 단일 장애점 유지(기존 수용).
+- **관측성 스택 (2026-10-06 결정)**: `monitoring` 네임스페이스는 Pod Security privileged + warn/audit baseline(node-exporter hostPath).
+  `tailscale`은 **baseline**(2026-10-08 수정 — Ingress 프록시는 userspace 모드라 NET_ADMIN·privileged가 없다. Connector·egress 프록시처럼
+  kernel 모드를 쓰게 되면 privileged로 올린다). Loki·Tempo는 S3 + IRSA(버킷 단위), WAL용 PVC 10Gi. Grafana persistence 끔(대시보드·규칙은 git). RDS ingress에
+  **코어 노드 SG를 추가**한다(Grafana PostgreSQL 데이터소스) — 노드 단위 허용이므로 monitoring NetworkPolicy로 Grafana Pod만 5432 egress 허용.
+  ServiceMonitor·PrometheusRule·대시보드는 별도 ArgoCD 앱 `monitoring-config`. 알림 채널은 디스코드(`webhook_url_file`, URL은 ESO). RDS 지표는
+  CloudWatch 데이터소스(exporter Pod 없음, ≈$1/월). Alloy는 Deployment 1개(API 경유 수집이라 노드 로컬 불필요).
+- **관리 UI 접속 (2026-10-06 결정)**: Tailscale Operator + `ingressClassName: tailscale` Ingress(argocd·grafana·jenkins). ArgoCD 서버는 `server.insecure: true`
+  (프록시가 TLS 종료, 클러스터 내부 홉). 대안 기각: ALB + Cognito OIDC(관리 UI 공개 노출·2중 로그인), port-forward 재연결 스크립트(노트북만).
+- **코어 노드그룹 AZ 고정 (2026-10-05 결정)**: 코어 노드그룹은 `ap-northeast-2c` 서브넷 하나에만 둔다.
+  Jenkins·Prometheus·Loki·Tempo의 PV는 EBS라 한 AZ에 묶이는데, 노드그룹이 2 AZ에 걸쳐 있으면 노드 교체나 wake 때
+  노드가 다른 AZ에 떠 Pod가 Pending으로 남는다. 평상시 가용성은 같다. 잃는 것: 2c 장애 시 노드그룹이 2a에
+  노드를 자동으로 띄우지 못한다 — 수동 복구는 `envs/prod/eks.tf`의 AZ 이름을 2a로 바꿔 apply(Jenkins는
+  2c가 돌아올 때까지 Pending). 다만 RDS(Single-AZ)가 2c, NAT·Redis가 2a에 있어 지금은 어느 AZ가 죽어도
+  서비스가 멈추므로 결과는 달라지지 않는다. 2대로 늘려도 둘 다 2c에 뜬다(앱 워커는 Karpenter라 2 AZ 유지).
+  **RDS Multi-AZ 전환(누적 실결제 10건) 때 코어 노드·NAT·CoreDNS 분산·PV 배치를 함께 다시 정한다.**
+- **출시 전 비용 절감 (2026-10-04)**: 실사용자가 생기기 전까지 작업하지 않는 시간에는
+  `scripts/infra-power.sh sleep`으로 Karpenter 노드·코어 노드그룹(0대)·NAT Gateway·RDS(정지)를 내리고
+  `wake`로 올린다(≈$100/월분 정지). EKS 컨트롤 플레인·ALB·ElastiCache는 정지 기능이 없거나 번거로워 유지.
+  노드 수(desired)와 RDS 기동/정지는 Terraform이 관리하지 않는 운영 상태라 CLI로 바꾸고, NAT는
+  `enable_nat_gateway` 변수로 Terraform이 만든다/지운다. **실결제가 시작되면 사용하지 않는다.**
+- **가용성 방침 (2026-09-22 SPOF 검토, 2026-10-04 개정)**: RDS는 **Single-AZ로 운영하다
+  누적 실결제 10건 도달 시 Multi-AZ 전환** (`envs/prod/rds.tf`의 `multi_az` 속성 — 온라인 변경).
+  데이터 유실 위험은 PITR(5분)로 Single-AZ에서도 동일, Multi-AZ가 더해주는 건 1~2분 자동
+  페일오버뿐이라 실사용자 발생 전까지 ≈$20/월을 아낀다. NAT는 1개 유지(비용 우선,
+  AZ별 확장은 무중단 재적용 가능), Redis 단일 노드 유지(인앱 알림 DB-first 설계로 완화됨).
+- **앱 최소 지원 OS**: Expo SDK 57(RN 0.86) 기준 iOS 15.1 이상. 출시 시 확정한다.
+
+## 13. 로드맵
 
 백엔드/인프라 트랙과 앱(Expo) 트랙을 병행한다. 앱은 백엔드 API 계약이 잡히는 대로
 화면을 붙여나가며, 백엔드의 TypeScript 타입(DTO)을 공유해 재작업을 방지한다.

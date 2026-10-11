@@ -1,0 +1,22 @@
+# staging API 워크로드. 소스는 배포 저장소(So1ky/lunote-deploy) — CI의 deploy key가 쓸 수 있는 유일한 곳이다.
+# 그래서 이 앱만 staging 네임스페이스로 제한된 프로젝트에 둔다(project-staging-api.yaml).
+# 배포 저장소의 내용은 CI가 이 저장소의 infra/k8s/workloads/api를 복사하고 newTag만 바꾼 것이다.
+# Service와 Ingress는 여기 없다 — platform/namespaces/staging-api-{service,ingress}.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: api-staging
+  namespace: argocd
+spec:
+  project: staging-api
+  source:
+    repoURL: https://github.com/So1ky/lunote-deploy.git
+    targetRevision: staging
+    path: workloads/api/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: staging
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true # 설정 변경마다 생기는 해시 ConfigMap의 이전 버전을 정리한다

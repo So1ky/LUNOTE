@@ -1,0 +1,30 @@
+# staging API의 Ingress. 워크로드 오버레이가 아니라 여기(develop이 관리하는 namespaces 앱)에 둔다 —
+# 배포 저장소(CI의 deploy key로 쓸 수 있다)에서 Ingress를 만들 수 있으면 공유 ALB의 다른 호스트 규칙까지 건드릴 수 있다.
+# staging/prod가 ALB 1대를 공유한다(group.name). 인증서는 호스트명으로 ACM에서 자동 탐색(*.lunoteapp.com).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api
+  namespace: staging
+  annotations:
+    alb.ingress.kubernetes.io/group.name: lunote
+    alb.ingress.kubernetes.io/load-balancer-name: lunote # Terraform이 이 이름으로 조회해 DNS를 건다
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+spec:
+  ingressClassName: alb
+  rules:
+    - host: api-staging.lunoteapp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  name: http
