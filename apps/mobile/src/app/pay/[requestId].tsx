@@ -148,7 +148,7 @@ export default function PayScreen() {
         {quote && intent?.provider !== 'BANK_TRANSFER' && (
           <Card style={styles.summary}>
             <ThemedText type="caption" themeColor="textSecondary">
-              {t('pay.summary', { id: requestId })}
+              {t('pay.summary')}
             </ThemedText>
             <ThemedText type="display" style={styles.amount}>
               {formatAmount(quote.amount, quote.currency, locale)}

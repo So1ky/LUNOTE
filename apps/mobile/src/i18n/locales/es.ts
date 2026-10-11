@@ -319,7 +319,7 @@ const es: Resources = {
 
   pay: {
     title: 'Pago',
-    summary: 'SOLICITUD #{{id}}',
+    summary: 'IMPORTE DEL PRESUPUESTO',
     secure: 'Procesado de forma segura por PayPal a través de PortOne. LUNOTE nunca ve los datos de tu tarjeta.',
     payWithPaypal: 'Paga con PayPal o con tarjeta de crédito/débito a través de PayPal.',
     confirming: 'Confirmando tu pago…',
@@ -350,7 +350,7 @@ const es: Resources = {
   },
 
   requestDetail: {
-    title: 'Solicitud n.º {{id}}',
+    title: 'Detalles de la solicitud',
     requested: 'Solicitado el {{date}}',
     budgetSuffix: ' · Presupuesto {{amount}}',
     contact: 'Contacto: {{method}}',

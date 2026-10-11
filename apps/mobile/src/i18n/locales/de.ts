@@ -319,7 +319,7 @@ const de: Resources = {
 
   pay: {
     title: 'Bezahlung',
-    summary: 'ANFRAGE #{{id}}',
+    summary: 'ANGEBOTSBETRAG',
     secure: 'Sicher verarbeitet von PayPal über PortOne. LUNOTE sieht deine Kartendaten nie.',
     payWithPaypal: 'Bezahle mit PayPal oder per Kredit-/Debitkarte über PayPal.',
     confirming: 'Zahlung wird bestätigt…',
@@ -350,7 +350,7 @@ const de: Resources = {
   },
 
   requestDetail: {
-    title: 'Anfrage #{{id}}',
+    title: 'Anfragedetails',
     requested: 'Angefragt am {{date}}',
     budgetSuffix: ' · Budget {{amount}}',
     contact: 'Kontakt: {{method}}',
