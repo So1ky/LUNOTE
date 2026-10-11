@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, RequestStatus } from '@prisma/client';
+import { PaymentMethod, Prisma, RequestStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
@@ -17,6 +17,7 @@ const REQUEST_SELECT = {
   serviceItem: true,
   desiredAmount: true,
   currency: true,
+  paymentMethod: true,
   description: true,
   contactMethod: true,
   status: true,
@@ -88,6 +89,7 @@ export class QuoteRequestsService {
           serviceItem: dto.serviceItem,
           desiredAmount: dto.desiredAmount,
           currency: dto.currency ?? 'USD',
+          paymentMethod: dto.paymentMethod ?? PaymentMethod.PAYPAL,
           description: dto.description,
           contactMethod: dto.contactMethod,
           attachments: dto.attachments?.length

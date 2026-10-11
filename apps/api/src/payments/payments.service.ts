@@ -15,6 +15,7 @@ import * as Sentry from '@sentry/nestjs';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MetricsService } from '../observability/metrics.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { BankTransferConfig } from './bank-transfer.config';
 import { toMinorUnits } from './currency';
 import {
   PortOneGateway,
@@ -22,15 +23,16 @@ import {
   type PortOneWebhookEvent,
 } from './portone.gateway';
 
-/** 통화 → 결제 채널 라우팅. 국내 PG(KRW) 추가 시 여기에 한 줄 (앱은 provider로 UI를 분기) */
+/** 통화 → 결제 채널 라우팅 (앱은 provider로 UI를 분기) */
 const PROVIDER_BY_CURRENCY: Record<string, PaymentProvider> = {
   USD: PaymentProvider.PAYPAL,
+  KRW: PaymentProvider.BANK_TRANSFER, // 수동 계좌이체 (INICIS 도입 전까지)
 };
 
-/** 앱이 결제 UI를 띄우는 데 필요한 값 — 시크릿은 절대 포함하지 않는다 (storeId/channelKey는 공개 식별자) */
-export type PaymentIntent = {
+/** 앱이 PayPal 결제 UI를 띄우는 데 필요한 값 — 시크릿은 절대 포함하지 않는다 (storeId/channelKey는 공개 식별자) */
+export type PayPalIntent = {
+  provider: 'PAYPAL';
   paymentId: string;
-  provider: PaymentProvider;
   storeId: string;
   channelKey: string;
   orderName: string;
@@ -40,6 +42,21 @@ export type PaymentIntent = {
   /** 표시용 원 금액 (Decimal 문자열) */
   amount: string;
 };
+
+/** 앱이 계좌 안내 카드를 그리는 데 필요한 값 */
+export type BankTransferIntent = {
+  provider: 'BANK_TRANSFER';
+  paymentId: string;
+  amount: string;
+  currency: string;
+  bank: { name: string; accountNumber: string; holder: string };
+  /** 입금자명 — LUNOTE + 요청 번호. 관리자가 입금 내역과 대조한다 */
+  depositorName: string;
+  /** 입금 기한 = 견적 만료 (ISO) */
+  deadline: string;
+};
+
+export type PaymentIntent = PayPalIntent | BankTransferIntent;
 
 /** 웹훅/확인 처리의 결과 — 로그·테스트용. 클라이언트에는 상태만 나간다 */
 export type SyncOutcome =
@@ -62,6 +79,15 @@ const PAYMENT_SELECT = {
   createdAt: true,
 } satisfies Prisma.PaymentSelect;
 
+/** markPaid가 필요로 하는 결제 행 — applyRemote의 local select와 confirmBankTransfer의 select가 둘 다 만족한다 */
+type PaidTarget = {
+  id: string;
+  amount: Prisma.Decimal;
+  currency: string;
+  provider: PaymentProvider;
+  quote: { requestId: number; request: { userId: string } };
+};
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -71,6 +97,7 @@ export class PaymentsService {
     private readonly portone: PortOneGateway,
     private readonly notifications: NotificationsService,
     private readonly metrics: MetricsService,
+    private readonly bankTransfer: BankTransferConfig,
   ) {}
 
   /**
@@ -78,9 +105,6 @@ export class PaymentsService {
    * 앱이 결제 UI를 띄울 값을 돌려준다. 금액은 서버의 Quote에서만 온다.
    */
   async createIntent(userId: string, quoteId: string): Promise<PaymentIntent> {
-    if (!this.portone.isConfigured) {
-      throw new ServiceUnavailableException('PAYMENTS_NOT_CONFIGURED');
-    }
     // 소유자 조건을 where에 포함 — 남의 견적은 404 (존재 여부를 노출하지 않는다)
     const quote = await this.prisma.quote.findFirst({
       where: { id: quoteId, request: { userId } },
@@ -101,6 +125,17 @@ export class PaymentsService {
     }
     const provider = PROVIDER_BY_CURRENCY[quote.currency];
     if (!provider) throw new ConflictException('UNSUPPORTED_CURRENCY');
+
+    // 채널별 설정 검사 — 어느 쪽도 미설정이면 503 (기동은 되지만 그 수단만 불가)
+    if (provider === PaymentProvider.PAYPAL && !this.portone.isConfigured) {
+      throw new ServiceUnavailableException('PAYMENTS_NOT_CONFIGURED');
+    }
+    if (
+      provider === PaymentProvider.BANK_TRANSFER &&
+      !this.bankTransfer.isConfigured
+    ) {
+      throw new ServiceUnavailableException('BANK_TRANSFER_NOT_CONFIGURED');
+    }
 
     // 미완료 시도가 있으면 재사용 — PortOne은 미결제 paymentId 재요청을 허용하고, 행 남발을 막는다.
     // 사유가 붙은 PENDING(금액 불일치)은 PG에선 이미 결제된 건이라 재사용 대상이 아니다
@@ -128,9 +163,20 @@ export class PaymentsService {
         select: { id: true },
       }));
 
+    if (provider === PaymentProvider.BANK_TRANSFER) {
+      return {
+        provider: 'BANK_TRANSFER',
+        paymentId: payment.id,
+        amount: quote.amount.toString(),
+        currency: quote.currency,
+        bank: this.bankTransfer.bank!,
+        depositorName: `LUNOTE${quote.request.id}`,
+        deadline: quote.expiresAt.toISOString(),
+      };
+    }
     return {
+      provider: 'PAYPAL',
       paymentId: payment.id,
-      provider,
       storeId: this.portone.storeId!,
       channelKey: this.portone.paypalChannelKey!,
       orderName: `LUNOTE #${quote.request.id} ${quote.request.category}`,
@@ -235,6 +281,123 @@ export class PaymentsService {
   }
 
   /**
+   * 관리자 입금 확인 (수동 계좌이체). PG 밖 경로라 외부 조회 없이 관리자의 확인이 곧 증빙.
+   * 만료된 견적이라도 돈이 들어왔으면 확인을 허용한다 — 문의가 QUOTED가 아니면 markPaid가 불일치로 관리자에게 알린다.
+   */
+  async confirmBankTransfer(paymentId: string, adminId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // 동시 클릭·웹훅과의 경쟁을 행 잠금으로 직렬화 — applyRemote는 조건부 updateMany로 경쟁을 막지만, 여기는 상태를 읽고 분기하므로 행 잠금이 필요하다
+      const [row] = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM payments WHERE id = ${paymentId} FOR UPDATE`;
+      if (!row) throw new NotFoundException('Payment not found');
+      const local = await tx.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          provider: true,
+          paidAt: true,
+          quote: {
+            select: { requestId: true, request: { select: { userId: true } } },
+          },
+        },
+      });
+      if (local.provider !== PaymentProvider.BANK_TRANSFER) {
+        throw new ConflictException('NOT_BANK_TRANSFER');
+      }
+      if (
+        local.status !== PaymentStatus.PENDING &&
+        local.status !== PaymentStatus.PAID
+      ) {
+        throw new ConflictException('NOT_PENDING');
+      }
+      // 감사 로그를 markPaid보다 먼저 — 전이와 같은 트랜잭션(기록 없는 입금 확인이 존재할 수 없게)이면서,
+      // markPaid가 관리자 메일을 setImmediate로 예약하므로 그 뒤에는 실패할 수 있는 쓰기를 두지 않는다
+      // (뒤에서 실패해 롤백되면 확정되지 않은 입금의 메일이 나간다).
+      // 행을 잠근 채 PENDING을 확인했으므로 markPaid의 결과는 'paid'로 결정돼 있다. PAID(재클릭)는 감사 없이 noop
+      if (local.status === PaymentStatus.PENDING) {
+        await tx.adminAuditLog.create({
+          data: {
+            adminId,
+            action: 'BANK_TRANSFER_CONFIRMED',
+            targetType: 'PAYMENT',
+            targetId: local.id,
+            detail: {
+              requestId: local.quote.requestId,
+              amount: local.amount.toString(),
+              currency: local.currency,
+            },
+          },
+        });
+      }
+      const outcome = await this.markPaid(tx, local, { paidAt: new Date() });
+      const payment = await tx.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+        select: { id: true, status: true, paidAt: true },
+      });
+      return { outcome, payment };
+    });
+  }
+
+  /**
+   * PENDING → PAID 전이 + 문의 QUOTED → PAID + 사용자 알림 + 관리자 메일.
+   * PayPal 웹훅/확인(applyRemote)과 관리자 입금 확인(confirmBankTransfer)이 공유한다 — 두 경로의 PAID는 같은 의미여야 한다.
+   */
+  private async markPaid(
+    tx: Prisma.TransactionClient,
+    local: PaidTarget,
+    paid: { paidAt: Date; portoneTxId?: string },
+  ): Promise<'paid' | 'noop'> {
+    const requestId = local.quote.requestId;
+    const { count } = await tx.payment.updateMany({
+      where: { id: local.id, status: PaymentStatus.PENDING },
+      data: {
+        status: PaymentStatus.PAID,
+        paidAt: paid.paidAt,
+        portoneTxId: paid.portoneTxId,
+        failReason: null,
+      },
+    });
+    if (count === 0) return 'noop'; // 이미 PAID (웹훅과 confirm 경쟁, 또는 입금 확인 재클릭)
+
+    const moved = await tx.quoteRequest.updateMany({
+      where: { id: requestId, status: RequestStatus.QUOTED },
+      data: { status: RequestStatus.PAID },
+    });
+    if (moved.count === 0) {
+      // 결제 중 사용자가 문의를 취소한 경우 등 — 돈은 받았으니 관리자가 환불/복구 판단
+      this.metrics.paymentMismatch('request_status');
+      this.logger.error(
+        `결제는 PAID인데 문의 #${requestId}가 QUOTED가 아님 — 수동 확인 필요`,
+      );
+      await this.notifications.notifyAdminsPaymentMismatch(tx, {
+        requestId,
+        paymentId: local.id,
+        reason: 'request not in QUOTED status at payment time',
+      });
+    }
+    await this.notifications.notifyPaymentPaid(tx, {
+      requestId,
+      ownerId: local.quote.request.userId,
+      amount: local.amount.toString(),
+      currency: local.currency,
+    });
+    // 이메일은 커밋 이후 큐로 — tx 안에서 등록하면 롤백된 결제의 메일이 나갈 수 있다
+    this.enqueueAfterCommit(() =>
+      this.notifications.enqueueAdminEmail({
+        type: 'ADMIN_PAYMENT_PAID_EMAIL',
+        requestId,
+        amount: local.amount.toString(),
+        currency: local.currency,
+        provider: local.provider,
+      }),
+    );
+    return 'paid';
+  }
+
+  /**
    * PortOne 조회 결과를 우리 상태로 반영하는 유일한 전이 함수.
    * 상태 조건을 updateMany의 where에 넣어 동시 호출(웹훅+confirm)에도 한 번만 전이된다.
    */
@@ -293,50 +456,10 @@ export class PaymentsService {
           return 'mismatch';
         }
 
-        const { count } = await tx.payment.updateMany({
-          where: { id: local.id, status: PaymentStatus.PENDING },
-          data: {
-            status: PaymentStatus.PAID,
-            paidAt: new Date(remote.paidAt),
-            portoneTxId: remote.transactionId,
-            failReason: null,
-          },
+        return this.markPaid(tx, local, {
+          paidAt: new Date(remote.paidAt),
+          portoneTxId: remote.transactionId,
         });
-        if (count === 0) return 'noop'; // 이미 PAID (웹훅과 confirm 경쟁)
-
-        const moved = await tx.quoteRequest.updateMany({
-          where: { id: requestId, status: RequestStatus.QUOTED },
-          data: { status: RequestStatus.PAID },
-        });
-        if (moved.count === 0) {
-          // 결제 중 사용자가 문의를 취소한 경우 등 — 돈은 받았으니 관리자가 환불/복구 판단
-          this.metrics.paymentMismatch('request_status');
-          this.logger.error(
-            `결제는 PAID인데 문의 #${requestId}가 QUOTED가 아님 — 수동 확인 필요`,
-          );
-          await this.notifications.notifyAdminsPaymentMismatch(tx, {
-            requestId,
-            paymentId: local.id,
-            reason: 'request not in QUOTED status at payment time',
-          });
-        }
-        await this.notifications.notifyPaymentPaid(tx, {
-          requestId,
-          ownerId: local.quote.request.userId,
-          amount: local.amount.toString(),
-          currency: local.currency,
-        });
-        // 이메일은 커밋 이후 큐로 — tx 안에서 등록하면 롤백된 결제의 메일이 나갈 수 있다
-        this.enqueueAfterCommit(() =>
-          this.notifications.enqueueAdminEmail({
-            type: 'ADMIN_PAYMENT_PAID_EMAIL',
-            requestId,
-            amount: local.amount.toString(),
-            currency: local.currency,
-            provider: local.provider,
-          }),
-        );
-        return 'paid';
       }
 
       case 'FAILED': {

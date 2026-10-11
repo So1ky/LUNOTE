@@ -8,6 +8,7 @@ import {
   customerName,
   formatAmount,
   formatDate,
+  PAYMENT_METHOD_LABELS,
   type AdminQuoteRequest,
   type RequestStatus,
 } from '../lib/types';
@@ -85,6 +86,7 @@ export function RequestsPage() {
                 <th>Category</th>
                 <th>Customer</th>
                 <th>Description</th>
+                <th>Payment</th>
                 <th>Quote</th>
                 <th>Status</th>
                 <th>Created</th>
@@ -112,6 +114,7 @@ export function RequestsPage() {
                     }}>
                     {r.description}
                   </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{PAYMENT_METHOD_LABELS[r.paymentMethod]}</td>
                   <td style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>
                     {r.quote ? formatAmount(r.quote.amount, r.quote.currency) : '—'}
                   </td>

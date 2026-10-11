@@ -125,11 +125,15 @@ graph TB
     한국 계좌를 보유한 정착 외국인은 계좌이체가 커버한다.
   - **수동 계좌이체 (2026-09-23 확정)**: KRW 견적은 INICIS 도입 전까지 BANK_TRANSFER로 라우팅.
     PG 파이프라인(웹훅+교차검증) 밖의 별도 흐름: `입금 대기 → 관리자 입금 확인 → PAID`,
-    기한 내 미입금 시 자동 만료. 주문번호 기반 입금코드를 입금자명에 입력하게 해 매칭한다
+    입금 기한은 견적 유효기간(7일)과 같고 자동 만료 잡은 두지 않는다(만료 후 입금 확인 허용). 주문번호 기반 입금코드를 입금자명에 입력하게 해 매칭한다
     (입금자명·금액 불일치는 관리자 확인으로 마감). 환불은 수동 이체,
     현금영수증은 소비자 요청 시 홈택스 수동 발급. 입금 확인 자동화(가상계좌)는 국내 PG 재신청 시점에.
-  - 페이팔은 KRW를 받지 못하므로 **견적·결제 통화는 USD**로 확정한다.
-    `Payment.provider`(PAYPAL / 추후 INICIS)는 견적 통화로 라우팅한다 (USD→PAYPAL, KRW→INICIS).
+    **구현(2026-10-11)**: 결제수단은 문의 때 고객이 선택(`QuoteRequest.paymentMethod`), 견적 통화는 서버가 결정(PAYPAL→USD, BANK_TRANSFER→KRW).
+    `POST /payments`는 KRW면 PortOne 없이 계좌 정보(ConfigMap)·입금자명 `LUNOTE<요청번호>`·기한(견적 만료)을 응답.
+    입금 확인은 관리자 웹 → `POST /admin/payments/:id/confirm-transfer`(멱등, 감사 로그) → PayPal 웹훅과 같은 `markPaid()`로 PAID.
+    자동 만료 잡 없음(견적 7일이 기한), 만료 후 확인 허용. 환불 REFUNDED 전이 관리자 기능은 후속.
+  - 페이팔은 KRW를 받지 못하므로 PayPal 견적은 USD, 계좌이체 견적은 KRW다(통화는 결제수단이 결정).
+    `Payment.provider`(PAYPAL / BANK_TRANSFER, 추후 INICIS)는 견적 통화로 라우팅한다 (USD→PAYPAL, KRW→BANK_TRANSFER).
     앱은 provider에 따라 결제 UI 컴포넌트를 분기한다 (페이팔=`PaymentUI` 버튼 렌더링, 국내 PG=`Payment` 결제창).
   - PortOne `totalAmount`는 통화 최소 단위 정수(USD 센트)다. 변환은 서버 `payments/currency.ts` 한 곳에서만.
   - 결제 의도(`POST /payments`)는 `quoteId`만 받는다 — 금액/통화의 원천은 서버의 Quote.

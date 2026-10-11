@@ -9,6 +9,10 @@ const ja: Resources = {
     privacy: 'プライバシーポリシー',
     refund: '返金ポリシー',
   },
+  paymentMethods: {
+    PAYPAL: 'PayPal (USD)',
+    BANK_TRANSFER: '韓国の銀行振込 (KRW)',
+  },
 
   common: {
     somethingWrong: '問題が発生しました',
@@ -170,6 +174,10 @@ const ja: Resources = {
     contactPlaceholder: '連絡方法を選択',
     contactNote:
       'いただいた連絡方法で、見積もりについてチームよりご連絡します。',
+    paymentMethodLabel: 'お支払い方法を選んでください',
+    paymentMethodPlaceholder: '支払い方法を選択',
+    paymentMethodNote:
+      '銀行振込には韓国の銀行口座が必要です。見積もりはPayPalならUSD、振込ならKRWで届きます。',
     submit: '依頼を送信',
     reviewNote: 'ご依頼を確認し、24時間以内に見積もりをお送りします。',
     budgetError: 'ご希望の予算は正の数で入力してください',
@@ -328,6 +336,17 @@ const ja: Resources = {
     backToRequest: '依頼に戻る',
     consent: '支払い後すぐに依頼の対応が始まり、開始後は未実施の部分のみキャンセルできることを理解しました。{{refund}}',
     continueToPayment: '支払いに進む',
+    bankTransfer: {
+      title: '以下の口座にお振込みください',
+      bank: '銀行',
+      accountNumber: '口座番号',
+      holder: '口座名義',
+      depositorName: '振込人名',
+      depositorNote: '振込を照合できるよう、振込人名をこの通りに入力してください。',
+      deadline: '{{date}}までにお振込み',
+      afterNote: '振込は1営業日以内に確認し、アプリでお知らせします。',
+      copyHint: '長押しでコピーできます。',
+    },
   },
 
   requestDetail: {
@@ -336,6 +355,7 @@ const ja: Resources = {
     budgetSuffix: ' · 予算 {{amount}}',
     contact: '連絡方法：{{method}}',
     yourQuote: '見積もり',
+    paymentMethod: 'お支払い: {{method}}',
     proceedPayment: '支払いに進む',
     validUntil: '{{date}}まで有効',
     quoteExpired: 'お見積もりの有効期限が切れました。新しい依頼を作成してください。',

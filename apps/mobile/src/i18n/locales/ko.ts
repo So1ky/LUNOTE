@@ -9,6 +9,10 @@ const ko: Resources = {
     privacy: '개인정보처리방침',
     refund: '환불 규정',
   },
+  paymentMethods: {
+    PAYPAL: 'PayPal (USD)',
+    BANK_TRANSFER: '한국 계좌이체 (KRW)',
+  },
 
   common: {
     somethingWrong: '문제가 발생했어요',
@@ -170,6 +174,10 @@ const ko: Resources = {
     contactPlaceholder: '연락 수단을 선택하세요',
     contactNote:
       '컨시어지 팀이 이 방법으로 연락해 견적을 안내해 드려요.',
+    paymentMethodLabel: '결제 방법을 선택해 주세요',
+    paymentMethodPlaceholder: '결제 방법 선택',
+    paymentMethodNote:
+      '계좌이체는 한국 은행 계좌가 있어야 해요. 견적은 PayPal이면 USD, 계좌이체면 KRW로 나가요.',
     submit: '요청 보내기',
     reviewNote: '요청을 검토한 뒤 24시간 이내에 견적을 보내드려요.',
     budgetError: '희망 예산은 0보다 큰 숫자여야 해요',
@@ -328,6 +336,17 @@ const ko: Resources = {
     backToRequest: '문의로 돌아가기',
     consent: '결제 즉시 요청 처리가 시작되고, 시작 후에는 아직 수행되지 않은 부분만 취소할 수 있다는 점을 이해했어요. {{refund}}',
     continueToPayment: '결제 계속하기',
+    bankTransfer: {
+      title: '아래 계좌로 입금해 주세요',
+      bank: '은행',
+      accountNumber: '계좌번호',
+      holder: '예금주',
+      depositorName: '입금자명',
+      depositorNote: '입금 내역을 대조할 수 있도록 입금자명을 이대로 입력해 주세요.',
+      deadline: '{{date}}까지 입금',
+      afterNote: '입금은 영업일 1일 내에 확인하고 앱으로 알려 드려요.',
+      copyHint: '길게 누르면 복사할 수 있어요.',
+    },
   },
 
   requestDetail: {
@@ -336,6 +355,7 @@ const ko: Resources = {
     budgetSuffix: ' · 예산 {{amount}}',
     contact: '연락 수단: {{method}}',
     yourQuote: '견적',
+    paymentMethod: '결제: {{method}}',
     proceedPayment: '결제 진행하기',
     validUntil: '{{date}}까지 유효',
     quoteExpired: '견적 유효기간이 지났어요 — 새 문의를 등록해 주세요.',

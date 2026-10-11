@@ -9,6 +9,10 @@ const zh: Resources = {
     privacy: '隐私政策',
     refund: '退款政策',
   },
+  paymentMethods: {
+    PAYPAL: 'PayPal（美元）',
+    BANK_TRANSFER: '韩国银行转账（韩元）',
+  },
 
   common: {
     somethingWrong: '出了点问题',
@@ -170,6 +174,10 @@ const zh: Resources = {
     contactPlaceholder: '选择联系方式',
     contactNote:
       '我们的团队将通过此方式与您联系，商讨您的报价。',
+    paymentMethodLabel: '请选择付款方式',
+    paymentMethodPlaceholder: '选择付款方式',
+    paymentMethodNote:
+      '银行转账需要韩国银行账户。报价将以美元（PayPal）或韩元（银行转账）提供。',
     submit: '提交申请',
     reviewNote: '我们将审核您的申请，并在 24 小时内发送报价。',
     budgetError: '期望预算必须为正数',
@@ -327,6 +335,17 @@ const zh: Resources = {
     backToRequest: '返回请求',
     consent: '我了解付款后将立即开始处理我的请求，开始后仅可取消尚未执行的部分。{{refund}}',
     continueToPayment: '继续付款',
+    bankTransfer: {
+      title: '请转账至以下账户',
+      bank: '银行',
+      accountNumber: '账号',
+      holder: '户名',
+      depositorName: '付款人姓名',
+      depositorNote: '请按此填写付款人姓名，以便我们核对转账。',
+      deadline: '请在 {{date}} 前转账',
+      afterNote: '我们将在 1 个工作日内确认转账并通过应用通知您。',
+      copyHint: '长按即可复制。',
+    },
   },
 
   requestDetail: {
@@ -335,6 +354,7 @@ const zh: Resources = {
     budgetSuffix: ' · 预算 {{amount}}',
     contact: '联系方式：{{method}}',
     yourQuote: '您的报价',
+    paymentMethod: '付款：{{method}}',
     proceedPayment: '前往支付',
     validUntil: '有效期至 {{date}}',
     quoteExpired: '报价已过期——请提交新的请求。',

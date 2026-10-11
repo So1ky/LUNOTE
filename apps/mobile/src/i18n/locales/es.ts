@@ -9,6 +9,10 @@ const es: Resources = {
     privacy: 'Política de privacidad',
     refund: 'Política de reembolsos',
   },
+  paymentMethods: {
+    PAYPAL: 'PayPal (USD)',
+    BANK_TRANSFER: 'Transferencia bancaria coreana (KRW)',
+  },
 
   common: {
     somethingWrong: 'Algo salió mal',
@@ -170,6 +174,10 @@ const es: Resources = {
     contactPlaceholder: 'Elige un método de contacto',
     contactNote:
       'Nuestro equipo se pondrá en contacto por este medio para hablar de tu presupuesto.',
+    paymentMethodLabel: '¿Cómo quieres pagar?',
+    paymentMethodPlaceholder: 'Elige un método de pago',
+    paymentMethodNote:
+      'La transferencia requiere una cuenta bancaria coreana. Tu presupuesto será en USD para PayPal o en KRW para transferencia.',
     submit: 'Enviar solicitud',
     reviewNote: 'Revisaremos tu solicitud y te enviaremos un presupuesto en un plazo de 24 horas.',
     budgetError: 'El presupuesto deseado debe ser un número positivo',
@@ -328,6 +336,17 @@ const es: Resources = {
     backToRequest: 'Volver a la solicitud',
     consent: 'Entiendo que el trabajo en mi solicitud comienza en cuanto pago y que, una vez iniciado, solo puedo cancelar la parte aún no realizada. {{refund}}',
     continueToPayment: 'Continuar al pago',
+    bankTransfer: {
+      title: 'Transfiere a esta cuenta',
+      bank: 'Banco',
+      accountNumber: 'Número de cuenta',
+      holder: 'Titular',
+      depositorName: 'Nombre del remitente',
+      depositorNote: 'Escribe esto exactamente como nombre del remitente para que podamos identificar tu transferencia.',
+      deadline: 'Transfiere antes del {{date}}',
+      afterNote: 'Confirmamos las transferencias en 1 día hábil y te avisamos en la app.',
+      copyHint: 'Mantén pulsado un valor para copiarlo.',
+    },
   },
 
   requestDetail: {
@@ -336,6 +355,7 @@ const es: Resources = {
     budgetSuffix: ' · Presupuesto {{amount}}',
     contact: 'Contacto: {{method}}',
     yourQuote: 'Tu presupuesto',
+    paymentMethod: 'Pago: {{method}}',
     proceedPayment: 'Continuar al pago',
     validUntil: 'Válido hasta {{date}}',
     quoteExpired: 'El presupuesto ha expirado; envía una nueva solicitud.',
