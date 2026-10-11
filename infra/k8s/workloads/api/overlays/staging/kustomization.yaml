@@ -24,10 +24,9 @@ configMapGenerator:
       - SMTP_HOST=smtp-relay.brevo.com
       - SMTP_PORT=587
       # 수동 계좌이체 법인 계좌 — 비밀 아님(앱 결제 화면에 그대로 노출). 미설정이면 계좌이체 결제 시도만 503.
-      # TODO: 법인 계좌 확정 후 주석 해제 (staging 먼저 실측 → prod)
-      # - BANK_TRANSFER_BANK_NAME=
-      # - BANK_TRANSFER_ACCOUNT_NUMBER=
-      # - BANK_TRANSFER_ACCOUNT_HOLDER=Lunote Inc.
+      - BANK_TRANSFER_BANK_NAME=KB Kookmin Bank (국민은행)
+      - BANK_TRANSFER_ACCOUNT_NUMBER=290301-04-112936
+      - BANK_TRANSFER_ACCOUNT_HOLDER=주식회사 루노테 (Lunote Inc.)
       # Sentry 이벤트의 environment(NODE_ENV는 staging·prod 모두 production). DSN은 시크릿 lunote/staging/app
       - SENTRY_ENVIRONMENT=staging
       # OpenTelemetry(Plan 8). 트레이스: 앱 → Alloy(OTLP 4317) → Tempo, 부모 기반 20% 샘플링
