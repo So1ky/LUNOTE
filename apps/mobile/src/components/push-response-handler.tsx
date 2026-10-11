@@ -14,9 +14,11 @@ export function PushResponseHandler() {
   useEffect(() => {
     if (loading) return;
     const open = (response: Notifications.NotificationResponse | null) => {
-      const requestId = response?.notification.request.content.data?.requestId;
-      if (typeof requestId !== 'number') return;
-      // 로그인 전이면 홈으로 두고 끝 — 로그인 후 재진입은 단순화를 위해 처리하지 않는다 (스펙 §4-3)
+      // 서버는 숫자로 보내지만 OS·SDK를 거치며 문자열이 될 수 있다 — 정수만 받는다
+      const requestId = Number(response?.notification.request.content.data?.requestId);
+      if (!Number.isInteger(requestId) || requestId <= 0) return;
+      // 로그인 전이면 아직 이동하지 않는다 — 로그인하면 token이 바뀌어 다시 돌고,
+      // getLastNotificationResponseAsync가 같은 응답을 돌려주므로 그때 한 번 이동한다
       if (!token) return;
       const id = response?.notification.request.identifier;
       if (id) {

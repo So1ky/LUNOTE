@@ -446,5 +446,8 @@ export class AuthService {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    // 분실 기기 보호: 비밀번호 변경·재설정·Apple 연결 해제 뒤 옛 기기가 금액이 든 푸시를 받지 않게.
+    // 현재 기기는 다음 앱 시작(로그인) 때 조용히 재등록된다
+    await this.prisma.pushToken.deleteMany({ where: { userId } });
   }
 }

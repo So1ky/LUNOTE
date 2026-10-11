@@ -357,7 +357,7 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   인앱 생성 함수가 돌려주는 제목·본문을 그대로 `USER_PUSH` 잡으로 넣는다(커밋 후, 기존 관리자 메일과 같은 fire-and-forget).
 - **토큰 존재 = opt-in**: `PushToken`(토큰 UNIQUE, 사용자당 N기기). `PUT/DELETE /users/me/push-token`. 로그아웃·탈퇴·`DeviceNotRegistered`에 삭제.
   같은 토큰이 다른 사용자로 오면 소유자를 옮긴다(기기 공유).
-- **권한 시점**: 첫 문의 제출 직후 안내 화면(1회) → OS 팝업. 이미 허용된 기기는 로그인 때 조용히 upsert. 설정 화면 토글, 거절 상태면 OS 설정으로.
+- **권한 시점**: 첫 문의 제출 직후 안내 화면(1회) → OS 팝업. 이미 허용된 기기는 로그인 때 조용히 upsert(단, 설정에서 끈 기기는 기기 플래그 `optedOut`으로 제외). 설정 화면 토글, 거절 상태면 OS 설정으로.
 - 자격증명: iOS APNs 키·Android FCM V1은 EAS credentials. `EXPO_PUSH_ACCESS_TOKEN`(선택, 시크릿)은 Enhanced push security용.
 - 범위 밖: 유형별 on/off, 뱃지, 영수증 폴링, 관리자 푸시.
 

@@ -11,6 +11,7 @@ import {
 import { api, setAuthEventHandlers } from './api';
 import { useLanguage } from './language-context';
 import { getPushPermission, registerPush, unregisterPush } from './push';
+import { pushStorage } from './push-storage';
 import { getAppleCredential, getGoogleIdToken } from './social-auth';
 import { tokenStorage } from './token-storage';
 
@@ -87,6 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       onTokensRefreshed: (accessToken) => setToken(accessToken),
       onSessionExpired: () => {
         void tokenStorage.clear();
+        // 서버 호출은 불가(세션 없음) — 로컬 토큰만 잊는다. 서버 행은 다음 사용자 upsert·DeviceNotRegistered로 정리
+        void pushStorage.clearToken();
         setToken(null);
         setProfile(null);
       },
@@ -128,12 +131,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token, profile, localLanguage]);
 
   // 로그인(프로필 확보) 때마다 — OS 권한이 이미 허용된 기기는 조용히 토큰을 갱신한다(lastSeenAt·소유자 이동).
-  // 아직 묻지 않은 기기는 첫 문의 제출 때 안내 화면이 묻는다 (push-prompt)
+  // 설정에서 끈 기기(optedOut)는 제외. 아직 묻지 않은 기기는 첫 문의 제출 때 안내 화면이 묻는다 (push-prompt)
   useEffect(() => {
     if (!token || !profile?.id) return;
     void (async () => {
-      if ((await getPushPermission()) === 'granted') {
-        await registerPush(token).catch(() => {});
+      try {
+        if ((await getPushPermission()) === 'granted' && !(await pushStorage.getOptedOut())) {
+          await registerPush(token);
+        }
+      } catch {
+        // 조용한 등록 — 실패해도 로그인 흐름에 영향 없음
       }
     })();
     // token은 30분마다 갱신되므로 사용자 id 기준으로만 다시 돈다
@@ -242,8 +249,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: proof,
         token,
       });
-      // 서버 세션은 이미 없다 — /auth/logout 없이 로컬만 정리
+      // 서버 세션은 이미 없다 — /auth/logout 없이 로컬만 정리 (푸시 토큰 행은 서버가 탈퇴 트랜잭션에서 삭제)
       await tokenStorage.clear();
+      void pushStorage.clearToken();
       setToken(null);
       setProfile(null);
     },

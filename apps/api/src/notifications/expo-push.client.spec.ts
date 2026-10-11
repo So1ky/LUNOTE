@@ -85,6 +85,34 @@ describe('ExpoPushClient', () => {
     ).rejects.toThrow(/503/);
   });
 
+  it('타임아웃(AbortSignal)으로 끊기면 throw (BullMQ 재시도 대상)', async () => {
+    fetchSpy.mockRejectedValue(
+      Object.assign(new Error('The operation was aborted due to timeout'), {
+        name: 'TimeoutError',
+      }),
+    );
+    await expect(
+      client().send([{ to: 'ExponentPushToken[a]', title: 'T', body: 'B' }]),
+    ).rejects.toThrow(/timeout/);
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('200인데 티켓 수가 다르면 throw 없이 청크 전체를 TicketCountMismatch로 채운다 (재시도 시 중복 발송 방지)', async () => {
+    fetchSpy.mockResolvedValue(okResponse(1));
+    const tickets = await client().send([
+      { to: 'ExponentPushToken[a]', title: 'T', body: 'B' },
+      { to: 'ExponentPushToken[b]', title: 'T', body: 'B' },
+    ]);
+    expect(tickets).toHaveLength(2);
+    for (const ticket of tickets) {
+      expect(ticket).toMatchObject({
+        status: 'error',
+        details: { error: 'TicketCountMismatch' },
+      });
+    }
+  });
+
   it('빈 배열이면 호출하지 않는다', async () => {
     expect(await client().send([])).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();

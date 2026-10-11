@@ -9,7 +9,7 @@ import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
-import { getPushPermission, isPushRegistered, registerPush, unregisterPush, type PushPermission } from '@/lib/push';
+import { getPushPermission, isPushRegistered, optOutPush, registerPush, type PushPermission } from '@/lib/push';
 
 /**
  * 알림 채널 정책: 자동 알림은 인앱 + OS 푸시. 푸시는 서버에 토큰이 있으면 켜진 것.
@@ -46,7 +46,8 @@ export default function NotificationSettingsScreen() {
         setEnabled(result === 'registered');
         if (result === 'denied') setPermission('denied');
       } else {
-        await unregisterPush(token);
+        // 서버 해제가 실패하면 throw → 아래 catch가 스위치를 되돌린다 (끈 줄 알았는데 계속 오는 상황 방지)
+        await optOutPush(token);
         setEnabled(false);
       }
     } catch {

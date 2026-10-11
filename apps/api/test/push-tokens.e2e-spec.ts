@@ -100,6 +100,16 @@ describe('Push tokens (e2e)', () => {
       .expect(400);
   });
 
+  it('200자를 넘는 토큰은 400', async () => {
+    const long = `ExponentPushToken[${'a'.repeat(201 - 'ExponentPushToken[]'.length)}]`;
+    expect(long).toHaveLength(201);
+    await request(app.getHttpServer())
+      .put('/users/me/push-token')
+      .set('Authorization', `Bearer ${userA}`)
+      .send({ token: long, platform: 'IOS' })
+      .expect(400);
+  });
+
   it('미인증은 401', async () => {
     await request(app.getHttpServer())
       .put('/users/me/push-token')
@@ -120,6 +130,30 @@ describe('Push tokens (e2e)', () => {
       .send({ token: tokenA })
       .expect(204);
     expect(await prisma.pushToken.count({ where: { token: tokenA } })).toBe(0);
+  });
+
+  it('비밀번호 변경(전 세션 폐기) 시 그 사용자의 토큰 행도 삭제된다', async () => {
+    const tokenC = `ExpoPushToken[c-${stamp}]`;
+    await request(app.getHttpServer())
+      .put('/users/me/push-token')
+      .set('Authorization', `Bearer ${userA}`)
+      .send({ token: tokenC, platform: 'IOS' })
+      .expect(204);
+    expect(
+      await prisma.pushToken.count({
+        where: { user: { email: `push-a-${stamp}@test.lunote.app` } },
+      }),
+    ).toBe(1);
+    await request(app.getHttpServer())
+      .post('/auth/change-password')
+      .set('Authorization', `Bearer ${userA}`)
+      .send({ currentPassword: password, newPassword: 'next-password-123' })
+      .expect(200);
+    expect(
+      await prisma.pushToken.count({
+        where: { user: { email: `push-a-${stamp}@test.lunote.app` } },
+      }),
+    ).toBe(0);
   });
 
   it('계정 삭제 시 토큰 행도 삭제된다', async () => {

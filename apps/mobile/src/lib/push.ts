@@ -61,19 +61,36 @@ export async function registerPush(authToken: string): Promise<'registered' | 'd
     token: authToken,
   });
   await pushStorage.setToken(token);
+  // 사용자가 다시 켰다(또는 허용했다) — 조용한 재등록 차단 해제
+  await pushStorage.clearOptedOut();
   return 'registered';
 }
 
-/** 서버 등록 해제 — 로그아웃·설정 끔. 서버 실패는 삼키고 로컬은 지운다 */
-export async function unregisterPush(authToken: string | null): Promise<void> {
+/**
+ * 서버 등록 해제.
+ * - 기본(로그아웃): 서버 실패는 삼키고 로컬은 지운다 — 로그아웃은 막지 않는다
+ * - strict(설정 끔): 서버 실패를 그대로 던지고 로컬 토큰을 남긴다 — 토글이 되돌아가 실패가 보이게
+ */
+export async function unregisterPush(
+  authToken: string | null,
+  opts: { strict?: boolean } = {},
+): Promise<void> {
   const token = await pushStorage.getToken();
   if (!token) return;
   if (authToken) {
-    await api('/users/me/push-token', {
+    const request = api('/users/me/push-token', {
       method: 'DELETE',
       body: { token },
       token: authToken,
-    }).catch(() => {});
+    });
+    if (opts.strict) await request;
+    else await request.catch(() => {});
   }
   await pushStorage.clearToken();
+}
+
+/** 설정에서 끔 — 기기 플래그를 먼저 남겨 재시작·재로그인 때 조용히 다시 켜지지 않게 한다 */
+export async function optOutPush(authToken: string | null): Promise<void> {
+  await pushStorage.setOptedOut();
+  await unregisterPush(authToken, { strict: true });
 }

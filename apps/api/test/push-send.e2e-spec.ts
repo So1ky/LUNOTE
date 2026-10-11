@@ -9,6 +9,7 @@ import {
   type ExpoPushMessage,
   type ExpoPushTicket,
 } from './../src/notifications/expo-push.client';
+import { BankTransferConfig } from './../src/payments/bank-transfer.config';
 import { PrismaService } from './../src/prisma/prisma.service';
 
 /** 가짜 Expo — 받은 메시지를 기록하고, 지정한 토큰에는 DeviceNotRegistered를 돌려준다 */
@@ -97,6 +98,12 @@ describe('Push send (e2e)', () => {
     })
       .overrideProvider(ExpoPushClient)
       .useValue(expo)
+      // 계좌이체 결제 확정 경로용 — 로컬 .env에 계좌 설정이 없어도 돌게
+      .overrideProvider(BankTransferConfig)
+      .useValue({
+        isConfigured: true,
+        bank: { name: 'KB', accountNumber: '1', holder: 'Lunote' },
+      })
       .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
@@ -176,5 +183,51 @@ describe('Push send (e2e)', () => {
     expect(await prisma.pushToken.count({ where: { token: liveToken } })).toBe(
       1,
     );
+  });
+
+  it('계좌이체 입금 확인(PAID) → 결제 완료 푸시', async () => {
+    await request(app.getHttpServer())
+      .put('/users/me/push-token')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ token: liveToken, platform: 'IOS' })
+      .expect(204);
+    const created = await request(app.getHttpServer())
+      .post('/quote-requests')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        category: 'BANK',
+        description: 'I want to pay by Korean bank transfer please.',
+        contactMethod: 'email: o@test.com',
+        paymentMethod: 'BANK_TRANSFER',
+      })
+      .expect(201);
+    const id = (created.body as { id: number }).id;
+    const quoted = await request(app.getHttpServer())
+      .post(`/admin/quote-requests/${id}/quote`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ amount: 150000, explanation: 'Bank account opening support' })
+      .expect(201);
+    const quoteId = (quoted.body as { quote: { id: string } }).quote.id;
+    const paid = await request(app.getHttpServer())
+      .post('/payments')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ quoteId, withdrawalConsent: true })
+      .expect(201);
+    const paymentId = (paid.body as { paymentId: string }).paymentId;
+    await request(app.getHttpServer())
+      .post(`/admin/payments/${paymentId}/confirm-transfer`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const msg = await waitFor(() =>
+      Promise.resolve(
+        expo.calls
+          .flat()
+          .find(
+            (m) => m.data?.requestId === id && m.title === 'Payment received',
+          ) ?? null,
+      ),
+    );
+    expect(msg).not.toBeNull();
+    expect(msg!.to).toBe(liveToken);
   });
 });
