@@ -6,9 +6,11 @@ import { StatusBadge } from '../components/status-badge';
 import { api, ApiError } from '../lib/api';
 import {
   CATEGORY_META,
+  CURRENCY_BY_METHOD,
   customerName,
   formatAmount,
   formatDate,
+  PAYMENT_METHOD_LABELS,
   SERVICE_LABELS,
   type AdminQuoteRequestDetail,
 } from '../lib/types';
@@ -27,6 +29,10 @@ export function RequestDetailPage() {
   /** 직전 제출 결과 메시지 — 제출 시점의 모드로 결정한다 (성공 후 상태가 바뀌므로) */
   const [sentMessage, setSentMessage] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // 계좌이체 입금 확인 상태
+  const [confirmingTransfer, setConfirmingTransfer] = useState(false);
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferMessage, setTransferMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -63,6 +69,13 @@ export function RequestDetailPage() {
   const category = CATEGORY_META[request.category];
   // 견적은 발행 후 불변 — REVIEWING에서 한 번만 발송 가능 (제품 결정 2026-07-24)
   const canCreate = request.status === 'REVIEWING' && !request.quote;
+  const currency = CURRENCY_BY_METHOD[request.paymentMethod];
+  const pendingTransfer =
+    request.paymentMethod === 'BANK_TRANSFER'
+      ? request.quote?.payments?.find(
+          (p) => p.provider === 'BANK_TRANSFER' && p.status === 'PENDING',
+        )
+      : undefined;
 
   // 폼 제출은 확인 모달만 연다 — 실제 발송은 confirm에서
   const onSubmit = (e: FormEvent) => {
@@ -73,6 +86,10 @@ export function RequestDetailPage() {
     const parsed = Number(amount);
     if (Number.isNaN(parsed) || parsed <= 0) {
       setFormError('Amount must be a positive number');
+      return;
+    }
+    if (currency === 'KRW' && !Number.isInteger(parsed)) {
+      setFormError('KRW amounts must be whole numbers');
       return;
     }
     setConfirming(true);
@@ -100,6 +117,28 @@ export function RequestDetailPage() {
     }
   };
 
+  const onConfirmTransfer = async () => {
+    if (!pendingTransfer) return;
+    setTransferBusy(true);
+    try {
+      await api(`/admin/payments/${pendingTransfer.id}/confirm-transfer`, {
+        method: 'POST',
+      });
+      const refreshed = await api<AdminQuoteRequestDetail>(
+        `/admin/quote-requests/${request.id}`,
+      );
+      setRequest(refreshed);
+      setTransferMessage('Transfer confirmed — customer notified.');
+    } catch (err) {
+      setTransferMessage(
+        err instanceof ApiError ? err.message : 'Something went wrong',
+      );
+    } finally {
+      setTransferBusy(false);
+      setConfirmingTransfer(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -110,6 +149,9 @@ export function RequestDetailPage() {
           Request #{request.id} · {category.emoji} {category.label}
         </h1>
         <StatusBadge status={request.status} />
+        <span className="muted" style={{ fontSize: 13 }}>
+          {PAYMENT_METHOD_LABELS[request.paymentMethod]}
+        </span>
       </div>
 
       <div
@@ -225,18 +267,61 @@ export function RequestDetailPage() {
             </div>
           )}
 
+          {pendingTransfer && (
+            <div
+              style={{
+                margin: '0 0 16px',
+                padding: 12,
+                borderRadius: 10,
+                background: 'var(--surface-alt)',
+                fontSize: 14,
+              }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Awaiting bank transfer</div>
+              <div className="muted" style={{ marginBottom: 10 }}>
+                Expected sender name <strong style={{ color: 'var(--text)' }}>LUNOTE{request.id}</strong> ·{' '}
+                {formatAmount(pendingTransfer.amount, pendingTransfer.currency)} · requested{' '}
+                {formatDate(pendingTransfer.createdAt)}
+              </div>
+              <button type="button" disabled={transferBusy} onClick={() => setConfirmingTransfer(true)}>
+                {transferBusy ? 'Confirming…' : 'Confirm transfer received'}
+              </button>
+              <ConfirmDialog
+                open={confirmingTransfer}
+                title="Confirm this transfer?"
+                message={
+                  <>
+                    Mark{' '}
+                    <strong style={{ color: 'var(--text)' }}>
+                      {formatAmount(pendingTransfer.amount, pendingTransfer.currency)}
+                    </strong>{' '}
+                    from sender <strong style={{ color: 'var(--text)' }}>LUNOTE{request.id}</strong> as received.
+                    The request becomes PAID and the customer is notified.
+                  </>
+                }
+                confirmLabel="Confirm received"
+                dismissLabel="Go back"
+                loading={transferBusy}
+                onConfirm={() => void onConfirmTransfer()}
+                onDismiss={() => setConfirmingTransfer(false)}
+              />
+            </div>
+          )}
+          {transferMessage && (
+            <div style={{ color: 'var(--success)', fontSize: 14, marginBottom: 12 }}>{transferMessage}</div>
+          )}
+
           {canCreate ? (
             <form
               onSubmit={(e) => void onSubmit(e)}
               style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label htmlFor="amount">Amount (USD)</label>
+                <label htmlFor="amount">Amount ({currency})</label>
                 <input
                   id="amount"
                   type="number"
                   min="1"
-                  step="0.01"
-                  placeholder="340"
+                  step={currency === 'KRW' ? '1' : '0.01'}
+                  placeholder={currency === 'KRW' ? '150000' : '340'}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                 />
@@ -273,7 +358,7 @@ export function RequestDetailPage() {
                 message={
                   <>
                     <strong style={{ color: 'var(--text)' }}>
-                      {formatAmount(Number(amount) || 0, 'USD')}
+                      {formatAmount(Number(amount) || 0, currency)}
                     </strong>{' '}
                     will be quoted to {customerName(request.user)} and they
                     will be notified immediately.{' '}

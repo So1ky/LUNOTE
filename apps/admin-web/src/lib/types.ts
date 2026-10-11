@@ -49,6 +49,27 @@ export type AdminUser = {
 export const customerName = (u: AdminUser) =>
   [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
 
+export type PaymentMethod = 'PAYPAL' | 'BANK_TRANSFER';
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  PAYPAL: 'PayPal (USD)',
+  BANK_TRANSFER: 'Bank transfer (KRW)',
+};
+/** 결제수단이 견적 통화를 정한다 — 서버 규칙과 동일 */
+export const CURRENCY_BY_METHOD: Record<PaymentMethod, 'USD' | 'KRW'> = {
+  PAYPAL: 'USD',
+  BANK_TRANSFER: 'KRW',
+};
+
+export type AdminPayment = {
+  id: string;
+  provider: PaymentMethod;
+  status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
+  amount: string;
+  currency: string;
+  paidAt: string | null;
+  createdAt: string;
+};
+
 export type Quote = {
   id: string;
   amount: string;
@@ -57,6 +78,7 @@ export type Quote = {
   expiresAt: string; // 발행 + 7일 — 만료 시 결제 불가
   createdAt: string;
   updatedAt: string;
+  payments?: AdminPayment[]; // 관리자 상세에서만
 };
 
 export type Attachment = {
@@ -76,6 +98,7 @@ export type AdminQuoteRequest = {
   currency: string;
   description: string;
   contactMethod: string;
+  paymentMethod: PaymentMethod;
   status: RequestStatus;
   createdAt: string;
   updatedAt: string;
@@ -103,7 +126,11 @@ export const formatDate = (iso: string) =>
   });
 
 export const formatAmount = (amount: string | number, currency: string) =>
-  `${currency === 'USD' ? '$' : `${currency} `}${Number(amount).toLocaleString()}`;
+  currency === 'USD'
+    ? `$${Number(amount).toLocaleString()}`
+    : currency === 'KRW'
+      ? `₩${Number(amount).toLocaleString()}`
+      : `${currency} ${Number(amount).toLocaleString()}`;
 
 /** 앱의 SERVICE_CATALOG(serviceItem)와 동일 키의 영어 제목 — 어드민은 영어 고정 */
 export const SERVICE_LABELS: Record<string, string> = {
