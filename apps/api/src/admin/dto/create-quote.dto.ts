@@ -18,7 +18,11 @@ export class CreateQuoteDto {
   @Max(1_000_000)
   amount: number;
 
-  @ApiPropertyOptional({ example: 'USD', default: 'USD' })
+  // 선택 — 보내면 결제수단이 정하는 통화와 같아야 한다(다르면 400). 관리자 웹은 보내지 않는다
+  @ApiPropertyOptional({
+    example: 'USD',
+    description: '생략 권장 — 결제수단이 통화를 결정',
+  })
   @IsOptional()
   @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO code' })
   currency?: string;

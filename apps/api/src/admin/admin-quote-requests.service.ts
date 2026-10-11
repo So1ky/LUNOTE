@@ -1,14 +1,21 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma, RequestStatus } from '@prisma/client';
+import { PaymentMethod, Prisma, RequestStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
+
+/** 결제수단 → 견적 통화. 관리자는 통화를 고르지 않는다 (스펙 §3-2) */
+const CURRENCY_BY_METHOD: Record<PaymentMethod, string> = {
+  [PaymentMethod.PAYPAL]: 'USD',
+  [PaymentMethod.BANK_TRANSFER]: 'KRW',
+};
 
 /** 관리자 화면용 — 사용자 요약 정보를 포함해 노출한다 */
 const ADMIN_REQUEST_SELECT = {
@@ -116,6 +123,15 @@ export class AdminQuoteRequestsService {
       );
     }
 
+    const currency = CURRENCY_BY_METHOD[request.paymentMethod];
+    if (dto.currency && dto.currency !== currency) {
+      throw new BadRequestException('CURRENCY_MISMATCH');
+    }
+    // KRW는 최소 단위가 1원 — 소수점 금액은 결제 불가 (toMinorUnits가 던지기 전에 막는다)
+    if (currency === 'KRW' && !Number.isInteger(dto.amount)) {
+      throw new BadRequestException('KRW amount must be a whole number');
+    }
+
     // 발행 후 불변 + 유효기간 — 만료 시 결제 불가 (ARCHITECTURE §7)
     const expiresAt = new Date(
       Date.now() + this.QUOTE_VALIDITY_DAYS * 24 * 60 * 60 * 1000,
@@ -126,7 +142,7 @@ export class AdminQuoteRequestsService {
         data: {
           requestId,
           amount: dto.amount,
-          currency: dto.currency ?? 'USD',
+          currency,
           explanation: dto.explanation,
           expiresAt,
         },
@@ -148,7 +164,7 @@ export class AdminQuoteRequestsService {
           targetId: String(requestId),
           detail: {
             amount: dto.amount,
-            currency: dto.currency ?? 'USD',
+            currency,
             expiresAt: expiresAt.toISOString(),
           },
         },
@@ -158,7 +174,7 @@ export class AdminQuoteRequestsService {
         requestId,
         ownerId: request.user.id,
         amount: String(dto.amount),
-        currency: dto.currency ?? 'USD',
+        currency,
       });
     });
 

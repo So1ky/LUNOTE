@@ -195,4 +195,52 @@ describe('Admin quotes (e2e)', () => {
     expect(logs).toHaveLength(1);
     expect(logs[0].action).toBe('QUOTE_CREATED');
   });
+
+  describe('계좌이체 문의의 견적 통화', () => {
+    let btRequestId: number;
+    beforeAll(async () => {
+      const created = await request(app.getHttpServer())
+        .post('/quote-requests')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          category: 'BANK',
+          description: 'Korean bank account holder, please quote in KRW.',
+          contactMethod: 'email: bt@test.com',
+          paymentMethod: 'BANK_TRANSFER',
+        })
+        .expect(201);
+      btRequestId = (created.body as { id: number }).id;
+    });
+
+    it('USD를 보내면 400 CURRENCY_MISMATCH', async () => {
+      await request(app.getHttpServer())
+        .post(`/admin/quote-requests/${btRequestId}/quote`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          amount: 150000,
+          currency: 'USD',
+          explanation: 'Bank account opening support',
+        })
+        .expect(400);
+    });
+
+    it('소수점 금액은 400 (KRW는 정수만)', async () => {
+      await request(app.getHttpServer())
+        .post(`/admin/quote-requests/${btRequestId}/quote`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ amount: 150000.5, explanation: 'Bank account opening support' })
+        .expect(400);
+    });
+
+    it('통화를 보내지 않으면 KRW로 발행된다', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/admin/quote-requests/${btRequestId}/quote`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ amount: 150000, explanation: 'Bank account opening support' })
+        .expect(201);
+      expect((res.body as { quote: { currency: string } }).quote.currency).toBe(
+        'KRW',
+      );
+    });
+  });
 });
