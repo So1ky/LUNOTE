@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { api, setAuthEventHandlers } from './api';
 import { useLanguage } from './language-context';
+import { getPushPermission, registerPush, unregisterPush } from './push';
 import { getAppleCredential, getGoogleIdToken } from './social-auth';
 import { tokenStorage } from './token-storage';
 
@@ -126,6 +127,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, [token, profile, localLanguage]);
 
+  // 로그인(프로필 확보) 때마다 — OS 권한이 이미 허용된 기기는 조용히 토큰을 갱신한다(lastSeenAt·소유자 이동).
+  // 아직 묻지 않은 기기는 첫 문의 제출 때 안내 화면이 묻는다 (push-prompt)
+  useEffect(() => {
+    if (!token || !profile?.id) return;
+    void (async () => {
+      if ((await getPushPermission()) === 'granted') {
+        await registerPush(token).catch(() => {});
+      }
+    })();
+    // token은 30분마다 갱신되므로 사용자 id 기준으로만 다시 돈다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
+
   const applyTokens = useCallback(async (pair: TokenPair) => {
     await tokenStorage.setPair(pair.accessToken, pair.refreshToken);
     const me = await api<Profile>('/auth/me', { token: pair.accessToken });
@@ -206,6 +220,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
+    // 리프레시 토큰 폐기 전에 호출해야 액세스 토큰이 아직 유효하다 (서버 실패는 함수 안에서 삼킨다)
+    await unregisterPush(await tokenStorage.get());
     // 서버의 리프레시 세션 폐기 — 실패해도 로컬 로그아웃은 진행 (fire-and-forget)
     const refreshToken = await tokenStorage.getRefresh();
     if (refreshToken) {

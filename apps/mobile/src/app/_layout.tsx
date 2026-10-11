@@ -1,5 +1,6 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 
+import { PushResponseHandler } from '@/components/push-response-handler';
 import { Brand } from '@/constants/theme';
 import { AuthProvider } from '@/lib/auth-context';
 import { LanguageProvider } from '@/lib/language-context';
@@ -20,6 +21,7 @@ export default function RootLayout() {
     <LanguageProvider>
       <AuthProvider>
         <ThemeProvider value={LunoteTheme}>
+          <PushResponseHandler />
           <Stack screenOptions={{ headerShown: false }} />
         </ThemeProvider>
       </AuthProvider>

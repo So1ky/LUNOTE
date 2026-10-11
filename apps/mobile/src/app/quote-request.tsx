@@ -18,6 +18,8 @@ import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
 import { uploadAttachment, type AttachmentInput } from '@/lib/attachments';
 import { useAuth } from '@/lib/auth-context';
+import { getPushPermission } from '@/lib/push';
+import { pushStorage } from '@/lib/push-storage';
 import {
   CATEGORY_META,
   createQuoteRequest,
@@ -177,7 +179,13 @@ export default function QuoteRequestScreen() {
           ? attachments.map(({ uri: _uri, ...meta }) => meta)
           : undefined,
       });
-      router.replace('/quote'); // 등록 후 내 문의 목록으로
+      // 첫 문의 직후가 권한을 물을 최적 시점 — 아직 안 물었고 OS도 결정 전이면 안내 화면으로
+      const permission = await getPushPermission();
+      if (permission === 'undetermined' && !(await pushStorage.getPromptShown())) {
+        router.replace('/push-prompt');
+      } else {
+        router.replace('/quote'); // 등록 후 내 문의 목록으로
+      }
     } catch (e) {
       // 이메일 미인증(403)이면 인증 화면으로 유도
       if (e instanceof ApiError && e.status === 403) {
