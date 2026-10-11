@@ -115,10 +115,10 @@ export class NotificationsService {
       currency: string;
     },
   ) {
-    const amountText = formatAmount(data.amount, data.currency);
+    // 사용자 알림은 제목만 — 문의 번호·금액은 탭해서 보는 상세에 있다 (2026-10-11 실측 후 사용자 결정)
     const notice = {
       title: 'Your quote is ready',
-      body: `Request #${data.requestId} · ${amountText}`,
+      body: '',
     };
     await tx.notification.create({
       data: {
@@ -144,7 +144,7 @@ export class NotificationsService {
     const amountText = formatAmount(data.amount, data.currency);
     const notice = {
       title: 'Payment received',
-      body: `Request #${data.requestId} · ${amountText} — we're getting started`,
+      body: '', // 사용자 알림은 제목만 (견적 알림과 동일 규칙)
     };
     const admins = await tx.user.findMany({
       where: { role: UserRole.ADMIN },

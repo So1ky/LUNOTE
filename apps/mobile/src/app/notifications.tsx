@@ -99,9 +99,11 @@ export default function NotificationsScreen() {
             onPress={() => void onPressItem(item)}>
             <View style={styles.rowText}>
               <ThemedText type="bodyStrong">{item.title}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {item.body}
-              </ThemedText>
+              {item.body ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {item.body}
+                </ThemedText>
+              ) : null}
               <ThemedText type="caption" themeColor="textSecondary" style={styles.date}>
                 {formatDate(item.createdAt, locale)}
               </ThemedText>
