@@ -351,6 +351,16 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   PENDING 시도를 재사용하면 최초 동의 시각이 유지된다.
 - 약관 버전은 저장하지 않는다 — 시각을 lunoteapp.com 문서의 시행일과 대조한다. 문서 본문은 웹이 단일 원천이고 앱은 링크만 한다.
 
+### 푸시 알림 (2026-10-11 결정)
+
+- **Expo Push Service** 경유(`exp.host`, fetch, 의존성 없음). 대상은 사용자 인앱 알림과 동일(`QUOTE_SENT`·`PAYMENT_PAID`) —
+  인앱 생성 함수가 돌려주는 제목·본문을 그대로 `USER_PUSH` 잡으로 넣는다(커밋 후, 기존 관리자 메일과 같은 fire-and-forget).
+- **토큰 존재 = opt-in**: `PushToken`(토큰 UNIQUE, 사용자당 N기기). `PUT/DELETE /users/me/push-token`. 로그아웃·탈퇴·`DeviceNotRegistered`에 삭제.
+  같은 토큰이 다른 사용자로 오면 소유자를 옮긴다(기기 공유).
+- **권한 시점**: 첫 문의 제출 직후 안내 화면(1회) → OS 팝업. 이미 허용된 기기는 로그인 때 조용히 upsert. 설정 화면 토글, 거절 상태면 OS 설정으로.
+- 자격증명: iOS APNs 키·Android FCM V1은 EAS credentials. `EXPO_PUSH_ACCESS_TOKEN`(선택, 시크릿)은 Enhanced push security용.
+- 범위 밖: 유형별 on/off, 뱃지, 영수증 폴링, 관리자 푸시.
+
 ### 소셜 로그인 (2026-10-09 결정)
 
 - **방식**: 네이티브 SDK가 받은 ID 토큰을 `POST /auth/google`·`/auth/apple`로 보내고 서버가 jose로 JWKS 서명·iss·aud·exp 검증.
