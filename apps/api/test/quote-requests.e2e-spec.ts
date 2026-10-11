@@ -104,6 +104,37 @@ describe('QuoteRequests (e2e)', () => {
     expect((res.body as { serviceItem: string }).serviceItem).toBe('HOUSING_1');
   });
 
+  it('POST /quote-requests — paymentMethod를 지정하면 저장되고 응답에 포함된다', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/quote-requests')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({
+        category: 'BANK',
+        description: 'Open a bank account, I have a Korean bank already.',
+        contactMethod: 'email: bank@test.com',
+        paymentMethod: 'BANK_TRANSFER',
+      })
+      .expect(201);
+    expect((res.body as { paymentMethod: string }).paymentMethod).toBe(
+      'BANK_TRANSFER',
+    );
+  });
+
+  it('POST /quote-requests — paymentMethod 생략 시 PAYPAL', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/quote-requests')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({
+        category: 'BANK',
+        description: 'Open a bank account, default payment method please.',
+        contactMethod: 'email: bank@test.com',
+      })
+      .expect(201);
+    expect((res.body as { paymentMethod: string }).paymentMethod).toBe(
+      'PAYPAL',
+    );
+  });
+
   it('POST /quote-requests — 카테고리와 불일치하는 serviceItem은 400', () => {
     return request(app.getHttpServer())
       .post('/quote-requests')

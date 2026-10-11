@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Category } from '@prisma/client';
+import { Category, PaymentMethod } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -69,6 +69,12 @@ export class CreateQuoteRequestDto {
   @IsOptional()
   @Matches(/^[A-Z]{3}$/, { message: 'currency must be a 3-letter ISO code' })
   currency?: string;
+
+  // 결제수단 — 견적 통화를 결정한다. 구버전 앱은 보내지 않으므로 선택(기본 PAYPAL)
+  @ApiPropertyOptional({ enum: PaymentMethod, default: PaymentMethod.PAYPAL })
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
 
   @ApiProperty({
     example:

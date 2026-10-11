@@ -17,6 +17,7 @@ const ADMIN_REQUEST_SELECT = {
   serviceItem: true,
   desiredAmount: true,
   currency: true,
+  paymentMethod: true,
   description: true,
   contactMethod: true,
   status: true,
