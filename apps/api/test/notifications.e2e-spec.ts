@@ -128,7 +128,14 @@ describe('Notifications (e2e)', () => {
     expect(mail).not.toBeNull();
   });
 
-  it('견적 발송 → 사용자에게는 인앱 알림만 (이메일 미발송)', async () => {
+  it('견적 발송 → 사용자에게는 인앱 알림만 (이메일 미발송), 문구는 프로필 언어로', async () => {
+    // 수신자가 한국어를 쓰면 알림 제목도 한국어 (푸시는 이 문구의 복사본)
+    await request(app.getHttpServer())
+      .patch('/users/me')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ language: 'ko' })
+      .expect(200);
+
     await request(app.getHttpServer())
       .post(`/admin/quote-requests/${requestId}/quote`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -140,7 +147,13 @@ describe('Notifications (e2e)', () => {
         .get('/notifications')
         .set('Authorization', `Bearer ${userToken}`);
       const body = res.body as {
-        items: { id: string; requestId: number | null; type: string }[];
+        items: {
+          id: string;
+          requestId: number | null;
+          type: string;
+          title: string;
+          body: string;
+        }[];
       };
       return (
         body.items.find(
@@ -149,6 +162,8 @@ describe('Notifications (e2e)', () => {
       );
     });
     expect(inApp).not.toBeNull();
+    expect(inApp!.title).toBe('견적이 도착했어요');
+    expect(inApp!.body).toBe('');
 
     // 이 사용자를 "수신자"로 하는 메일이 없어야 한다.
     // (Mailpit 검색은 본문도 매칭한다 — 관리자 메일 본문에 사용자 이메일이 들어가므로
