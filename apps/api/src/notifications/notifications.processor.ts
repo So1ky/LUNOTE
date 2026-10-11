@@ -3,8 +3,13 @@ import { Logger } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
+import { ExpoPushClient, type ExpoPushMessage } from './expo-push.client';
 import { MailService } from './mail.service';
-import { NOTIFICATIONS_QUEUE, NotificationJob } from './notifications.service';
+import {
+  NOTIFICATIONS_QUEUE,
+  NotificationJob,
+  UserPushJob,
+} from './notifications.service';
 
 /**
  * 알림 워커 — 외부 부수효과(이메일)만 담당한다.
@@ -18,6 +23,7 @@ export class NotificationsProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly expo: ExpoPushClient,
   ) {
     super();
   }
@@ -28,6 +34,44 @@ export class NotificationsProcessor extends WorkerHost {
         return this.sendAdminEmails(job.data);
       case 'ADMIN_PAYMENT_PAID_EMAIL':
         return this.sendAdminPaymentPaidEmails(job.data);
+      case 'USER_PUSH':
+        return this.sendUserPush(job.data);
+    }
+  }
+
+  /** 사용자 기기 푸시 — 토큰 0건이면 조용히 끝, DeviceNotRegistered는 토큰 삭제 */
+  private async sendUserPush(data: UserPushJob) {
+    const tokens = await this.prisma.pushToken.findMany({
+      where: { userId: data.userId },
+      select: { token: true },
+    });
+    if (tokens.length === 0) return;
+    const messages: ExpoPushMessage[] = tokens.map((t) => ({
+      to: t.token,
+      title: data.title,
+      body: data.body,
+      data: data.requestId ? { requestId: data.requestId } : {},
+      sound: 'default',
+      channelId: 'default',
+    }));
+    const tickets = await this.expo.send(messages);
+    const dead: string[] = [];
+    tickets.forEach((ticket, i) => {
+      if (ticket.status !== 'error') return;
+      const token = messages[i].to;
+      if (ticket.details?.error === 'DeviceNotRegistered') {
+        dead.push(token);
+      } else {
+        // 토큰은 개인 식별자 — 앞 20자만 남긴다
+        this.logger.warn(
+          `푸시 티켓 오류 ${ticket.details?.error ?? ticket.message} (${token.slice(0, 20)}…)`,
+        );
+      }
+    });
+    if (dead.length > 0) {
+      await this.prisma.pushToken.deleteMany({
+        where: { token: { in: dead } },
+      });
     }
   }
 
