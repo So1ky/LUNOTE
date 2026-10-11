@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { BankTransferConfig } from './bank-transfer.config';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { PortOneGateway } from './portone.gateway';
@@ -8,6 +9,7 @@ import { PortOneWebhookController } from './portone-webhook.controller';
 @Module({
   imports: [NotificationsModule],
   controllers: [PaymentsController, PortOneWebhookController],
-  providers: [PaymentsService, PortOneGateway],
+  providers: [PaymentsService, PortOneGateway, BankTransferConfig],
+  exports: [PaymentsService],
 })
 export class PaymentsModule {}

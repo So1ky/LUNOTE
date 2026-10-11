@@ -31,6 +31,9 @@ export const SOCIAL_ENV_KEYS = [
   'APPLE_PRIVATE_KEY',
 ] as const;
 
+// 수동 계좌이체 계좌(BANK_TRANSFER_BANK_NAME/ACCOUNT_NUMBER/ACCOUNT_HOLDER)는 선택값 —
+// 미설정이면 계좌이체 결제 시도만 503. 프로덕션 필수로 올리지 않는다(PayPal만으로도 서비스 가능).
+
 /** 프로덕션에서만 필수 (로컬은 아래 DEV_DEFAULTS로 대체) */
 const PROD_REQUIRED = [
   'REDIS_URL',

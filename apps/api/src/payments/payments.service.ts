@@ -15,6 +15,7 @@ import * as Sentry from '@sentry/nestjs';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MetricsService } from '../observability/metrics.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { BankTransferConfig } from './bank-transfer.config';
 import { toMinorUnits } from './currency';
 import {
   PortOneGateway,
@@ -22,15 +23,16 @@ import {
   type PortOneWebhookEvent,
 } from './portone.gateway';
 
-/** 통화 → 결제 채널 라우팅. 국내 PG(KRW) 추가 시 여기에 한 줄 (앱은 provider로 UI를 분기) */
+/** 통화 → 결제 채널 라우팅 (앱은 provider로 UI를 분기) */
 const PROVIDER_BY_CURRENCY: Record<string, PaymentProvider> = {
   USD: PaymentProvider.PAYPAL,
+  KRW: PaymentProvider.BANK_TRANSFER, // 수동 계좌이체 (INICIS 도입 전까지)
 };
 
-/** 앱이 결제 UI를 띄우는 데 필요한 값 — 시크릿은 절대 포함하지 않는다 (storeId/channelKey는 공개 식별자) */
-export type PaymentIntent = {
+/** 앱이 PayPal 결제 UI를 띄우는 데 필요한 값 — 시크릿은 절대 포함하지 않는다 (storeId/channelKey는 공개 식별자) */
+export type PayPalIntent = {
+  provider: 'PAYPAL';
   paymentId: string;
-  provider: PaymentProvider;
   storeId: string;
   channelKey: string;
   orderName: string;
@@ -40,6 +42,21 @@ export type PaymentIntent = {
   /** 표시용 원 금액 (Decimal 문자열) */
   amount: string;
 };
+
+/** 앱이 계좌 안내 카드를 그리는 데 필요한 값 */
+export type BankTransferIntent = {
+  provider: 'BANK_TRANSFER';
+  paymentId: string;
+  amount: string;
+  currency: string;
+  bank: { name: string; accountNumber: string; holder: string };
+  /** 입금자명 — LUNOTE + 요청 번호. 관리자가 입금 내역과 대조한다 */
+  depositorName: string;
+  /** 입금 기한 = 견적 만료 (ISO) */
+  deadline: string;
+};
+
+export type PaymentIntent = PayPalIntent | BankTransferIntent;
 
 /** 웹훅/확인 처리의 결과 — 로그·테스트용. 클라이언트에는 상태만 나간다 */
 export type SyncOutcome =
@@ -80,6 +97,7 @@ export class PaymentsService {
     private readonly portone: PortOneGateway,
     private readonly notifications: NotificationsService,
     private readonly metrics: MetricsService,
+    private readonly bankTransfer: BankTransferConfig,
   ) {}
 
   /**
@@ -87,9 +105,6 @@ export class PaymentsService {
    * 앱이 결제 UI를 띄울 값을 돌려준다. 금액은 서버의 Quote에서만 온다.
    */
   async createIntent(userId: string, quoteId: string): Promise<PaymentIntent> {
-    if (!this.portone.isConfigured) {
-      throw new ServiceUnavailableException('PAYMENTS_NOT_CONFIGURED');
-    }
     // 소유자 조건을 where에 포함 — 남의 견적은 404 (존재 여부를 노출하지 않는다)
     const quote = await this.prisma.quote.findFirst({
       where: { id: quoteId, request: { userId } },
@@ -110,6 +125,17 @@ export class PaymentsService {
     }
     const provider = PROVIDER_BY_CURRENCY[quote.currency];
     if (!provider) throw new ConflictException('UNSUPPORTED_CURRENCY');
+
+    // 채널별 설정 검사 — 어느 쪽도 미설정이면 503 (기동은 되지만 그 수단만 불가)
+    if (provider === PaymentProvider.PAYPAL && !this.portone.isConfigured) {
+      throw new ServiceUnavailableException('PAYMENTS_NOT_CONFIGURED');
+    }
+    if (
+      provider === PaymentProvider.BANK_TRANSFER &&
+      !this.bankTransfer.isConfigured
+    ) {
+      throw new ServiceUnavailableException('BANK_TRANSFER_NOT_CONFIGURED');
+    }
 
     // 미완료 시도가 있으면 재사용 — PortOne은 미결제 paymentId 재요청을 허용하고, 행 남발을 막는다.
     // 사유가 붙은 PENDING(금액 불일치)은 PG에선 이미 결제된 건이라 재사용 대상이 아니다
@@ -137,9 +163,20 @@ export class PaymentsService {
         select: { id: true },
       }));
 
+    if (provider === PaymentProvider.BANK_TRANSFER) {
+      return {
+        provider: 'BANK_TRANSFER',
+        paymentId: payment.id,
+        amount: quote.amount.toString(),
+        currency: quote.currency,
+        bank: this.bankTransfer.bank!,
+        depositorName: `LUNOTE${quote.request.id}`,
+        deadline: quote.expiresAt.toISOString(),
+      };
+    }
     return {
+      provider: 'PAYPAL',
       paymentId: payment.id,
-      provider,
       storeId: this.portone.storeId!,
       channelKey: this.portone.paypalChannelKey!,
       orderName: `LUNOTE #${quote.request.id} ${quote.request.category}`,
