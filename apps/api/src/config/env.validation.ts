@@ -30,6 +30,7 @@ export const SOCIAL_ENV_KEYS = [
   'APPLE_KEY_ID',
   'APPLE_PRIVATE_KEY',
 ] as const;
+// EXPO_PUSH_ACCESS_TOKEN은 선택값 — Expo 대시보드 Enhanced push security를 켜면 필수. 미설정이면 Bearer 없이 호출 (ARCHITECTURE §11 푸시 알림)
 
 // 수동 계좌이체 계좌(BANK_TRANSFER_BANK_NAME/ACCOUNT_NUMBER/ACCOUNT_HOLDER)는 선택값 —
 // 미설정이면 계좌이체 결제 시도만 503. 프로덕션 필수로 올리지 않는다(PayPal만으로도 서비스 가능).

@@ -168,7 +168,7 @@ export class AdminQuoteRequestsService {
       Date.now() + this.QUOTE_VALIDITY_DAYS * 24 * 60 * 60 * 1000,
     );
 
-    await this.prisma.$transaction(async (tx) => {
+    const notice = await this.prisma.$transaction(async (tx) => {
       await tx.quote.create({
         data: {
           requestId,
@@ -201,12 +201,19 @@ export class AdminQuoteRequestsService {
         },
       });
       // 사용자 인앱 알림도 같은 트랜잭션 — 발행됐는데 알림이 없는 상태가 불가능 (DB-first)
-      await this.notifications.notifyUserQuoteSent(tx, {
+      return this.notifications.notifyUserQuoteSent(tx, {
         requestId,
         ownerId: request.user.id,
         amount: String(dto.amount),
         currency,
       });
+    });
+    // 푸시는 커밋 뒤에 — 롤백된 견적의 푸시가 나가면 안 된다 (인앱 알림이 원천)
+    this.notifications.enqueueUserPush({
+      type: 'USER_PUSH',
+      userId: request.user.id,
+      requestId,
+      ...notice,
     });
 
     return this.findOne(requestId);

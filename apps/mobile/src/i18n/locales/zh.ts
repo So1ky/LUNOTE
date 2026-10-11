@@ -383,7 +383,14 @@ const zh: Resources = {
     inAppDesc: '在通知收件箱中查看报价和申请更新。',
     alwaysOn: '始终开启',
     pushTitle: '推送通知',
-    pushDesc: '即将推出，应用关闭时也能收到更新。',
+    pushDesc: '即使关闭应用，也能收到报价和付款更新。',
+    pushDenied: '手机设置中已关闭通知。点按以打开设置。',
+  },
+  pushPrompt: {
+    title: '报价送达时通知您？',
+    body: '报价准备好时通知一次，付款确认时通知一次。仅此而已。',
+    turnOn: '开启通知',
+    notNow: '稍后',
   },
 
   profile: {

@@ -384,7 +384,14 @@ const ko: Resources = {
     inAppDesc: '견적과 문의 업데이트를 알림함에서 확인하세요.',
     alwaysOn: '항상 켜짐',
     pushTitle: '푸시 알림',
-    pushDesc: '곧 제공돼요 — 앱을 닫아도 소식을 받아보세요.',
+    pushDesc: '앱을 닫아도 견적·결제 소식을 받아보세요.',
+    pushDenied: '휴대폰 설정에서 알림이 꺼져 있어요. 탭하면 설정으로 이동해요.',
+  },
+  pushPrompt: {
+    title: '견적이 도착하면 알려드릴까요?',
+    body: '견적이 준비됐을 때 한 번, 결제가 확인됐을 때 한 번만 알려드려요. 그 외에는 보내지 않아요.',
+    turnOn: '알림 켜기',
+    notNow: '나중에',
   },
 
   profile: {

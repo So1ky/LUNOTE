@@ -378,22 +378,28 @@ export class PaymentsService {
         reason: 'request not in QUOTED status at payment time',
       });
     }
-    await this.notifications.notifyPaymentPaid(tx, {
+    const notice = await this.notifications.notifyPaymentPaid(tx, {
       requestId,
       ownerId: local.quote.request.userId,
       amount: local.amount.toString(),
       currency: local.currency,
     });
     // 이메일은 커밋 이후 큐로 — tx 안에서 등록하면 롤백된 결제의 메일이 나갈 수 있다
-    this.enqueueAfterCommit(() =>
+    this.enqueueAfterCommit(() => {
       this.notifications.enqueueAdminEmail({
         type: 'ADMIN_PAYMENT_PAID_EMAIL',
         requestId,
         amount: local.amount.toString(),
         currency: local.currency,
         provider: local.provider,
-      }),
-    );
+      });
+      this.notifications.enqueueUserPush({
+        type: 'USER_PUSH',
+        userId: local.quote.request.userId,
+        requestId,
+        ...notice,
+      });
+    });
     return 'paid';
   }
 

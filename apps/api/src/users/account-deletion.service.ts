@@ -139,6 +139,8 @@ export class AccountDeletionService {
         },
       });
       await tx.refreshToken.deleteMany({ where: { userId } });
+      // 푸시 토큰도 개인 식별자 — 탈퇴와 함께 삭제
+      await tx.pushToken.deleteMany({ where: { userId } });
       await tx.user.update({
         where: { id: userId },
         data: {

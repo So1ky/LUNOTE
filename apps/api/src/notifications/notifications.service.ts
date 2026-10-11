@@ -29,7 +29,17 @@ export type AdminPaymentPaidEmailJob = {
   provider: string;
 };
 
-export type NotificationJob = AdminEmailJob | AdminPaymentPaidEmailJob;
+/** 사용자 기기 푸시 — 인앱 알림이 원천이고 제목·본문을 그대로 복사한다 (커밋 후 등록) */
+export type UserPushJob = {
+  type: 'USER_PUSH';
+  userId: string;
+  title: string;
+  body: string;
+  requestId?: number;
+};
+
+export type NotificationJob =
+  AdminEmailJob | AdminPaymentPaidEmailJob | UserPushJob;
 
 @Injectable()
 export class NotificationsService {
@@ -106,15 +116,19 @@ export class NotificationsService {
     },
   ) {
     const amountText = formatAmount(data.amount, data.currency);
+    const notice = {
+      title: 'Your quote is ready',
+      body: `Request #${data.requestId} · ${amountText}`,
+    };
     await tx.notification.create({
       data: {
         userId: data.ownerId,
         type: 'QUOTE_SENT',
-        title: 'Your quote is ready',
-        body: `Request #${data.requestId} · ${amountText}`,
+        ...notice,
         requestId: data.requestId,
       },
     });
+    return notice;
   }
 
   /** 결제 확정 → 소유자 + 모든 관리자에게 인앱 알림 (결제 확정 트랜잭션 안에서 호출) */
@@ -128,6 +142,10 @@ export class NotificationsService {
     },
   ) {
     const amountText = formatAmount(data.amount, data.currency);
+    const notice = {
+      title: 'Payment received',
+      body: `Request #${data.requestId} · ${amountText} — we're getting started`,
+    };
     const admins = await tx.user.findMany({
       where: { role: UserRole.ADMIN },
       select: { id: true },
@@ -137,8 +155,7 @@ export class NotificationsService {
         {
           userId: data.ownerId,
           type: 'PAYMENT_PAID',
-          title: 'Payment received',
-          body: `Request #${data.requestId} · ${amountText} — we're getting started`,
+          ...notice,
           requestId: data.requestId,
         },
         ...admins.map((a) => ({
@@ -150,6 +167,7 @@ export class NotificationsService {
         })),
       ],
     });
+    return notice;
   }
 
   /**
@@ -200,6 +218,11 @@ export class NotificationsService {
       .catch((e: Error) =>
         this.logger.error(`알림 큐 등록 실패: ${e.message}`),
       );
+  }
+
+  /** 사용자 푸시 잡 등록 — enqueueAdminEmail과 같은 규칙(커밋 후·fire-and-forget) */
+  enqueueUserPush(job: UserPushJob) {
+    this.enqueueAdminEmail(job);
   }
 
   /** 헬스체크용 — Redis 응답 여부 (500ms 타임아웃, 실패해도 예외를 던지지 않는다) */
