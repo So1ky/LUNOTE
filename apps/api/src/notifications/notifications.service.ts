@@ -3,6 +3,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, UserRole } from '@prisma/client';
 import { Queue } from 'bullmq';
 
+import { userNoticeTitle } from './user-notice-copy';
+
 export const NOTIFICATIONS_QUEUE = 'notifications';
 
 /** 알림 문구용 금액 표기 — 통화별 UI 포맷은 앱이 담당하므로 여기선 단순 표기 */
@@ -105,6 +107,15 @@ export class NotificationsService {
     });
   }
 
+  /** 수신자의 프로필 언어 — 알림이 만들어지는 시점의 값으로 문구가 고정된다 */
+  private async languageOf(tx: Prisma.TransactionClient, userId: string) {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { language: true },
+    });
+    return user?.language ?? null;
+  }
+
   /** 견적 발송 → 문의 소유자에게 인앱 알림 행 생성 (견적 발행 트랜잭션 안에서 호출) */
   async notifyUserQuoteSent(
     tx: Prisma.TransactionClient,
@@ -115,9 +126,12 @@ export class NotificationsService {
       currency: string;
     },
   ) {
-    // 사용자 알림은 제목만 — 문의 번호·금액은 탭해서 보는 상세에 있다 (2026-10-11 실측 후 사용자 결정)
+    // 사용자 알림은 제목만, 수신자의 프로필 언어로 — 문의 번호·금액은 탭해서 보는 상세에 있다 (2026-10-11 결정)
     const notice = {
-      title: 'Your quote is ready',
+      title: userNoticeTitle(
+        'QUOTE_SENT',
+        await this.languageOf(tx, data.ownerId),
+      ),
       body: '',
     };
     await tx.notification.create({
@@ -143,8 +157,11 @@ export class NotificationsService {
   ) {
     const amountText = formatAmount(data.amount, data.currency);
     const notice = {
-      title: 'Payment received',
-      body: '', // 사용자 알림은 제목만 (견적 알림과 동일 규칙)
+      title: userNoticeTitle(
+        'PAYMENT_PAID',
+        await this.languageOf(tx, data.ownerId),
+      ),
+      body: '', // 사용자 알림은 제목만, 프로필 언어로 (견적 알림과 동일 규칙)
     };
     const admins = await tx.user.findMany({
       where: { role: UserRole.ADMIN },
