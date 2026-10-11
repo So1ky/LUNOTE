@@ -62,6 +62,15 @@ const PAYMENT_SELECT = {
   createdAt: true,
 } satisfies Prisma.PaymentSelect;
 
+/** markPaid가 필요로 하는 결제 행 — applyRemote의 local select와 confirmBankTransfer의 select가 둘 다 만족한다 */
+type PaidTarget = {
+  id: string;
+  amount: Prisma.Decimal;
+  currency: string;
+  provider: PaymentProvider;
+  quote: { requestId: number; request: { userId: string } };
+};
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -235,6 +244,62 @@ export class PaymentsService {
   }
 
   /**
+   * PENDING → PAID 전이 + 문의 QUOTED → PAID + 사용자 알림 + 관리자 메일.
+   * PayPal 웹훅/확인(applyRemote)과 관리자 입금 확인(confirmBankTransfer)이 공유한다 — 두 경로의 PAID는 같은 의미여야 한다.
+   */
+  private async markPaid(
+    tx: Prisma.TransactionClient,
+    local: PaidTarget,
+    paid: { paidAt: Date; portoneTxId?: string },
+  ): Promise<'paid' | 'noop'> {
+    const requestId = local.quote.requestId;
+    const { count } = await tx.payment.updateMany({
+      where: { id: local.id, status: PaymentStatus.PENDING },
+      data: {
+        status: PaymentStatus.PAID,
+        paidAt: paid.paidAt,
+        portoneTxId: paid.portoneTxId,
+        failReason: null,
+      },
+    });
+    if (count === 0) return 'noop'; // 이미 PAID (웹훅과 confirm 경쟁, 또는 입금 확인 재클릭)
+
+    const moved = await tx.quoteRequest.updateMany({
+      where: { id: requestId, status: RequestStatus.QUOTED },
+      data: { status: RequestStatus.PAID },
+    });
+    if (moved.count === 0) {
+      // 결제 중 사용자가 문의를 취소한 경우 등 — 돈은 받았으니 관리자가 환불/복구 판단
+      this.metrics.paymentMismatch('request_status');
+      this.logger.error(
+        `결제는 PAID인데 문의 #${requestId}가 QUOTED가 아님 — 수동 확인 필요`,
+      );
+      await this.notifications.notifyAdminsPaymentMismatch(tx, {
+        requestId,
+        paymentId: local.id,
+        reason: 'request not in QUOTED status at payment time',
+      });
+    }
+    await this.notifications.notifyPaymentPaid(tx, {
+      requestId,
+      ownerId: local.quote.request.userId,
+      amount: local.amount.toString(),
+      currency: local.currency,
+    });
+    // 이메일은 커밋 이후 큐로 — tx 안에서 등록하면 롤백된 결제의 메일이 나갈 수 있다
+    this.enqueueAfterCommit(() =>
+      this.notifications.enqueueAdminEmail({
+        type: 'ADMIN_PAYMENT_PAID_EMAIL',
+        requestId,
+        amount: local.amount.toString(),
+        currency: local.currency,
+        provider: local.provider,
+      }),
+    );
+    return 'paid';
+  }
+
+  /**
    * PortOne 조회 결과를 우리 상태로 반영하는 유일한 전이 함수.
    * 상태 조건을 updateMany의 where에 넣어 동시 호출(웹훅+confirm)에도 한 번만 전이된다.
    */
@@ -293,50 +358,10 @@ export class PaymentsService {
           return 'mismatch';
         }
 
-        const { count } = await tx.payment.updateMany({
-          where: { id: local.id, status: PaymentStatus.PENDING },
-          data: {
-            status: PaymentStatus.PAID,
-            paidAt: new Date(remote.paidAt),
-            portoneTxId: remote.transactionId,
-            failReason: null,
-          },
+        return this.markPaid(tx, local, {
+          paidAt: new Date(remote.paidAt),
+          portoneTxId: remote.transactionId,
         });
-        if (count === 0) return 'noop'; // 이미 PAID (웹훅과 confirm 경쟁)
-
-        const moved = await tx.quoteRequest.updateMany({
-          where: { id: requestId, status: RequestStatus.QUOTED },
-          data: { status: RequestStatus.PAID },
-        });
-        if (moved.count === 0) {
-          // 결제 중 사용자가 문의를 취소한 경우 등 — 돈은 받았으니 관리자가 환불/복구 판단
-          this.metrics.paymentMismatch('request_status');
-          this.logger.error(
-            `결제는 PAID인데 문의 #${requestId}가 QUOTED가 아님 — 수동 확인 필요`,
-          );
-          await this.notifications.notifyAdminsPaymentMismatch(tx, {
-            requestId,
-            paymentId: local.id,
-            reason: 'request not in QUOTED status at payment time',
-          });
-        }
-        await this.notifications.notifyPaymentPaid(tx, {
-          requestId,
-          ownerId: local.quote.request.userId,
-          amount: local.amount.toString(),
-          currency: local.currency,
-        });
-        // 이메일은 커밋 이후 큐로 — tx 안에서 등록하면 롤백된 결제의 메일이 나갈 수 있다
-        this.enqueueAfterCommit(() =>
-          this.notifications.enqueueAdminEmail({
-            type: 'ADMIN_PAYMENT_PAID_EMAIL',
-            requestId,
-            amount: local.amount.toString(),
-            currency: local.currency,
-            provider: local.provider,
-          }),
-        );
-        return 'paid';
       }
 
       case 'FAILED': {
