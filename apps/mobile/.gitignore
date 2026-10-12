@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Firebase Android 설정 — EAS 파일 환경변수로 주입 (app.config.ts)
+google-services.json
