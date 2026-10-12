@@ -21,6 +21,7 @@ AWS 리소스(IAM 롤 등)는 `infra/terraform/`.
 | namespaces | platform/namespaces/ | — |
 | api-staging | 배포 저장소 `So1ky/lunote-deploy`의 workloads/api/overlays/staging (프로젝트 `staging-api`) | — |
 | api-prod | 이 저장소 develop의 workloads/api/overlays/prod — base는 커밋 SHA 고정 (프로젝트 `prod-api`) | — |
+| admin-web-prod | 이 저장소 develop의 workloads/admin-web — 관리자 웹(Caddy, tailnet 전용). 이미지는 수동 릴리스(아래 "관리자 웹 배포") (프로젝트 `prod-api`) | — |
 | jenkins | jenkins/jenkins + platform/jenkins/values.yaml | 5.9.65 |
 | kube-prometheus-stack | prometheus-community/kube-prometheus-stack + platform/kube-prometheus-stack/values.yaml | 92.0.0 |
 | loki | grafana-community/loki + platform/loki/values.yaml | 18.13.8 |
@@ -142,6 +143,24 @@ UI는 외부에 열지 않는다. 인터넷에 열린 것은 웹훅 수신 경�
 
 이미지는 다이제스트(@sha256)로 고정돼 있다 — 버전을 올릴 때 `ci/api-build-pod.yaml`의 다이제스트도 함께 바꾼다.
 
+## 관리자 웹 배포 (수동 — CI 없음)
+
+관리자 웹(`apps/admin-web`)은 Jenkins를 타지 않는다. 사람이 로컬에서 빌드·push하고 태그 PR로 배포한다.
+
+```bash
+git switch develop && git pull && git switch -c chore/admin-web-$(date +%m%d-%H%M)
+sh scripts/admin-web-release.sh      # arm64 빌드 → ECR lunote/admin-web:<git SHA 12자> push → newTag 치환 + 렌더링 확인
+git add infra/k8s/workloads/admin-web/kustomization.yaml && git commit -m "chore(k8s): 관리자 웹 <SHA> 배포" && gh pr create --base develop
+```
+
+- 머지되면 ArgoCD `admin-web-prod`가 3~5분 안에 롤링한다(maxUnavailable 0). 롤백은 그 PR revert(이미지는 ECR에 남아 있다).
+- 같은 커밋을 다시 실행하면 빌드를 건너뛴다(ECR 불변 태그). `apps/admin-web`에 미커밋 변경이 있으면 중단한다.
+- API 주소는 빌드에 박힌다(`VITE_API_URL=https://api.lunoteapp.com`, 스크립트 상단). 바꾸면 재빌드.
+- 취약점: ECR push 스캔 결과를 스크립트가 출력한다(차단 없음). Deployment·NetworkPolicy는 `workloads/admin-web/`, Service·Ingress는
+  `platform/namespaces/prod-admin-web-{service,ingress}.yaml`.
+- Tailscale 장애 시: `kubectl --context lunote port-forward svc/admin-web -n prod 8082:80`로 페이지는 열리지만 API CORS가 localhost를
+  허용하지 않아 로그인이 안 된다 — 비상시엔 로컬 `npm run dev`(`.env.local`의 Vite 프록시)가 낫다.
+
 ## 관리 UI 접속 (Tailscale, 외부 노출 없음)
 
 Tailscale 앱이 로그인된 기기(노트북·폰)에서만 열린다. 인터넷에 열린 포트는 없다.
@@ -151,6 +170,7 @@ Tailscale 앱이 로그인된 기기(노트북·폰)에서만 열린다. 인터�
 | ArgoCD | https://argocd.tail3e8320.ts.net | admin | `lunote/shared/argocd`의 `admin-password` |
 | Grafana | https://grafana.tail3e8320.ts.net | admin | `lunote/shared/grafana`의 `admin-password` |
 | Jenkins | https://jenkins.tail3e8320.ts.net | admin | `lunote/shared/jenkins`의 `admin-password` |
+| 관리자 웹 | https://admin.tail3e8320.ts.net | LUNOTE ADMIN 계정(앱과 같은 사용자 DB) | — (API 로그인) |
 
 값 꺼내기(본인 터미널에서 — 대화·로그에 남기지 않는다):
 
@@ -167,8 +187,9 @@ Operator(`tailscale-operator` 앱)가 Ingress(`ingressClassName: tailscale`)마�
 
 tailnet 쪽 선행 조건(Tailscale admin console — 바꾸면 접속이 끊긴다):
 - DNS: **MagicDNS**·**HTTPS Certificates** 켜짐(꺼지면 Operator가 `HTTPSNotEnabled` 이벤트만 남긴다)
-- Access controls: `tagOwners` — `tag:k8s-operator`: autogroup:admin, `tag:k8s`: tag:k8s-operator.
-  grant는 `autogroup:member → tag:k8s : tcp:443` 하나(클러스터 → 내 기기 방향 차단)
+- Access controls: `tagOwners` — `tag:k8s-operator`: autogroup:admin, `tag:k8s`: tag:k8s-operator, `tag:admin-web`: tag:k8s-operator.
+  grants는 둘: `autogroup:admin → tag:k8s : tcp:443`(관리 UI 3개), `autogroup:member → tag:admin-web : tcp:443`(관리자 웹 — 기획자 초대 대상).
+  클러스터 → 내 기기 방향은 열지 않는다.
 - OAuth 클라이언트(태그 `tag:k8s-operator`, 범위 Services·Devices Core·Auth Keys 쓰기) → Secrets Manager `lunote/shared/tailscale`
 
 비상용 port-forward (Tailscale 장애 시 — 평문, NetworkPolicy는 port-forward에 적용되지 않는다):

@@ -17,7 +17,7 @@
 | 분류 | 선택 | 비고 |
 |---|---|---|
 | 모바일 앱 | React Native (Expo SDK 57) | iOS/Android 동시 출시. Expo Go 불가 — 개발 빌드 사용 |
-| 관리자 웹 | **Vite + React SPA** (`apps/admin-web`) | 내부 운영 도구. SSR 불필요 → 정적 빌드(S3/CloudFront 또는 nginx 컨테이너)로 배포 단순화. 기존 관리자 API(JWT + RolesGuard)만 소비, 백엔드 변경 없음 |
+| 관리자 웹 | **Vite + React SPA** (`apps/admin-web`) | 내부 운영 도구. 정적 빌드를 **Caddy 컨테이너**로 prod 네임스페이스에 띄우고 **Tailscale Ingress**(`admin.tail3e8320.ts.net`)로 tailnet에만 노출(2026-10-12). 기존 관리자 API(JWT + RolesGuard)만 소비, 백엔드 변경 없음 |
 | 백엔드 | **NestJS (TypeScript)** | 프론트와 언어 통일, 1인 운영 속도 최우선 |
 | ORM | **Prisma** | 타입 안전 쿼리 + 마이그레이션 관리 |
 | DB | AWS RDS PostgreSQL, **Single-AZ** + PITR(5분) | 파일은 S3 (presigned URL). 2026-10-04 결정: 출시 후에도 Single-AZ 유지, **누적 실결제 10건 도달 시 Multi-AZ 전환**(속성 하나, 온라인 변경). 유실 위험은 PITR로 동일, 잃는 건 장애 시 자동 페일오버뿐 |
@@ -465,6 +465,13 @@ prod 승격 = overlays/prod의 SHA 두 줄(base ref + newTag) 변경 PR → 사�
   CloudWatch 데이터소스(exporter Pod 없음, ≈$1/월). Alloy는 Deployment 1개(API 경유 수집이라 노드 로컬 불필요).
 - **관리 UI 접속 (2026-10-06 결정)**: Tailscale Operator + `ingressClassName: tailscale` Ingress(argocd·grafana·jenkins). ArgoCD 서버는 `server.insecure: true`
   (프록시가 TLS 종료, 클러스터 내부 홉). 대안 기각: ALB + Cognito OIDC(관리 UI 공개 노출·2중 로그인), port-forward 재연결 스크립트(노트북만).
+- **관리자 웹 상시 배포 (2026-10-12 결정)**: `apps/admin-web`를 Caddy 컨테이너(비root·8080·읽기 전용 루트)로 prod 네임스페이스에 1대 띄우고
+  Tailscale Ingress `https://admin.tail3e8320.ts.net`로 tailnet에만 노출한다. 프록시 태그는 **`tag:admin-web`**(관리 UI 3개의 `tag:k8s`와 분리) —
+  grants `autogroup:member → tag:admin-web:443`, `autogroup:admin → tag:k8s:443`으로 기획자(초대 member)는 관리자 웹만 닿는다.
+  브라우저는 공개 `api.lunoteapp.com`을 직접 호출(`CORS_ORIGINS`에 ts.net 오리진 1개). 이미지는 사람이 `scripts/admin-web-release.sh`로
+  arm64 빌드·ECR `lunote/admin-web` push 후 `workloads/admin-web/kustomization.yaml`의 `newTag` PR로 배포(ArgoCD `admin-web-prod`, 프로젝트 `prod-api` 재사용).
+  기각: Caddy가 `/api`를 클러스터 내부로 중계(API base NP 수정·클라이언트 IP 유실, 관리자 API가 공개인 사실은 그대로), S3/CloudFront 공개 호스팅(tailnet 뒤에 둘 수 없음),
+  Jenkins 잡(빌드 빈도 낮음 — 월 2회 넘으면 추가). S3 CORS는 안 바꾼다(첨부는 `<a>`·`<img>`로만 열어 CORS 비적용).
 - **코어 노드그룹 AZ 고정 (2026-10-05 결정)**: 코어 노드그룹은 `ap-northeast-2c` 서브넷 하나에만 둔다.
   Jenkins·Prometheus·Loki·Tempo의 PV는 EBS라 한 AZ에 묶이는데, 노드그룹이 2 AZ에 걸쳐 있으면 노드 교체나 wake 때
   노드가 다른 AZ에 떠 Pod가 Pending으로 남는다. 평상시 가용성은 같다. 잃는 것: 2c 장애 시 노드그룹이 2a에
