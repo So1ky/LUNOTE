@@ -17,6 +17,8 @@ const config: ExpoConfig = {
     bundleIdentifier: 'com.lunoteapp',
     appleTeamId: 'R8529642F3',
     usesAppleSignIn: true,
+    // HTTPS만 사용(수출 규정 면제) — TestFlight 빌드마다 암호화 규정 질문을 받지 않도록 선언
+    config: { usesNonExemptEncryption: false },
   },
   android: {
     package: 'com.lunoteapp',
