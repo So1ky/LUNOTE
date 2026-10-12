@@ -24,7 +24,8 @@ configMapGenerator:
       - LOG_LEVEL=info
       - S3_BUCKET=lunote-attachments-prod-695019457880
       - S3_REGION=ap-northeast-2
-      - CORS_ORIGINS=https://admin.lunoteapp.com
+      # 관리자 웹 오리진(tailnet). 브라우저가 공개 API를 직접 호출하므로 CORS 허용이 필요하다 — SHA 고정 밖이라 머지 즉시 반영·API 롤링
+      - CORS_ORIGINS=https://admin.tail3e8320.ts.net
       - SMTP_HOST=smtp-relay.brevo.com
       - SMTP_PORT=587
       # 수동 계좌이체 법인 계좌 — 비밀 아님(앱 결제 화면에 그대로 노출). 미설정이면 계좌이체 결제 시도만 503.

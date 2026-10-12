@@ -1,0 +1,20 @@
+# prod 관리자 웹(정적 SPA, tailnet 전용). 이미지는 사람이 scripts/admin-web-release.sh로 빌드·push하고 newTag PR로 배포한다(CI 없음).
+# Service·Ingress(tailscale)는 platform/namespaces/prod-admin-web-{service,ingress}.yaml. 절차는 infra/k8s/README.md "관리자 웹 배포".
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: admin-web-prod
+  namespace: argocd
+spec:
+  project: prod-api # prod 네임스페이스 워크로드 공용 — 허용 종류(Deployment·NetworkPolicy)와 sync SA가 같다
+  source:
+    repoURL: https://github.com/So1ky/LUNOTE.git
+    targetRevision: develop
+    path: infra/k8s/workloads/admin-web
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true

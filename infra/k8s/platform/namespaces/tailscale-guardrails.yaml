@@ -74,7 +74,7 @@ spec:
         - protocol: UDP
           port: 3478
 ---
-# Ingress 프록시 → 백엔드 Service ClusterIP: argocd-server 80→8080(평문, server.insecure), grafana 80→3000, jenkins 8080.
+# Ingress 프록시 → 백엔드 Service ClusterIP: argocd-server 80→8080(평문, server.insecure), grafana 80→3000, jenkins 8080, admin-web(prod) 80→8080.
 # 규칙은 Pod의 targetPort로 적는다 — VPC CNI NP 컨트롤러가 각 포트를 ClusterIP:Service 포트(맞는 것 중 첫 번째 하나)로
 # 번역해 PolicyEndpoint에 넣는다. 참고: 위 tailscale-egress의 0.0.0.0/0:443과 합집합이라 클러스터 내부 443도 열려 있다(#166)
 apiVersion: networking.k8s.io/v1
@@ -115,6 +115,16 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/component: jenkins-controller
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: prod
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: admin-web
       ports:
         - protocol: TCP
           port: 8080
