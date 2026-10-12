@@ -1,0 +1,22 @@
+# 관리자 웹을 tailnet에만 노출한다 — https://admin.tail3e8320.ts.net. Tailscale 앱이 로그인된 기기에서만.
+# 프록시 태그는 tag:admin-web — 관리 UI 3개(tag:k8s)와 분리해 기획자(autogroup:member)는 이 태그만 닿게 한다.
+# tagOwners(tag:admin-web ← tag:k8s-operator)·grants는 Tailscale 콘솔(docs/ARCHITECTURE.md "관리 UI 접속"). 태그가 ACL에
+# 없으면 Operator가 프록시 생성에 실패한다 — ACL을 먼저 바꾼다.
+# 프록시 → Pod 통신: tailscale-guardrails.yaml(proxy-to-backends) + workloads/admin-web/networkpolicy.yaml.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: admin-web
+  namespace: prod
+  annotations:
+    tailscale.com/proxy-class: core-node
+    tailscale.com/tags: tag:admin-web
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: admin-web
+      port:
+        number: 80 # 프록시가 TLS를 끝내고 평문으로 → Caddy 8080
+  tls:
+    - hosts: [admin] # → admin.tail3e8320.ts.net
