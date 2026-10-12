@@ -1,0 +1,11 @@
+# prod 관리자 웹 — 환경이 하나뿐이라 base/overlay 없이 평면. 이미지 태그는 scripts/admin-web-release.sh가 바꾸고 사람이 PR한다.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: prod
+resources:
+  - deployment.yaml
+  - networkpolicy.yaml
+images:
+  - name: lunote-admin-web
+    newName: 695019457880.dkr.ecr.ap-northeast-2.amazonaws.com/lunote/admin-web
+    newTag: "000000000000" # 자리표시 — 첫 릴리스 스크립트가 실제 git SHA로 바꾼다(머지 전 반드시 교체). 따옴표 필수: 숫자만인 SHA는 YAML 숫자가 된다

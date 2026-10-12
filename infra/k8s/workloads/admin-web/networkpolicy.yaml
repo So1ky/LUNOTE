@@ -1,0 +1,23 @@
+# prod는 기본 거부(platform/namespaces/prod-guardrails.yaml). admin-web은 tailscale Ingress 프록시에서만 받고,
+# 바깥으로는 나가지 않는다 — egress 규칙을 비워 둔다(DNS는 allow-dns가 전 Pod에 연다). 반대편(프록시 → 여기)은
+# platform/namespaces/tailscale-guardrails.yaml의 proxy-to-backends.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: admin-web
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: admin-web
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tailscale
+          podSelector:
+            matchLabels:
+              tailscale.com/parent-resource-type: ingress
+      ports:
+        - protocol: TCP
+          port: 8080
