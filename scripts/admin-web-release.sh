@@ -26,7 +26,10 @@ if aws ecr describe-images --repository-name "$REPO" --image-ids imageTag="$TAG"
   echo "이미 push된 커밋: $IMAGE — 빌드를 건너뛰고 kustomization만 맞춘다"
 else
   aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY" >/dev/null
-  docker buildx build --platform linux/arm64 --build-arg "VITE_API_URL=$API_URL" -t "$IMAGE" --push "$APP_DIR"
+  # --provenance=false --sbom=false: attestation 없는 단일 매니페스트로 push한다. 기본값(OCI 인덱스 + attestation)이면 ECR 기본 스캔이
+  # 인덱스를 지원하지 않아 스캔이 아예 안 되고(ScanNotFound, 2026-10-12 실측) untagged 잔재 2개가 함께 남는다
+  docker buildx build --platform linux/arm64 --provenance=false --sbom=false \
+    --build-arg "VITE_API_URL=$API_URL" -t "$IMAGE" --push "$APP_DIR"
   echo "push 완료: $IMAGE"
   # ECR push 스캔 결과(최대 2분 대기). 차단하지 않는다 — 정적 파일 서버라 운영 판단(설계 §3-3)
   i=0; STATUS=IN_PROGRESS
