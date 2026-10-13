@@ -19,6 +19,7 @@ describe('userNoticeTitle', () => {
       expect(userNoticeTitle('PAYMENT_PAID', lang)).not.toBe('');
       expect(userNoticeTitle('WORK_STARTED', lang)).not.toBe('');
       expect(userNoticeTitle('WORK_COMPLETED', lang)).not.toBe('');
+      expect(userNoticeTitle('PAYMENT_REFUNDED', lang)).not.toBe('');
     }
   });
 });

@@ -471,9 +471,14 @@ describe('Payments (e2e)', () => {
     });
     const res = await postWebhook(raw, headers).expect(200);
     expect((res.body as { outcome: string }).outcome).toBe('refunded');
-    const req = await prisma.quoteRequest.findUnique({
+    const req = await prisma.quoteRequest.findUniqueOrThrow({
       where: { id: requestId },
     });
-    expect(req?.status).toBe('REFUNDED');
+    expect(req.status).toBe('REFUNDED');
+    // 환불도 사용자 인앱 알림 — 관리자 계좌이체 환불 기록과 같은 전이를 공유한다
+    const notice = await prisma.notification.findFirst({
+      where: { userId: req.userId, requestId, type: 'PAYMENT_REFUNDED' },
+    });
+    expect(notice).not.toBeNull();
   });
 });

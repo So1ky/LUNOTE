@@ -342,6 +342,103 @@ export class PaymentsService {
   }
 
   /**
+   * 관리자의 계좌이체 환불 기록 — 실제 송금은 은행에서 먼저 하고 여기서는 결과만 반영한다.
+   * PortOne 환불 웹훅(applyRemote)과 같은 전이(markRefunded)를 쓴다 — 두 경로의 REFUNDED는 같은 의미여야 한다.
+   * 멱등: 이미 REFUNDED면 noop
+   */
+  async refundBankTransfer(paymentId: string, adminId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // confirmBankTransfer와 같은 이유로 행 잠금 — 상태를 읽고 분기한다
+      const [row] = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM payments WHERE id = ${paymentId} FOR UPDATE`;
+      if (!row) throw new NotFoundException('Payment not found');
+      const local = await tx.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          provider: true,
+          quote: {
+            select: { requestId: true, request: { select: { userId: true } } },
+          },
+        },
+      });
+      if (local.provider !== PaymentProvider.BANK_TRANSFER) {
+        throw new ConflictException('NOT_BANK_TRANSFER');
+      }
+      if (
+        local.status !== PaymentStatus.PAID &&
+        local.status !== PaymentStatus.REFUNDED
+      ) {
+        throw new ConflictException('NOT_PAID');
+      }
+      // 감사 로그를 전이보다 먼저, 같은 트랜잭션 — 기록 없는 환불이 존재할 수 없게. REFUNDED(재클릭)는 감사 없이 noop
+      if (local.status === PaymentStatus.PAID) {
+        await tx.adminAuditLog.create({
+          data: {
+            adminId,
+            action: 'BANK_TRANSFER_REFUNDED',
+            targetType: 'PAYMENT',
+            targetId: local.id,
+            detail: {
+              requestId: local.quote.requestId,
+              amount: local.amount.toString(),
+              currency: local.currency,
+            },
+          },
+        });
+      }
+      const outcome = await this.markRefunded(tx, local);
+      const payment = await tx.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+        select: { id: true, status: true, paidAt: true },
+      });
+      return { outcome, payment };
+    });
+  }
+
+  /**
+   * PAID → REFUNDED 전이 + 문의 PAID·IN_PROGRESS → REFUNDED + 사용자 알림.
+   * PortOne 환불 웹훅(applyRemote)과 관리자 계좌이체 환불 기록(refundBankTransfer)이 공유한다.
+   * COMPLETED 문의는 결제만 REFUNDED로 바뀌고 문의 상태는 유지한다 (완료된 작업의 기록)
+   */
+  private async markRefunded(
+    tx: Prisma.TransactionClient,
+    local: PaidTarget,
+  ): Promise<'refunded' | 'noop'> {
+    const requestId = local.quote.requestId;
+    const { count } = await tx.payment.updateMany({
+      where: { id: local.id, status: PaymentStatus.PAID },
+      data: { status: PaymentStatus.REFUNDED },
+    });
+    if (count === 0) return 'noop'; // 이미 REFUNDED (웹훅 중복·재클릭) 또는 PAID가 아님
+
+    await tx.quoteRequest.updateMany({
+      where: {
+        id: requestId,
+        status: { in: [RequestStatus.PAID, RequestStatus.IN_PROGRESS] },
+      },
+      data: { status: RequestStatus.REFUNDED },
+    });
+    const notice = await this.notifications.notifyPaymentRefunded(tx, {
+      requestId,
+      ownerId: local.quote.request.userId,
+    });
+    // 푸시는 커밋 뒤에 — 롤백된 환불의 푸시가 나가면 안 된다 (markPaid와 동일)
+    this.enqueueAfterCommit(() => {
+      this.notifications.enqueueUserPush({
+        type: 'USER_PUSH',
+        userId: local.quote.request.userId,
+        requestId,
+        ...notice,
+      });
+    });
+    return 'refunded';
+  }
+
+  /**
    * PENDING → PAID 전이 + 문의 QUOTED → PAID + 사용자 알림 + 관리자 메일.
    * PayPal 웹훅/확인(applyRemote)과 관리자 입금 확인(confirmBankTransfer)이 공유한다 — 두 경로의 PAID는 같은 의미여야 한다.
    */
@@ -487,27 +584,16 @@ export class PaymentsService {
       case 'CANCELLED':
       case 'PARTIAL_CANCELLED': {
         // 취소/환불은 PortOne 콘솔(관리자)에서 실행된다 — 여기서는 결과만 반영
-        const { count } = await tx.payment.updateMany({
-          where: { id: local.id, status: PaymentStatus.PAID },
+        if ((await this.markRefunded(tx, local)) === 'refunded') {
+          return 'refunded';
+        }
+        // PENDING도 환불 대상: 금액 불일치로 멈춘 결제, PAID 웹훅을 놓친 결제 (failReason은 감사용으로 유지).
+        // 문의는 건드리지 않는다 — 이 결제로 PAID가 된 적이 없고, 재시도 결제로 이미 PAID일 수 있다
+        const pending = await tx.payment.updateMany({
+          where: { id: local.id, status: PaymentStatus.PENDING },
           data: { status: PaymentStatus.REFUNDED },
         });
-        if (count === 0) {
-          // PENDING도 환불 대상: 금액 불일치로 멈춘 결제, PAID 웹훅을 놓친 결제 (failReason은 감사용으로 유지).
-          // 문의는 건드리지 않는다 — 이 결제로 PAID가 된 적이 없고, 재시도 결제로 이미 PAID일 수 있다
-          const pending = await tx.payment.updateMany({
-            where: { id: local.id, status: PaymentStatus.PENDING },
-            data: { status: PaymentStatus.REFUNDED },
-          });
-          return pending.count > 0 ? 'refunded' : 'noop';
-        }
-        await tx.quoteRequest.updateMany({
-          where: {
-            id: requestId,
-            status: { in: [RequestStatus.PAID, RequestStatus.IN_PROGRESS] },
-          },
-          data: { status: RequestStatus.REFUNDED },
-        });
-        return 'refunded';
+        return pending.count > 0 ? 'refunded' : 'noop';
       }
 
       default:

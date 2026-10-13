@@ -4,7 +4,11 @@
  * 앱의 i18n 카탈로그(apps/mobile/src/i18n)와 별개 — 서버는 OS 푸시 본문을 만들어야 하므로 자체 사본을 둔다.
  */
 export type UserNoticeKind =
-  'QUOTE_SENT' | 'PAYMENT_PAID' | 'WORK_STARTED' | 'WORK_COMPLETED';
+  | 'QUOTE_SENT'
+  | 'PAYMENT_PAID'
+  | 'WORK_STARTED'
+  | 'WORK_COMPLETED'
+  | 'PAYMENT_REFUNDED';
 
 const FALLBACK = 'en';
 
@@ -40,6 +44,14 @@ const TITLES: Record<UserNoticeKind, Record<string, string>> = {
     zh: '您的请求已完成',
     de: 'Ihre Anfrage ist abgeschlossen',
     es: 'Tu solicitud está completa',
+  },
+  PAYMENT_REFUNDED: {
+    ko: '환불이 처리됐어요',
+    en: 'Your payment has been refunded',
+    ja: '返金が完了しました',
+    zh: '您的付款已退款',
+    de: 'Ihre Zahlung wurde erstattet',
+    es: 'Tu pago ha sido reembolsado',
   },
 };
 
