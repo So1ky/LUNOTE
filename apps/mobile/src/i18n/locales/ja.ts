@@ -11,7 +11,7 @@ const ja: Resources = {
   },
   paymentMethods: {
     PAYPAL: 'PayPal (USD)',
-    BANK_TRANSFER: '韓国の銀行振込 (KRW)',
+    BANK_TRANSFER: '韓国の銀行振込 (KRW・国内口座のみ)',
   },
 
   common: {
@@ -343,6 +343,7 @@ const ja: Resources = {
       holder: '口座名義',
       depositorName: '振込人名',
       depositorNote: '振込を照合できるよう、振込人名をこの通りに入力してください。',
+      domesticOnly: '韓国国内の銀行振込のみ対応しています。海外送金は受け付けられないため、海外口座からお支払いの場合はPayPalで新しい依頼を登録してください。',
       deadline: '{{date}}までにお振込み',
       afterNote: '振込は1営業日以内に確認し、アプリでお知らせします。',
       copyHint: '長押しでコピーできます。',

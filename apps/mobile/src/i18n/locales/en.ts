@@ -19,7 +19,7 @@ const en = {
   },
   paymentMethods: {
     PAYPAL: 'PayPal (USD)',
-    BANK_TRANSFER: 'Korean bank transfer (KRW)',
+    BANK_TRANSFER: 'Korean bank transfer (KRW, domestic accounts only)',
   },
 
   common: {
@@ -352,6 +352,7 @@ const en = {
       holder: 'Account holder',
       depositorName: 'Sender name',
       depositorNote: 'Enter this exactly as the sender name so we can match your transfer.',
+      domesticOnly: 'Korean domestic transfers only. International wire transfers are not accepted — if you are paying from an overseas account, submit a new request with PayPal.',
       deadline: 'Transfer by {{date}}',
       afterNote: 'We confirm transfers within 1 business day and notify you in the app.',
       copyHint: 'Long-press a value to copy it.',

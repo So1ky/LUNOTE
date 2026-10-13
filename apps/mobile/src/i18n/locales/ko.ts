@@ -11,7 +11,7 @@ const ko: Resources = {
   },
   paymentMethods: {
     PAYPAL: 'PayPal (USD)',
-    BANK_TRANSFER: '한국 계좌이체 (KRW)',
+    BANK_TRANSFER: '한국 계좌이체 (KRW, 국내 계좌만)',
   },
 
   common: {
@@ -343,6 +343,7 @@ const ko: Resources = {
       holder: '예금주',
       depositorName: '입금자명',
       depositorNote: '입금 내역을 대조할 수 있도록 입금자명을 이대로 입력해 주세요.',
+      domesticOnly: '국내 계좌이체만 가능합니다. 해외 송금은 받을 수 없으니, 해외 계좌로 결제하실 분은 PayPal로 새 문의를 등록해 주세요.',
       deadline: '{{date}}까지 입금',
       afterNote: '입금은 영업일 1일 내에 확인하고 앱으로 알려 드려요.',
       copyHint: '길게 누르면 복사할 수 있어요.',

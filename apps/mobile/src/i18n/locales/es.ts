@@ -11,7 +11,7 @@ const es: Resources = {
   },
   paymentMethods: {
     PAYPAL: 'PayPal (USD)',
-    BANK_TRANSFER: 'Transferencia bancaria coreana (KRW)',
+    BANK_TRANSFER: 'Transferencia bancaria coreana (KRW, solo cuentas nacionales)',
   },
 
   common: {
@@ -343,6 +343,7 @@ const es: Resources = {
       holder: 'Titular',
       depositorName: 'Nombre del remitente',
       depositorNote: 'Escribe esto exactamente como nombre del remitente para que podamos identificar tu transferencia.',
+      domesticOnly: 'Solo transferencias desde cuentas bancarias de Corea. No se aceptan transferencias internacionales: si pagas desde una cuenta en el extranjero, envía una nueva solicitud con PayPal.',
       deadline: 'Transfiere antes del {{date}}',
       afterNote: 'Confirmamos las transferencias en 1 día hábil y te avisamos en la app.',
       copyHint: 'Mantén pulsado un valor para copiarlo.',

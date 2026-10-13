@@ -11,7 +11,7 @@ const zh: Resources = {
   },
   paymentMethods: {
     PAYPAL: 'PayPal（美元）',
-    BANK_TRANSFER: '韩国银行转账（韩元）',
+    BANK_TRANSFER: '韩国银行转账（韩元，仅限韩国境内账户）',
   },
 
   common: {
@@ -342,6 +342,7 @@ const zh: Resources = {
       holder: '户名',
       depositorName: '付款人姓名',
       depositorNote: '请按此填写付款人姓名，以便我们核对转账。',
+      domesticOnly: '仅支持韩国境内银行转账，不接受跨境汇款。如使用海外账户付款，请通过PayPal重新提交请求。',
       deadline: '请在 {{date}} 前转账',
       afterNote: '我们将在 1 个工作日内确认转账并通过应用通知您。',
       copyHint: '长按即可复制。',
