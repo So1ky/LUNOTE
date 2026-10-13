@@ -36,6 +36,35 @@ export const STATUS_META: Record<RequestStatus, { label: string; color: string }
   REFUNDED: { label: 'Refunded', color: 'var(--text-muted)' },
 };
 
+/** 관리자가 수동으로 옮길 수 있는 다음 상태 — 서버 REQUIRED_CURRENT와 동일(PAID → IN_PROGRESS → COMPLETED) */
+export const WORK_TRANSITIONS: Partial<
+  Record<
+    RequestStatus,
+    {
+      to: 'IN_PROGRESS' | 'COMPLETED';
+      hint: string;
+      buttonLabel: string;
+      confirmTitle: string;
+      doneMessage: string;
+    }
+  >
+> = {
+  PAID: {
+    to: 'IN_PROGRESS',
+    hint: 'Payment is confirmed. Mark the request as in progress once you start working on it.',
+    buttonLabel: 'Start work',
+    confirmTitle: 'Start work on this request?',
+    doneMessage: 'Request is now in progress',
+  },
+  IN_PROGRESS: {
+    to: 'COMPLETED',
+    hint: 'Mark the request as completed once everything has been delivered to the customer.',
+    buttonLabel: 'Mark completed',
+    confirmTitle: 'Mark this request as completed?',
+    doneMessage: 'Request marked as completed',
+  },
+};
+
 export type AdminUser = {
   id: string;
   email: string;

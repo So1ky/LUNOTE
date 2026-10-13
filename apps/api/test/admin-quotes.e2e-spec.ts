@@ -284,4 +284,78 @@ describe('Admin quotes (e2e)', () => {
         .expect(400);
     });
   });
+  describe('작업 상태 전이 (PATCH :id/status)', () => {
+    // 이 시점의 requestId는 QUOTED — PAID는 결제 흐름(웹훅·입금 확인)이 만드므로 DB로 직접 올린다
+    const patchStatus = (token: string, status: string) =>
+      request(app.getHttpServer())
+        .patch(`/admin/quote-requests/${requestId}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status });
+
+    it('일반 사용자는 403', () =>
+      patchStatus(userToken, 'IN_PROGRESS').expect(403));
+
+    it('관리자가 고를 수 없는 상태(CANCELLED)는 400', () =>
+      patchStatus(adminToken, 'CANCELLED').expect(400));
+
+    it('QUOTED에서 IN_PROGRESS는 409', () =>
+      patchStatus(adminToken, 'IN_PROGRESS').expect(409));
+
+    it('PAID → IN_PROGRESS: 상태·감사 로그·사용자 인앱 알림', async () => {
+      await prisma.quoteRequest.update({
+        where: { id: requestId },
+        data: { status: 'PAID' },
+      });
+      const res = await patchStatus(adminToken, 'IN_PROGRESS').expect(200);
+      expect((res.body as { status: string }).status).toBe('IN_PROGRESS');
+
+      const logs = await prisma.adminAuditLog.findMany({
+        where: {
+          targetType: 'QUOTE_REQUEST',
+          targetId: String(requestId),
+          action: 'REQUEST_STATUS_CHANGED',
+        },
+      });
+      expect(logs).toHaveLength(1);
+      expect(logs[0].detail).toEqual({ from: 'PAID', to: 'IN_PROGRESS' });
+
+      const owner = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: requestId },
+        select: { userId: true },
+      });
+      const notices = await prisma.notification.findMany({
+        where: { userId: owner.userId, requestId, type: 'WORK_STARTED' },
+      });
+      expect(notices).toHaveLength(1);
+      expect(notices[0].title).toBe('Work has started');
+    });
+
+    it('PAID가 아닌데 IN_PROGRESS 재요청은 409 (멱등 아님, 전이 거부)', () =>
+      patchStatus(adminToken, 'IN_PROGRESS').expect(409));
+
+    it('IN_PROGRESS → COMPLETED: 사용자 알림 WORK_COMPLETED', async () => {
+      const res = await patchStatus(adminToken, 'COMPLETED').expect(200);
+      expect((res.body as { status: string }).status).toBe('COMPLETED');
+      const owner = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: requestId },
+        select: { userId: true },
+      });
+      const notices = await prisma.notification.findMany({
+        where: { userId: owner.userId, requestId, type: 'WORK_COMPLETED' },
+      });
+      expect(notices).toHaveLength(1);
+    });
+
+    it('COMPLETED 이후 어떤 전이도 409', async () => {
+      await patchStatus(adminToken, 'IN_PROGRESS').expect(409);
+      await patchStatus(adminToken, 'COMPLETED').expect(409);
+    });
+
+    it('없는 문의는 404', () =>
+      request(app.getHttpServer())
+        .patch('/admin/quote-requests/999999999/status')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'IN_PROGRESS' })
+        .expect(404));
+  });
 });

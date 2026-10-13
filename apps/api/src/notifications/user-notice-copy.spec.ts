@@ -13,10 +13,12 @@ describe('userNoticeTitle', () => {
     expect(userNoticeTitle('PAYMENT_PAID', 'fr')).toBe('Payment received');
   });
 
-  it('6개 언어 모두 두 알림의 제목이 비어 있지 않다', () => {
+  it('6개 언어 모두 모든 알림의 제목이 비어 있지 않다', () => {
     for (const lang of ['ko', 'en', 'ja', 'zh', 'de', 'es']) {
       expect(userNoticeTitle('QUOTE_SENT', lang)).not.toBe('');
       expect(userNoticeTitle('PAYMENT_PAID', lang)).not.toBe('');
+      expect(userNoticeTitle('WORK_STARTED', lang)).not.toBe('');
+      expect(userNoticeTitle('WORK_COMPLETED', lang)).not.toBe('');
     }
   });
 });
