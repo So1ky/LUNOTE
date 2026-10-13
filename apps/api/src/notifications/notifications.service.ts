@@ -176,6 +176,29 @@ export class NotificationsService {
     return notice;
   }
 
+  /** 환불 반영(PortOne 웹훅·관리자 계좌이체 환불 기록) → 소유자에게 인앱 알림. 환불 전이와 같은 트랜잭션 */
+  async notifyPaymentRefunded(
+    tx: Prisma.TransactionClient,
+    data: { requestId: number; ownerId: string },
+  ) {
+    const notice = {
+      title: userNoticeTitle(
+        'PAYMENT_REFUNDED',
+        await this.languageOf(tx, data.ownerId),
+      ),
+      body: '',
+    };
+    await tx.notification.create({
+      data: {
+        userId: data.ownerId,
+        type: 'PAYMENT_REFUNDED',
+        ...notice,
+        requestId: data.requestId,
+      },
+    });
+    return notice;
+  }
+
   /** 결제 확정 → 소유자 + 모든 관리자에게 인앱 알림 (결제 확정 트랜잭션 안에서 호출) */
   async notifyPaymentPaid(
     tx: Prisma.TransactionClient,

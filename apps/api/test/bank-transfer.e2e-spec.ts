@@ -269,6 +269,104 @@ describe('Bank transfer (e2e)', () => {
       .expect(404);
   });
 
+  describe('환불 기록 (POST :id/refund-transfer)', () => {
+    // 이 시점의 paymentId는 PAID(위 입금 확인 테스트 이후)
+    it('비관리자는 403', async () => {
+      await request(app.getHttpServer())
+        .post(`/admin/payments/${paymentId}/refund-transfer`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(403);
+    });
+
+    it('PENDING 계좌이체 결제는 409 NOT_PAID', async () => {
+      const pending = await prisma.payment.create({
+        data: {
+          quoteId,
+          provider: 'BANK_TRANSFER',
+          amount: 150000,
+          currency: 'KRW',
+          withdrawalConsentAt: new Date(),
+        },
+      });
+      const res = await request(app.getHttpServer())
+        .post(`/admin/payments/${pending.id}/refund-transfer`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(409);
+      expect((res.body as { message: string }).message).toBe('NOT_PAID');
+    });
+
+    it('PayPal 결제는 409 NOT_BANK_TRANSFER (결제수단 검사가 상태 검사보다 먼저)', async () => {
+      // 견적당 PAID 결제는 하나(유니크)라 PENDING으로 만든다 — 결제수단 거부는 상태와 무관하게 먼저 걸린다
+      const paypal = await prisma.payment.create({
+        data: {
+          quoteId,
+          provider: 'PAYPAL',
+          amount: 1,
+          currency: 'USD',
+          withdrawalConsentAt: new Date(),
+        },
+      });
+      const res = await request(app.getHttpServer())
+        .post(`/admin/payments/${paypal.id}/refund-transfer`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(409);
+      expect((res.body as { message: string }).message).toBe(
+        'NOT_BANK_TRANSFER',
+      );
+    });
+
+    it('환불 기록 → 결제 REFUNDED·문의 REFUNDED·감사 로그·사용자 알림', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/admin/payments/${paymentId}/refund-transfer`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect((res.body as { outcome: string }).outcome).toBe('refunded');
+
+      const payment = await prisma.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+      });
+      expect(payment.status).toBe('REFUNDED');
+      const req = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: requestId },
+      });
+      expect(req.status).toBe('REFUNDED');
+
+      const audit = await prisma.adminAuditLog.findFirst({
+        where: { action: 'BANK_TRANSFER_REFUNDED', targetId: paymentId },
+      });
+      expect(audit).not.toBeNull();
+
+      const owner = await prisma.user.findUniqueOrThrow({
+        where: { email: `bt-owner-${stamp}@test.lunote.app` },
+      });
+      const notice = await prisma.notification.findFirst({
+        where: { userId: owner.id, requestId, type: 'PAYMENT_REFUNDED' },
+      });
+      expect(notice).not.toBeNull();
+    });
+
+    it('재클릭은 noop 200, 감사 로그는 1건 유지', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/admin/payments/${paymentId}/refund-transfer`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect((res.body as { outcome: string }).outcome).toBe('noop');
+      const count = await prisma.adminAuditLog.count({
+        where: { action: 'BANK_TRANSFER_REFUNDED', targetId: paymentId },
+      });
+      expect(count).toBe(1);
+    });
+
+    it('없는 결제는 404', async () => {
+      await request(app.getHttpServer())
+        .post(
+          '/admin/payments/00000000-0000-0000-0000-000000000000/refund-transfer',
+        )
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(404);
+    });
+  });
+
   describe('입금 대기 중 탈퇴', () => {
     it('유효 견적의 PENDING 계좌이체가 있으면 409, 문의 취소 후에는 탈퇴된다', async () => {
       const email = `bt-del-${stamp}@test.lunote.app`;

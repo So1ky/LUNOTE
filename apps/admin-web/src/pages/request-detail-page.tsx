@@ -43,6 +43,13 @@ export function RequestDetailPage() {
   const [statusBusy, setStatusBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  // 계좌이체 환불 기록 — 실제 송금은 은행에서 먼저, 여기서는 결과만 기록
+  const [confirmingRefund, setConfirmingRefund] = useState(false);
+  const [refundBusy, setRefundBusy] = useState(false);
+  const [refundMessage, setRefundMessage] = useState<string | null>(null);
+  const [refundError, setRefundError] = useState<string | null>(null);
+  /** 기록 성공 후 재조회 전까지 블록을 숨겨 중복 클릭을 막는다 */
+  const [refundDone, setRefundDone] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -84,6 +91,14 @@ export function RequestDetailPage() {
     request.paymentMethod === 'BANK_TRANSFER'
       ? request.quote?.payments?.find(
           (p) => p.provider === 'BANK_TRANSFER' && p.status === 'PENDING',
+        )
+      : undefined;
+
+  // 환불 기록 대상 — PAID 상태의 계좌이체 결제 (PayPal 환불은 PortOne 콘솔 → 웹훅이 자동 반영)
+  const paidTransfer =
+    request.paymentMethod === 'BANK_TRANSFER'
+      ? request.quote?.payments?.find(
+          (p) => p.provider === 'BANK_TRANSFER' && p.status === 'PAID',
         )
       : undefined;
 
@@ -184,6 +199,41 @@ export function RequestDetailPage() {
     } finally {
       setStatusBusy(false);
       setConfirmingStatus(false);
+    }
+  };
+
+  const onConfirmRefund = async () => {
+    if (!paidTransfer) return;
+    setRefundBusy(true);
+    setRefundError(null);
+    setRefundMessage(null);
+    try {
+      await api(`/admin/payments/${paidTransfer.id}/refund-transfer`, {
+        method: 'POST',
+      });
+    } catch (err) {
+      setRefundError(
+        err instanceof ApiError ? err.message : 'Something went wrong',
+      );
+      setRefundBusy(false);
+      setConfirmingRefund(false);
+      return;
+    }
+    // 기록은 성공 — 이후 재조회 실패는 기록 실패와 구분한다 (입금 확인과 동일)
+    setRefundDone(true);
+    setRefundMessage('Refund recorded — customer notified.');
+    setRefundBusy(false);
+    setConfirmingRefund(false);
+    try {
+      const refreshed = await api<AdminQuoteRequestDetail>(
+        `/admin/quote-requests/${request.id}`,
+      );
+      setRequest(refreshed);
+    } catch {
+      setRefundMessage(null);
+      setRefundError(
+        'Refund recorded — reload the page to see the updated status.',
+      );
     }
   };
 
@@ -400,6 +450,60 @@ export function RequestDetailPage() {
           )}
           {statusError && (
             <div className="error" style={{ marginBottom: 12 }}>{statusError}</div>
+          )}
+
+          {paidTransfer && !refundDone && (
+            <div
+              style={{
+                margin: '0 0 16px',
+                padding: 12,
+                borderRadius: 10,
+                background: 'var(--surface-alt)',
+                fontSize: 14,
+              }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Bank transfer refund</div>
+              <div className="muted" style={{ marginBottom: 10 }}>
+                Send the money back from the bank first, then record it here.{' '}
+                {formatAmount(paidTransfer.amount, paidTransfer.currency)} paid{' '}
+                {formatDate(paidTransfer.paidAt ?? paidTransfer.createdAt)}
+              </div>
+              <button
+                type="button"
+                className="ghost"
+                style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                disabled={refundBusy}
+                onClick={() => setConfirmingRefund(true)}>
+                {refundBusy ? 'Recording…' : 'Mark refunded'}
+              </button>
+              <ConfirmDialog
+                open={confirmingRefund}
+                title="Record this refund?"
+                message={
+                  <>
+                    Mark{' '}
+                    <strong style={{ color: 'var(--text)' }}>
+                      {formatAmount(paidTransfer.amount, paidTransfer.currency)}
+                    </strong>{' '}
+                    as refunded to {customerName(request.user)}. The payment becomes REFUNDED, the request
+                    becomes REFUNDED unless it is already completed, and the customer is notified.{' '}
+                    <strong style={{ color: 'var(--text)' }}>
+                      Only do this after the money has actually been sent back.
+                    </strong>
+                  </>
+                }
+                confirmLabel="Mark refunded"
+                dismissLabel="Go back"
+                loading={refundBusy}
+                onConfirm={() => void onConfirmRefund()}
+                onDismiss={() => setConfirmingRefund(false)}
+              />
+            </div>
+          )}
+          {refundMessage && (
+            <div style={{ color: 'var(--success)', fontSize: 14, marginBottom: 12 }}>{refundMessage}</div>
+          )}
+          {refundError && (
+            <div className="error" style={{ marginBottom: 12 }}>{refundError}</div>
           )}
 
           {canCreate ? (

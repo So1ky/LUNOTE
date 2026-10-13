@@ -42,4 +42,23 @@ export class AdminPaymentsController {
   ) {
     return this.payments.confirmBankTransfer(id, user.id);
   }
+
+  @Post(':id/refund-transfer')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      '수동 계좌이체 환불 기록 → 결제 REFUNDED·문의 REFUNDED (멱등, 관리자 전용). 실제 송금은 은행에서 먼저',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '{ outcome: refunded|noop, payment }',
+  })
+  @ApiResponse({ status: 404, description: '결제 없음' })
+  @ApiResponse({ status: 409, description: 'NOT_BANK_TRANSFER / NOT_PAID' })
+  refundTransfer(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.payments.refundBankTransfer(id, user.id);
+  }
 }
