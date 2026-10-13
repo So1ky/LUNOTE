@@ -37,6 +37,7 @@ export function BankTransferCard({ intent }: Props) {
       <ThemedText type="small" themeColor="textSecondary">
         {t('pay.bankTransfer.depositorNote')}
       </ThemedText>
+      <ThemedText type="smallStrong">{t('pay.bankTransfer.domesticOnly')}</ThemedText>
       <ThemedText type="smallStrong">
         {t('pay.bankTransfer.deadline', { date: formatDate(intent.deadline, locale) })}
       </ThemedText>
