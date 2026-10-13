@@ -22,5 +22,12 @@
         "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "786866774491-n0ei2tp87pre6lj6vll3a260mqe4jnpe.apps.googleusercontent.com"
       }
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6821768153"
+      }
+    }
   }
 }
