@@ -231,12 +231,15 @@ export default function PayScreen() {
                 orderName: intent.orderName,
                 totalAmount: intent.totalAmount,
                 currency: intent.currency as 'USD',
+                // PortOne SDK 규칙: firstName·lastName은 둘 다 주거나 둘 다 생략해야 한다.
+                // 프로필 이름이 한쪽만 있으면(선택 입력·Apple 로그인) 결제 UI 로딩이 거부되므로 생략.
                 customer: profile
                   ? {
                       customerId: profile.id,
                       email: profile.email,
-                      firstName: profile.firstName ?? undefined,
-                      lastName: profile.lastName ?? undefined,
+                      ...(profile.firstName && profile.lastName
+                        ? { firstName: profile.firstName, lastName: profile.lastName }
+                        : {}),
                     }
                   : undefined,
               }}
