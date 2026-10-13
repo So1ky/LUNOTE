@@ -10,6 +10,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
+import type { AdminSettableStatus } from './dto/update-request-status.dto';
 
 /** 결제수단 → 견적 통화. 관리자는 통화를 고르지 않는다 (스펙 §3-2) */
 const CURRENCY_BY_METHOD: Record<PaymentMethod, string> = {
@@ -24,6 +25,12 @@ const CURRENCY_BY_METHOD: Record<PaymentMethod, string> = {
 const MAX_BY_CURRENCY: Record<string, number> = {
   USD: 1_000_000,
   KRW: 100_000_000,
+};
+
+/** 관리자 수동 전이 — 목표 상태 → 요구되는 현재 상태 (PAID → IN_PROGRESS → COMPLETED, 건너뛰기 불가) */
+const REQUIRED_CURRENT: Record<AdminSettableStatus, RequestStatus> = {
+  [RequestStatus.IN_PROGRESS]: RequestStatus.PAID,
+  [RequestStatus.COMPLETED]: RequestStatus.IN_PROGRESS,
 };
 
 /** 관리자 화면용 — 사용자 요약 정보를 포함해 노출한다 */
@@ -212,6 +219,62 @@ export class AdminQuoteRequestsService {
     this.notifications.enqueueUserPush({
       type: 'USER_PUSH',
       userId: request.user.id,
+      requestId,
+      ...notice,
+    });
+
+    return this.findOne(requestId);
+  }
+
+  /** 작업 상태 수동 전이 — PAID → IN_PROGRESS, IN_PROGRESS → COMPLETED. 감사 로그·사용자 알림은 같은 트랜잭션 */
+  async updateStatus(
+    requestId: number,
+    status: AdminSettableStatus,
+    adminId: string,
+  ) {
+    const from = REQUIRED_CURRENT[status];
+    // 탈퇴 사용자의 문의는 findOne과 같은 조건으로 제외 (탈퇴 계정에 알림을 만들지 않도록)
+    const request = await this.prisma.quoteRequest.findFirst({
+      where: { id: requestId, user: { deletedAt: null } },
+      select: { status: true, userId: true },
+    });
+    if (!request) {
+      throw new NotFoundException('Quote request not found');
+    }
+    if (request.status !== from) {
+      throw new ConflictException(
+        `Cannot move a request in ${request.status} status to ${status}`,
+      );
+    }
+
+    const notice = await this.prisma.$transaction(async (tx) => {
+      // 상태 조건을 where에 다시 걸어 동시 클릭·웹훅(환불)과의 경쟁을 차단
+      const { count } = await tx.quoteRequest.updateMany({
+        where: { id: requestId, status: from },
+        data: { status },
+      });
+      if (count === 0) {
+        throw new ConflictException('Request status changed concurrently');
+      }
+      await tx.adminAuditLog.create({
+        data: {
+          adminId,
+          action: 'REQUEST_STATUS_CHANGED',
+          targetType: 'QUOTE_REQUEST',
+          targetId: String(requestId),
+          detail: { from, to: status },
+        },
+      });
+      return this.notifications.notifyUserWorkStatus(tx, {
+        requestId,
+        ownerId: request.userId,
+        status,
+      });
+    });
+    // 푸시는 커밋 뒤에 — 인앱 알림이 원천 (견적 발송과 동일)
+    this.notifications.enqueueUserPush({
+      type: 'USER_PUSH',
+      userId: request.userId,
       requestId,
       ...notice,
     });

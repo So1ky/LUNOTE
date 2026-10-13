@@ -5,6 +5,7 @@ import {
   Param,
   ParseEnumPipe,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -24,6 +25,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AdminQuoteRequestsService } from './admin-quote-requests.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
+import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -62,6 +64,21 @@ export class AdminQuoteRequestsController {
     @Body() dto: CreateQuoteDto,
   ) {
     return this.service.createQuote(id, dto, admin.id);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({
+    summary:
+      '[관리자] 작업 상태 전이 — PAID → IN_PROGRESS, IN_PROGRESS → COMPLETED',
+  })
+  @ApiResponse({ status: 404, description: '문의 없음' })
+  @ApiResponse({ status: 409, description: '현재 상태에서 허용되지 않는 전이' })
+  updateStatus(
+    @CurrentUser() admin: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateRequestStatusDto,
+  ) {
+    return this.service.updateStatus(id, dto.status, admin.id);
   }
 
   // 견적 수정 라우트는 제공하지 않는다 — 발행 후 불변 (제품 결정 2026-07-24)

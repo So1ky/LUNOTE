@@ -1,6 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, UserRole } from '@prisma/client';
+import { Prisma, RequestStatus, UserRole } from '@prisma/client';
 import { Queue } from 'bullmq';
 
 import { userNoticeTitle } from './user-notice-copy';
@@ -138,6 +138,37 @@ export class NotificationsService {
       data: {
         userId: data.ownerId,
         type: 'QUOTE_SENT',
+        ...notice,
+        requestId: data.requestId,
+      },
+    });
+    return notice;
+  }
+
+  /**
+   * 관리자의 작업 상태 전이(IN_PROGRESS·COMPLETED) → 소유자에게 인앱 알림.
+   * 상태 전이와 같은 트랜잭션으로 호출한다 (견적 알림과 같은 규칙)
+   */
+  async notifyUserWorkStatus(
+    tx: Prisma.TransactionClient,
+    data: {
+      requestId: number;
+      ownerId: string;
+      status: typeof RequestStatus.IN_PROGRESS | typeof RequestStatus.COMPLETED;
+    },
+  ) {
+    const kind =
+      data.status === RequestStatus.IN_PROGRESS
+        ? 'WORK_STARTED'
+        : 'WORK_COMPLETED';
+    const notice = {
+      title: userNoticeTitle(kind, await this.languageOf(tx, data.ownerId)),
+      body: '',
+    };
+    await tx.notification.create({
+      data: {
+        userId: data.ownerId,
+        type: kind,
         ...notice,
         requestId: data.requestId,
       },

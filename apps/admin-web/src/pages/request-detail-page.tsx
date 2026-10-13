@@ -12,6 +12,8 @@ import {
   formatDate,
   PAYMENT_METHOD_LABELS,
   SERVICE_LABELS,
+  STATUS_META,
+  WORK_TRANSITIONS,
   type AdminQuoteRequestDetail,
 } from '../lib/types';
 
@@ -36,6 +38,11 @@ export function RequestDetailPage() {
   const [transferError, setTransferError] = useState<string | null>(null);
   /** 확인 성공 후 재조회 전까지 확인 블록을 숨겨 중복 클릭을 막는다 */
   const [transferDone, setTransferDone] = useState(false);
+  // 작업 상태 수동 전이(PAID → IN_PROGRESS → COMPLETED)
+  const [confirmingStatus, setConfirmingStatus] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -79,6 +86,9 @@ export function RequestDetailPage() {
           (p) => p.provider === 'BANK_TRANSFER' && p.status === 'PENDING',
         )
       : undefined;
+
+  // 관리자가 누를 수 있는 다음 전이 — 서버 규칙(REQUIRED_CURRENT)과 동일
+  const nextTransition = WORK_TRANSITIONS[request.status];
 
   // 폼 제출은 확인 모달만 연다 — 실제 발송은 confirm에서
   const onSubmit = (e: FormEvent) => {
@@ -152,6 +162,28 @@ export function RequestDetailPage() {
       setTransferError(
         'Transfer confirmed — reload the page to see the updated status.',
       );
+    }
+  };
+
+  const onConfirmStatus = async () => {
+    if (!nextTransition) return;
+    setStatusBusy(true);
+    setStatusError(null);
+    setStatusMessage(null);
+    try {
+      const updated = await api<AdminQuoteRequestDetail>(
+        `/admin/quote-requests/${request.id}/status`,
+        { method: 'PATCH', body: { status: nextTransition.to } },
+      );
+      setRequest(updated);
+      setStatusMessage(`${nextTransition.doneMessage} — customer notified.`);
+    } catch (err) {
+      setStatusError(
+        err instanceof ApiError ? err.message : 'Something went wrong',
+      );
+    } finally {
+      setStatusBusy(false);
+      setConfirmingStatus(false);
     }
   };
 
@@ -327,6 +359,47 @@ export function RequestDetailPage() {
           )}
           {transferError && (
             <div className="error" style={{ marginBottom: 12 }}>{transferError}</div>
+          )}
+
+          {nextTransition && (
+            <div
+              style={{
+                margin: '0 0 16px',
+                padding: 12,
+                borderRadius: 10,
+                background: 'var(--surface-alt)',
+                fontSize: 14,
+              }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Work status</div>
+              <div className="muted" style={{ marginBottom: 10 }}>
+                {nextTransition.hint}
+              </div>
+              <button type="button" disabled={statusBusy} onClick={() => setConfirmingStatus(true)}>
+                {statusBusy ? 'Updating…' : nextTransition.buttonLabel}
+              </button>
+              <ConfirmDialog
+                open={confirmingStatus}
+                title={nextTransition.confirmTitle}
+                message={
+                  <>
+                    Request #{request.id} becomes{' '}
+                    <strong style={{ color: 'var(--text)' }}>{STATUS_META[nextTransition.to].label}</strong>{' '}
+                    and {customerName(request.user)} is notified. This cannot be undone here.
+                  </>
+                }
+                confirmLabel={nextTransition.buttonLabel}
+                dismissLabel="Go back"
+                loading={statusBusy}
+                onConfirm={() => void onConfirmStatus()}
+                onDismiss={() => setConfirmingStatus(false)}
+              />
+            </div>
+          )}
+          {statusMessage && (
+            <div style={{ color: 'var(--success)', fontSize: 14, marginBottom: 12 }}>{statusMessage}</div>
+          )}
+          {statusError && (
+            <div className="error" style={{ marginBottom: 12 }}>{statusError}</div>
           )}
 
           {canCreate ? (
