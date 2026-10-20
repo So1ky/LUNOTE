@@ -5,6 +5,7 @@
   "build": {
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -16,6 +17,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.lunoteapp.com",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "786866774491-390g35n6o1g1op6huo949v84cn75ibhp.apps.googleusercontent.com",

@@ -8,6 +8,10 @@ const config: ExpoConfig = {
   name: 'LUNOTE',
   slug: 'lunote',
   version: '1.0.0',
+  // EAS Update(OTA) — JS·에셋만 바뀐 수정은 스토어 심사 없이 배포한다 (2026-10-20).
+  // runtimeVersion은 app version과 묶는다: 네이티브 모듈·설정이 바뀌면 version을 올려 새 빌드와 번들을 분리한다.
+  updates: { url: 'https://u.expo.dev/9310e104-679f-484f-8459-3613fc9cd271' },
+  runtimeVersion: { policy: 'appVersion' },
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'lunote',
