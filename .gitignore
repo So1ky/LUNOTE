@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 *.pem
+# EAS Update 공개 인증서 — EAS CLI 업로드는 커밋 여부와 무관하게 ignore 규칙으로 거르므로 예외가 필요하다
+!apps/mobile/certs/certificate.pem
 *.key
 
 # Node
