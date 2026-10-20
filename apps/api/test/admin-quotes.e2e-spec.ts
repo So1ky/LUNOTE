@@ -301,11 +301,29 @@ describe('Admin quotes (e2e)', () => {
     it('QUOTED에서 IN_PROGRESS는 409', () =>
       patchStatus(adminToken, 'IN_PROGRESS').expect(409));
 
-    it('PAID → IN_PROGRESS: 상태·감사 로그·사용자 인앱 알림', async () => {
+    it('QUOTED에서 PAID는 409 — 결제 검증(웹훅·입금 확인) 없이 올릴 수 없다', () =>
+      patchStatus(adminToken, 'PAID').expect(409));
+
+    it('PAYMENT_RECEIVED → PAID: PayPal 결제의 관리자 확인, 사용자 알림 PAYMENT_PAID', async () => {
+      // PAYMENT_RECEIVED는 PayPal 웹훅이 만든다(payments e2e) — 여기서는 DB로 직접 올린다
       await prisma.quoteRequest.update({
         where: { id: requestId },
-        data: { status: 'PAID' },
+        data: { status: 'PAYMENT_RECEIVED' },
       });
+      const res = await patchStatus(adminToken, 'PAID').expect(200);
+      expect((res.body as { status: string }).status).toBe('PAID');
+      const owner = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: requestId },
+        select: { userId: true },
+      });
+      const notices = await prisma.notification.findMany({
+        where: { userId: owner.userId, requestId, type: 'PAYMENT_PAID' },
+      });
+      expect(notices).toHaveLength(1);
+      expect(notices[0].title).toBe('Payment received');
+    });
+
+    it('PAID → IN_PROGRESS: 상태·감사 로그·사용자 인앱 알림', async () => {
       const res = await patchStatus(adminToken, 'IN_PROGRESS').expect(200);
       expect((res.body as { status: string }).status).toBe('IN_PROGRESS');
 
@@ -315,9 +333,10 @@ describe('Admin quotes (e2e)', () => {
           targetId: String(requestId),
           action: 'REQUEST_STATUS_CHANGED',
         },
+        orderBy: { createdAt: 'asc' },
       });
-      expect(logs).toHaveLength(1);
-      expect(logs[0].detail).toEqual({ from: 'PAID', to: 'IN_PROGRESS' });
+      expect(logs).toHaveLength(2);
+      expect(logs[1].detail).toEqual({ from: 'PAID', to: 'IN_PROGRESS' });
 
       const owner = await prisma.quoteRequest.findUniqueOrThrow({
         where: { id: requestId },
@@ -357,5 +376,95 @@ describe('Admin quotes (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ status: 'IN_PROGRESS' })
         .expect(404));
+  });
+
+  describe('거절 (POST :id/reject)', () => {
+    let reviewingId: number;
+    const reason = 'This request is outside the services we offer.';
+    const reject = (token: string, id: number, body: object) =>
+      request(app.getHttpServer())
+        .post(`/admin/quote-requests/${id}/reject`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(body);
+
+    beforeAll(async () => {
+      const created = await request(app.getHttpServer())
+        .post('/quote-requests')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          category: 'OTHER',
+          description: 'Please find me a girlfriend in Seoul.',
+          contactMethod: 'email: user@test.com',
+        })
+        .expect(201);
+      reviewingId = (created.body as { id: number }).id;
+    });
+
+    it('일반 사용자는 403', () =>
+      reject(userToken, reviewingId, { reason }).expect(403));
+
+    it('사유가 비어 있으면 400', async () => {
+      await reject(adminToken, reviewingId, {}).expect(400);
+      await reject(adminToken, reviewingId, { reason: '   ' }).expect(400);
+    });
+
+    it('사유가 500자를 넘으면 400', () =>
+      reject(adminToken, reviewingId, { reason: 'x'.repeat(501) }).expect(400));
+
+    it('REVIEWING → REJECTED: 사유 저장·감사 로그·사용자 알림(본문 = 사유)', async () => {
+      const res = await reject(adminToken, reviewingId, { reason }).expect(201);
+      const body = res.body as { status: string; rejectionReason: string };
+      expect(body.status).toBe('REJECTED');
+      expect(body.rejectionReason).toBe(reason);
+
+      const logs = await prisma.adminAuditLog.findMany({
+        where: {
+          targetType: 'QUOTE_REQUEST',
+          targetId: String(reviewingId),
+          action: 'REQUEST_REJECTED',
+        },
+      });
+      expect(logs).toHaveLength(1);
+      expect(logs[0].detail).toEqual({ reason });
+
+      const owner = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: reviewingId },
+        select: { userId: true },
+      });
+      const notices = await prisma.notification.findMany({
+        where: {
+          userId: owner.userId,
+          requestId: reviewingId,
+          type: 'REQUEST_REJECTED',
+        },
+      });
+      expect(notices).toHaveLength(1);
+      expect(notices[0].title).toBe('Your request was declined');
+      expect(notices[0].body).toBe(reason);
+    });
+
+    it('사용자 조회에 REJECTED 상태와 사유가 보인다', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/quote-requests/${reviewingId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
+      const body = res.body as { status: string; rejectionReason: string };
+      expect(body.status).toBe('REJECTED');
+      expect(body.rejectionReason).toBe(reason);
+    });
+
+    it('이미 거절된 문의는 409, 사용자 취소도 409', async () => {
+      await reject(adminToken, reviewingId, { reason }).expect(409);
+      await request(app.getHttpServer())
+        .patch(`/quote-requests/${reviewingId}/cancel`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(409);
+    });
+
+    it('REVIEWING이 아닌 문의(견적 이후)는 409', () =>
+      reject(adminToken, requestId, { reason }).expect(409));
+
+    it('없는 문의는 404', () =>
+      reject(adminToken, 999999999, { reason }).expect(404));
   });
 });

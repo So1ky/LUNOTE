@@ -25,6 +25,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AdminQuoteRequestsService } from './admin-quote-requests.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
+import { RejectRequestDto } from './dto/reject-request.dto';
 import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
 
 @ApiTags('admin')
@@ -66,10 +67,24 @@ export class AdminQuoteRequestsController {
     return this.service.createQuote(id, dto, admin.id);
   }
 
+  @Post(':id/reject')
+  @ApiOperation({
+    summary: '[관리자] 거절 — REVIEWING → REJECTED, 사유는 고객에게 전달',
+  })
+  @ApiResponse({ status: 404, description: '문의 없음' })
+  @ApiResponse({ status: 409, description: 'REVIEWING 아님' })
+  reject(
+    @CurrentUser() admin: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RejectRequestDto,
+  ) {
+    return this.service.reject(id, dto.reason, admin.id);
+  }
+
   @Patch(':id/status')
   @ApiOperation({
     summary:
-      '[관리자] 작업 상태 전이 — PAID → IN_PROGRESS, IN_PROGRESS → COMPLETED',
+      '[관리자] 상태 전이 — PAYMENT_RECEIVED → PAID(PayPal 결제 확인), PAID → IN_PROGRESS, IN_PROGRESS → COMPLETED',
   })
   @ApiResponse({ status: 404, description: '문의 없음' })
   @ApiResponse({ status: 409, description: '현재 상태에서 허용되지 않는 전이' })

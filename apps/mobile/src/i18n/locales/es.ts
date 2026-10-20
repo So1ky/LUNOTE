@@ -35,6 +35,8 @@ const es: Resources = {
     completed: 'Completado',
     cancelled: 'Cancelado',
     refunded: 'Reembolsado',
+    paymentReceived: 'Confirmando el pago',
+    rejected: 'Rechazada',
   },
 
   categories: {
@@ -370,6 +372,7 @@ const es: Resources = {
       'Esta acción no se puede deshacer: tendrías que enviar una nueva solicitud.',
     cancelConfirm: 'Sí, cancelar',
     cancelKeep: 'Conservar',
+    rejectedReason: 'No pudimos aceptar esta solicitud. Motivo: {{reason}}',
   },
 
   notifications: {

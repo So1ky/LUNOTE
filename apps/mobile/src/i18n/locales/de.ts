@@ -35,6 +35,8 @@ const de: Resources = {
     completed: 'Abgeschlossen',
     cancelled: 'Storniert',
     refunded: 'Erstattet',
+    paymentReceived: 'Zahlung wird geprüft',
+    rejected: 'Abgelehnt',
   },
 
   categories: {
@@ -370,6 +372,7 @@ const de: Resources = {
       'Dies kann nicht rückgängig gemacht werden — Sie müssten eine neue Anfrage stellen.',
     cancelConfirm: 'Ja, stornieren',
     cancelKeep: 'Behalten',
+    rejectedReason: 'Wir konnten diese Anfrage nicht annehmen. Grund: {{reason}}',
   },
 
   notifications: {

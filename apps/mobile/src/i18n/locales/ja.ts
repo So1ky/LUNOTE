@@ -35,6 +35,8 @@ const ja: Resources = {
     completed: '完了',
     cancelled: 'キャンセル',
     refunded: '返金済み',
+    paymentReceived: 'お支払い確認中',
+    rejected: 'お断り',
   },
 
   categories: {
@@ -370,6 +372,7 @@ const ja: Resources = {
       'この操作は取り消せません。改めて依頼を作成する必要があります。',
     cancelConfirm: 'はい、キャンセルします',
     cancelKeep: 'そのままにする',
+    rejectedReason: 'このご依頼はお受けできませんでした。理由: {{reason}}',
   },
 
   notifications: {

@@ -29,14 +29,17 @@ enum Category {
   OTHER
 }
 
-// 상태 머신: REVIEWING → QUOTED → PAID → IN_PROGRESS → COMPLETED (+ CANCELLED, REFUNDED)
+// 상태 머신: REVIEWING → QUOTED → [PAYMENT_RECEIVED →] PAID → IN_PROGRESS → COMPLETED (+ CANCELLED, REJECTED, REFUNDED)
+// PAYMENT_RECEIVED는 PayPal 전용 — PortOne이 검증한 결제를 관리자가 확인해야 PAID (ARCHITECTURE §7, 2026-10-20)
 enum RequestStatus {
   REVIEWING
   QUOTED
+  PAYMENT_RECEIVED
   PAID
   IN_PROGRESS
   COMPLETED
   CANCELLED
+  REJECTED // 관리자 거절 (REVIEWING에서만) — 사유는 rejectionReason
   REFUNDED
 }
 
@@ -87,10 +90,10 @@ model User {
   passwordResetCodeExpiresAt DateTime?
   passwordResetAttempts      Int       @default(0)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   // 탈퇴 시각 — 행은 거래 기록 보존용으로 남고 개인정보는 익명화된다 (ARCHITECTURE §11 계정 삭제)
-  deletedAt DateTime?
+  deletedAt       DateTime?
   // 약관·개인정보처리방침 동의 시각 — 어느 판에 동의했는지는 lunoteapp.com 문서의 시행일과 대조한다
   termsAcceptedAt DateTime?
 
@@ -153,19 +156,20 @@ model Notification {
 }
 
 model QuoteRequest {
-  id            Int           @id @default(autoincrement())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id])
-  category      Category
-  serviceItem   String?       @db.VarChar(40) // 카테고리별 정형 서비스 항목 (예: HOUSING_1) — 구버전 앱은 미전송
-  desiredAmount Decimal?      @db.Decimal(12, 2) // 사용자가 제시한 희망 예산 (Custom Quote 항목에서만 선택 입력)
-  currency      String        @default("USD")
-  paymentMethod PaymentMethod @default(PAYPAL)
-  description   String
-  contactMethod String // 관리자가 회신할 연락 수단 (이메일 등)
-  status        RequestStatus @default(REVIEWING)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              Int           @id @default(autoincrement())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  category        Category
+  serviceItem     String?       @db.VarChar(40) // 카테고리별 정형 서비스 항목 (예: HOUSING_1) — 구버전 앱은 미전송
+  desiredAmount   Decimal?      @db.Decimal(12, 2) // 사용자가 제시한 희망 예산 (Custom Quote 항목에서만 선택 입력)
+  currency        String        @default("USD")
+  paymentMethod   PaymentMethod @default(PAYPAL)
+  description     String
+  contactMethod   String // 관리자가 회신할 연락 수단 (이메일 등)
+  status          RequestStatus @default(REVIEWING)
+  rejectionReason String?       @db.VarChar(500) // 관리자 거절 사유 — 고객에게 그대로 노출된다
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   attachments Attachment[]
   quote       Quote?
@@ -208,20 +212,20 @@ model Quote {
 // 결제 시도 1건 = 1행. id를 PortOne paymentId로 그대로 쓴다 (PortOne은 완료된 paymentId 재사용 불가).
 // 같은 견적에 PAID가 2건 생기는 것은 마이그레이션의 부분 유니크 인덱스(payments_one_paid_per_quote)가 DB 수준에서 막는다.
 model Payment {
-  id          String          @id @default(uuid()) // PortOne paymentId로 사용하는 우리 쪽 식별자
-  quoteId     String
-  quote       Quote           @relation(fields: [quoteId], references: [id])
-  provider    PaymentProvider // 결제 채널 — 통화/PG 확장 시 여기서 분기 (PAYPAL=USD, 추후 INICIS=KRW)
-  amount      Decimal         @db.Decimal(12, 2)
-  currency    String
-  status      PaymentStatus   @default(PENDING)
-  portoneTxId String? // PortOne 거래번호(transactionId) — 분쟁/정산 대조용
-  failReason  String? // 실패/불일치 사유 (PG 코드 등, 개인정보 없음)
-  paidAt      DateTime?
+  id                  String          @id @default(uuid()) // PortOne paymentId로 사용하는 우리 쪽 식별자
+  quoteId             String
+  quote               Quote           @relation(fields: [quoteId], references: [id])
+  provider            PaymentProvider // 결제 채널 — 통화/PG 확장 시 여기서 분기 (PAYPAL=USD, 추후 INICIS=KRW)
+  amount              Decimal         @db.Decimal(12, 2)
+  currency            String
+  status              PaymentStatus   @default(PENDING)
+  portoneTxId         String? // PortOne 거래번호(transactionId) — 분쟁/정산 대조용
+  failReason          String? // 실패/불일치 사유 (PG 코드 등, 개인정보 없음)
+  paidAt              DateTime?
   // 결제 시 "수행 즉시 개시·개시 후 청약철회 제한" 명시 동의 시각 (전자상거래법 §17②5호, 분쟁 증빙)
   withdrawalConsentAt DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   events PaymentEvent[]
 

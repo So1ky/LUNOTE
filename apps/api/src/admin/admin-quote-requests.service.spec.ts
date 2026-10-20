@@ -79,6 +79,28 @@ describe('AdminQuoteRequestsService.updateStatus', () => {
     });
   });
 
+  it('PAYMENT_RECEIVED → PAID 허용 (PayPal 결제의 관리자 확인) + 사용자 알림', async () => {
+    const s = setup({ status: RequestStatus.PAYMENT_RECEIVED, userId: 'u1' });
+    await s.service.updateStatus(7, RequestStatus.PAID, 'admin1');
+    expect(s.tx.quoteRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: 7, status: RequestStatus.PAYMENT_RECEIVED },
+      data: { status: RequestStatus.PAID },
+    });
+    expect(s.notifications.notifyUserWorkStatus).toHaveBeenCalledWith(s.tx, {
+      requestId: 7,
+      ownerId: 'u1',
+      status: RequestStatus.PAID,
+    });
+  });
+
+  it('QUOTED에서 PAID는 409 — 결제 검증 없이 PAID로 올릴 수 없다', async () => {
+    const s = setup({ status: RequestStatus.QUOTED, userId: 'u1' });
+    await expect(
+      s.service.updateStatus(7, RequestStatus.PAID, 'admin1'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(s.prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('현재 상태가 전이 조건과 다르면 409, 아무것도 쓰지 않는다', async () => {
     const s = setup({ status: RequestStatus.QUOTED, userId: 'u1' });
     await expect(

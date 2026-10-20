@@ -50,6 +50,11 @@ export function RequestDetailPage() {
   const [refundError, setRefundError] = useState<string | null>(null);
   /** 기록 성공 후 재조회 전까지 블록을 숨겨 중복 클릭을 막는다 */
   const [refundDone, setRefundDone] = useState(false);
+  // 거절 — REVIEWING에서만, 사유는 고객에게 그대로 전달된다
+  const [rejectReason, setRejectReason] = useState('');
+  const [confirmingReject, setConfirmingReject] = useState(false);
+  const [rejectBusy, setRejectBusy] = useState(false);
+  const [rejectError, setRejectError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -234,6 +239,25 @@ export function RequestDetailPage() {
       setRefundError(
         'Refund recorded — reload the page to see the updated status.',
       );
+    }
+  };
+
+  const onConfirmReject = async () => {
+    setRejectBusy(true);
+    setRejectError(null);
+    try {
+      const updated = await api<AdminQuoteRequestDetail>(
+        `/admin/quote-requests/${request.id}/reject`,
+        { method: 'POST', body: { reason: rejectReason.trim() } },
+      );
+      setRequest(updated);
+    } catch (err) {
+      setRejectError(
+        err instanceof ApiError ? err.message : 'Something went wrong',
+      );
+    } finally {
+      setRejectBusy(false);
+      setConfirmingReject(false);
     }
   };
 
@@ -574,8 +598,62 @@ export function RequestDetailPage() {
             <p className="muted" style={{ margin: 0, fontSize: 14 }}>
               {request.quote
                 ? 'Quotes are immutable once sent. To change the price, the customer cancels and submits a new request.'
-                : `No quote can be sent in ${request.status} status.`}
+                : request.status === 'REJECTED' && request.rejectionReason
+                  ? `Rejected — reason sent to the customer: "${request.rejectionReason}"`
+                  : `No quote can be sent in ${request.status} status.`}
             </p>
+          )}
+
+          {request.status === 'REVIEWING' && (
+            <div
+              style={{
+                marginTop: 24,
+                padding: 12,
+                borderRadius: 10,
+                background: 'var(--surface-alt)',
+                fontSize: 14,
+              }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Reject request</div>
+              <div className="muted" style={{ marginBottom: 10 }}>
+                For requests we cannot or should not take. The reason is shown to the customer as-is.
+              </div>
+              <textarea
+                rows={3}
+                maxLength={500}
+                placeholder="Why this request is being declined…"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                style={{ marginBottom: 10 }}
+              />
+              <button
+                type="button"
+                className="ghost"
+                style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                disabled={rejectBusy || rejectReason.trim().length === 0}
+                onClick={() => setConfirmingReject(true)}>
+                {rejectBusy ? 'Rejecting…' : 'Reject request'}
+              </button>
+              {rejectError && (
+                <div className="error" style={{ marginTop: 10 }}>{rejectError}</div>
+              )}
+              <ConfirmDialog
+                open={confirmingReject}
+                title="Reject this request?"
+                message={
+                  <>
+                    Request #{request.id} becomes{' '}
+                    <strong style={{ color: 'var(--text)' }}>REJECTED</strong> and{' '}
+                    {customerName(request.user)} is notified with your reason. This cannot be undone — the
+                    customer would need to submit a new request.
+                  </>
+                }
+                confirmLabel="Reject request"
+                dismissLabel="Go back"
+                loading={rejectBusy}
+                onConfirm={() => void onConfirmReject()}
+                onDismiss={() => setConfirmingReject(false)}
+              />
+            </div>
           )}
         </section>
       </div>

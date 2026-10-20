@@ -6,10 +6,12 @@ import type { Attachment, AttachmentInput } from './attachments';
 export type RequestStatus =
   | 'REVIEWING'
   | 'QUOTED'
+  | 'PAYMENT_RECEIVED' // PayPal 결제 검증됨, 관리자 확인 대기
   | 'PAID'
   | 'IN_PROGRESS'
   | 'COMPLETED'
   | 'CANCELLED'
+  | 'REJECTED' // 관리자 거절 — rejectionReason에 사유
   | 'REFUNDED';
 
 export type Category =
@@ -42,6 +44,7 @@ export type QuoteRequest = {
   contactMethod: string;
   paymentMethod: PaymentMethod;
   status: RequestStatus;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
   quote: Quote | null;
