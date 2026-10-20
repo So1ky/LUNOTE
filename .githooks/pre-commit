@@ -12,6 +12,7 @@ fail=0
 
 # 1) 시크릿 파일 자체가 스테이징된 경우
 for f in $staged; do
+[ "$f" = "apps/mobile/certs/certificate.pem" ] && continue   # EAS Update 공개 인증서(개인키 아님)
   case "$f" in
     *.env | *.env.local | *.env.production | *.pem | *.key | *.p12 | *.jks | *.mobileprovision | *.tfvars)
       echo "❌ 시크릿 파일이 커밋에 포함되어 있습니다: $f"

@@ -14,3 +14,9 @@ resource "aws_secretsmanager_secret" "app_prod" {
 resource "aws_secretsmanager_secret" "argocd" {
   name = "lunote/shared/argocd"
 }
+
+# EAS Update(앱 OTA) 코드 서명 개인키 원본 — PEM 본문 그대로(apps/mobile/keys/private-key.pem). 공개 인증서는 저장소에 커밋.
+# 잃어버리면 새 인증서로 앱을 다시 빌드해야 하므로 여기가 유일한 백업이다. 값 주입은 CLI(put-secret-value --secret-string file://).
+resource "aws_secretsmanager_secret" "eas_update" {
+  name = "lunote/shared/eas-update"
+}

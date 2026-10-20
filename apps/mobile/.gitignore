@@ -29,6 +29,9 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+# EAS Update 코드 서명: 공개 인증서만 커밋, 개인키(keys/)는 Secrets Manager lunote/shared/eas-update
+!certs/certificate.pem
+keys/
 
 # local env files
 .env*.local
