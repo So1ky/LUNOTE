@@ -27,8 +27,12 @@ const MAX_BY_CURRENCY: Record<string, number> = {
   KRW: 100_000_000,
 };
 
-/** 관리자 수동 전이 — 목표 상태 → 요구되는 현재 상태 (PAID → IN_PROGRESS → COMPLETED, 건너뛰기 불가) */
+/**
+ * 관리자 수동 전이 — 목표 상태 → 요구되는 현재 상태 (건너뛰기 불가).
+ * PAYMENT_RECEIVED → PAID는 PayPal 결제의 관리자 확인 (2026-10-20 기획 결정, ARCHITECTURE §7)
+ */
 const REQUIRED_CURRENT: Record<AdminSettableStatus, RequestStatus> = {
+  [RequestStatus.PAID]: RequestStatus.PAYMENT_RECEIVED,
   [RequestStatus.IN_PROGRESS]: RequestStatus.PAID,
   [RequestStatus.COMPLETED]: RequestStatus.IN_PROGRESS,
 };
@@ -44,6 +48,7 @@ const ADMIN_REQUEST_SELECT = {
   description: true,
   contactMethod: true,
   status: true,
+  rejectionReason: true,
   createdAt: true,
   updatedAt: true,
   user: {
@@ -226,7 +231,63 @@ export class AdminQuoteRequestsService {
     return this.findOne(requestId);
   }
 
-  /** 작업 상태 수동 전이 — PAID → IN_PROGRESS, IN_PROGRESS → COMPLETED. 감사 로그·사용자 알림은 같은 트랜잭션 */
+  /**
+   * 거절 — REVIEWING(견적 전)에서만. 사유는 저장·감사 로그·사용자 알림 본문으로 모두 남긴다.
+   * 사용자 취소(CANCELLED)와 다른 종결 상태 (ARCHITECTURE §7 REJECTED)
+   */
+  async reject(requestId: number, reason: string, adminId: string) {
+    const request = await this.prisma.quoteRequest.findFirst({
+      where: { id: requestId, user: { deletedAt: null } },
+      select: { status: true, userId: true },
+    });
+    if (!request) {
+      throw new NotFoundException('Quote request not found');
+    }
+    if (request.status !== RequestStatus.REVIEWING) {
+      throw new ConflictException(
+        `Cannot reject a request in ${request.status} status`,
+      );
+    }
+
+    const notice = await this.prisma.$transaction(async (tx) => {
+      // 상태 조건을 다시 걸어 동시 견적 발송·사용자 취소와의 경쟁을 차단
+      const { count } = await tx.quoteRequest.updateMany({
+        where: { id: requestId, status: RequestStatus.REVIEWING },
+        data: { status: RequestStatus.REJECTED, rejectionReason: reason },
+      });
+      if (count === 0) {
+        throw new ConflictException('Request status changed concurrently');
+      }
+      await tx.adminAuditLog.create({
+        data: {
+          adminId,
+          action: 'REQUEST_REJECTED',
+          targetType: 'QUOTE_REQUEST',
+          targetId: String(requestId),
+          detail: { reason },
+        },
+      });
+      return this.notifications.notifyUserRequestRejected(tx, {
+        requestId,
+        ownerId: request.userId,
+        reason,
+      });
+    });
+    // 푸시는 커밋 뒤에 — 인앱 알림이 원천 (견적 발송과 동일)
+    this.notifications.enqueueUserPush({
+      type: 'USER_PUSH',
+      userId: request.userId,
+      requestId,
+      ...notice,
+    });
+
+    return this.findOne(requestId);
+  }
+
+  /**
+   * 상태 수동 전이 — PAYMENT_RECEIVED → PAID(PayPal 결제 확인), PAID → IN_PROGRESS, IN_PROGRESS → COMPLETED.
+   * 감사 로그·사용자 알림은 같은 트랜잭션
+   */
   async updateStatus(
     requestId: number,
     status: AdminSettableStatus,

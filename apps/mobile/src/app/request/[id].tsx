@@ -194,11 +194,19 @@ export default function RequestDetailScreen() {
                 />
               )}
             </Card>
+          ) : request.status === 'REVIEWING' ? (
+            <Card>
+              <ThemedText type="small" themeColor="textSecondary">
+                {t('requestDetail.reviewing')}
+              </ThemedText>
+            </Card>
           ) : (
-            request.status === 'REVIEWING' && (
+            request.status === 'REJECTED' && (
               <Card>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {t('requestDetail.reviewing')}
+                  {t('requestDetail.rejectedReason', {
+                    reason: request.rejectionReason ?? '',
+                  })}
                 </ThemedText>
               </Card>
             )

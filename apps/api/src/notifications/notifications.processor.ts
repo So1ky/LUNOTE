@@ -114,7 +114,12 @@ export class NotificationsProcessor extends WorkerHost {
       await this.mail.send(
         admin.email,
         `[LUNOTE] 결제 확정 #${data.requestId} (${data.currency} ${data.amount})`,
-        `문의 #${data.requestId}의 결제가 확정되었습니다.\n\n금액: ${data.currency} ${data.amount}\n채널: ${data.provider}\n\n작업을 시작하고 상태를 IN_PROGRESS로 변경하세요.`,
+        `문의 #${data.requestId}의 결제가 확정되었습니다.\n\n금액: ${data.currency} ${data.amount}\n채널: ${data.provider}\n\n${
+          // PayPal은 관리자가 확인해야 문의가 PAID가 된다 (ARCHITECTURE §7 PAYMENT_RECEIVED)
+          data.provider === 'PAYPAL'
+            ? '관리자 웹에서 결제를 확인(Confirm payment)한 뒤 작업을 시작하세요.'
+            : '작업을 시작하고 상태를 IN_PROGRESS로 변경하세요.'
+        }`,
       );
     }
   }

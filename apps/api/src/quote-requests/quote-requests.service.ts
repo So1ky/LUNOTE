@@ -21,6 +21,7 @@ const REQUEST_SELECT = {
   description: true,
   contactMethod: true,
   status: true,
+  rejectionReason: true, // 관리자 거절 사유 — REJECTED일 때만 값이 있다
   createdAt: true,
   updatedAt: true,
   quote: {

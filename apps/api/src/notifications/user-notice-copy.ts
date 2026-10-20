@@ -8,7 +8,8 @@ export type UserNoticeKind =
   | 'PAYMENT_PAID'
   | 'WORK_STARTED'
   | 'WORK_COMPLETED'
-  | 'PAYMENT_REFUNDED';
+  | 'PAYMENT_REFUNDED'
+  | 'REQUEST_REJECTED';
 
 const FALLBACK = 'en';
 
@@ -52,6 +53,15 @@ const TITLES: Record<UserNoticeKind, Record<string, string>> = {
     zh: '您的付款已退款',
     de: 'Ihre Zahlung wurde erstattet',
     es: 'Tu pago ha sido reembolsado',
+  },
+  // 본문에 관리자가 적은 사유가 그대로 들어간다 (유일하게 body를 쓰는 사용자 알림)
+  REQUEST_REJECTED: {
+    ko: '요청이 거절됐어요',
+    en: 'Your request was declined',
+    ja: 'ご依頼をお受けできませんでした',
+    zh: '您的请求未被受理',
+    de: 'Ihre Anfrage wurde abgelehnt',
+    es: 'Tu solicitud fue rechazada',
   },
 };
 

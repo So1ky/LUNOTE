@@ -11,10 +11,12 @@ export type Category =
 export type RequestStatus =
   | 'REVIEWING'
   | 'QUOTED'
+  | 'PAYMENT_RECEIVED'
   | 'PAID'
   | 'IN_PROGRESS'
   | 'COMPLETED'
   | 'CANCELLED'
+  | 'REJECTED'
   | 'REFUNDED';
 
 export const CATEGORY_META: Record<Category, { emoji: string; label: string }> = {
@@ -29,19 +31,21 @@ export const CATEGORY_META: Record<Category, { emoji: string; label: string }> =
 export const STATUS_META: Record<RequestStatus, { label: string; color: string }> = {
   REVIEWING: { label: 'Reviewing', color: 'var(--warning)' },
   QUOTED: { label: 'Quote sent', color: 'var(--purple)' },
+  PAYMENT_RECEIVED: { label: 'Confirming payment', color: 'var(--warning)' }, // PayPal 결제 검증됨, 관리자 확인 대기
   PAID: { label: 'Paid', color: 'var(--success)' },
   IN_PROGRESS: { label: 'In progress', color: 'var(--info)' },
   COMPLETED: { label: 'Completed', color: 'var(--text-muted)' },
   CANCELLED: { label: 'Cancelled', color: 'var(--danger)' },
+  REJECTED: { label: 'Rejected', color: 'var(--danger)' },
   REFUNDED: { label: 'Refunded', color: 'var(--text-muted)' },
 };
 
-/** 관리자가 수동으로 옮길 수 있는 다음 상태 — 서버 REQUIRED_CURRENT와 동일(PAID → IN_PROGRESS → COMPLETED) */
+/** 관리자가 수동으로 옮길 수 있는 다음 상태 — 서버 REQUIRED_CURRENT와 동일(PAYMENT_RECEIVED → PAID → IN_PROGRESS → COMPLETED) */
 export const WORK_TRANSITIONS: Partial<
   Record<
     RequestStatus,
     {
-      to: 'IN_PROGRESS' | 'COMPLETED';
+      to: 'PAID' | 'IN_PROGRESS' | 'COMPLETED';
       hint: string;
       buttonLabel: string;
       confirmTitle: string;
@@ -49,6 +53,14 @@ export const WORK_TRANSITIONS: Partial<
     }
   >
 > = {
+  // PayPal: PortOne 웹훅이 결제를 검증해 놓은 상태 — 관리자가 확인해야 PAID (계좌이체의 입금 확인과 같은 수동 단계)
+  PAYMENT_RECEIVED: {
+    to: 'PAID',
+    hint: 'PayPal payment was verified by PortOne. Confirm it to mark the request as paid and notify the customer.',
+    buttonLabel: 'Confirm payment',
+    confirmTitle: 'Confirm this PayPal payment?',
+    doneMessage: 'Payment confirmed',
+  },
   PAID: {
     to: 'IN_PROGRESS',
     hint: 'Payment is confirmed. Mark the request as in progress once you start working on it.',
@@ -129,6 +141,7 @@ export type AdminQuoteRequest = {
   contactMethod: string;
   paymentMethod: PaymentMethod;
   status: RequestStatus;
+  rejectionReason: string | null; // REJECTED일 때만 — 고객에게도 그대로 보인다
   createdAt: string;
   updatedAt: string;
   user: AdminUser;

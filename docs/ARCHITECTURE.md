@@ -114,8 +114,15 @@ graph TB
   3. 결제 상태 전이는 DB 트랜잭션 안에서: 이벤트 기록 → PortOne API로 금액/통화 재검증 →
      주문 상태 변경 → 커밋. 금액 불일치 시 상태 변경 없이 알림만 발송.
   4. 처리 실패 시 5xx를 반환해 PortOne 재전송을 유도하고, BullMQ로 자체 재처리 잡도 등록.
-- 주문 상태 머신: `REVIEWING → QUOTED → PAID → IN_PROGRESS → COMPLETED` (+ `CANCELLED`, `REFUNDED`).
-  허용되지 않은 전이는 서비스 레이어에서 거부.
+- 주문 상태 머신: `REVIEWING → QUOTED → [PAYMENT_RECEIVED →] PAID → IN_PROGRESS → COMPLETED`
+  (+ `CANCELLED`, `REJECTED`, `REFUNDED`). 허용되지 않은 전이는 서비스 레이어에서 거부.
+  - **PAYMENT_RECEIVED (2026-10-20 기획 결정)**: PayPal 전용 중간 상태. 웹훅+교차검증이 결제 행을 PAID로
+    만들면 문의는 QUOTED→PAYMENT_RECEIVED까지만 가고, **관리자가 관리자 웹에서 확인(`PATCH status PAID`)해야 PAID**가 된다
+    (계좌이체의 "입금 확인"과 같은 수동 단계를 PayPal에도 두기로 한 제품 결정). 사용자 알림 "결제가 확인됐어요"는 이 시점에.
+    이 상태에서는 재결제·사용자 취소 불가, 탈퇴 차단, 환불 웹훅은 REFUNDED로 보낸다. 계좌이체는 입금 확인이 곧 수동 단계라 QUOTED→PAID 직행.
+  - **REJECTED (2026-10-20)**: 관리자 거절. REVIEWING(견적 전)에서만 `POST /admin/quote-requests/:id/reject { reason }`(1~500자 필수).
+    `QuoteRequest.rejectionReason`에 저장하고 사용자 인앱·푸시 알림 본문으로 전달(관리자 자유 입력이라 번역하지 않는다).
+    사용자 취소(CANCELLED)와 구분하기 위해 별도 상태. 종결 상태 — 취소·결제 불가, 탈퇴 차단 아님.
 - **PG 전략 (2026-09-07 확정, 2026-09-23 개정)**: 1차 출시는 **페이팔(PortOne V2, SPB 일반결제)과
   수동 계좌이체(법인계좌)** 두 가지. 페이팔은 심사 없이 즉시 개통되고 무형 서비스 업종 제한이 없기 때문.
   국내 카드(KG이니시스)는 가계약을 진행하지 않고 소멸시킨다(2026-09-23) —
@@ -130,7 +137,8 @@ graph TB
     현금영수증은 소비자 요청 시 홈택스 수동 발급. 입금 확인 자동화(가상계좌)는 국내 PG 재신청 시점에.
     **구현(2026-10-11)**: 결제수단은 문의 때 고객이 선택(`QuoteRequest.paymentMethod`), 견적 통화는 서버가 결정(PAYPAL→USD, BANK_TRANSFER→KRW).
     `POST /payments`는 KRW면 PortOne 없이 계좌 정보(ConfigMap)·입금자명 `LUNOTE<요청번호>`·기한(견적 만료)을 응답.
-    입금 확인은 관리자 웹 → `POST /admin/payments/:id/confirm-transfer`(멱등, 감사 로그) → PayPal 웹훅과 같은 `markPaid()`로 PAID.
+    입금 확인은 관리자 웹 → `POST /admin/payments/:id/confirm-transfer`(멱등, 감사 로그) → PayPal 웹훅과 같은 `markPaid()`로 PAID
+    (2026-10-20부터 `markPaid()`의 문의 전이 목표는 provider별: BANK_TRANSFER→PAID, PAYPAL→PAYMENT_RECEIVED).
     자동 만료 잡 없음(견적 7일이 기한), 만료 후 확인 허용. 환불 REFUNDED 전이 관리자 기능은 후속.
   - 페이팔은 KRW를 받지 못하므로 PayPal 견적은 USD, 계좌이체 견적은 KRW다(통화는 결제수단이 결정).
     `Payment.provider`(PAYPAL / BANK_TRANSFER, 추후 INICIS)는 견적 통화로 라우팅한다 (USD→PAYPAL, KRW→BANK_TRANSFER).

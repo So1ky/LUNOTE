@@ -35,6 +35,8 @@ const ko: Resources = {
     completed: '완료',
     cancelled: '취소됨',
     refunded: '환불됨',
+    paymentReceived: '결제 확인 중',
+    rejected: '거절됨',
   },
 
   categories: {
@@ -370,6 +372,7 @@ const ko: Resources = {
       '취소는 되돌릴 수 없어요 — 새로 문의를 다시 남겨야 해요.',
     cancelConfirm: '네, 취소할게요',
     cancelKeep: '유지하기',
+    rejectedReason: '이 요청은 진행할 수 없어요. 사유: {{reason}}',
   },
 
   notifications: {

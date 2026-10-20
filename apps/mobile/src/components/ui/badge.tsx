@@ -8,20 +8,24 @@ import { useTranslation } from '@/i18n';
 export type BadgeTone =
   | 'reviewing'
   | 'quoted'
+  | 'paymentReceived'
   | 'paid'
   | 'inProgress'
   | 'completed'
   | 'cancelled'
+  | 'rejected'
   | 'refunded';
 
 /** 톤별 색 — 라벨은 i18n(status.<tone>)에서 온다 */
 const TONE_COLOR: Record<BadgeTone, string> = {
   reviewing: Brand.warning,
   quoted: Brand.purple,
+  paymentReceived: Brand.warning, // PayPal 결제 검증됨, 관리자 확인 대기
   paid: Brand.success,
   inProgress: Brand.info,
   completed: Brand.textMuted,
   cancelled: Brand.danger,
+  rejected: Brand.danger,
   refunded: Brand.textMuted,
 };
 
@@ -29,10 +33,12 @@ const TONE_COLOR: Record<BadgeTone, string> = {
 export const STATUS_TONE: Record<string, BadgeTone> = {
   REVIEWING: 'reviewing',
   QUOTED: 'quoted',
+  PAYMENT_RECEIVED: 'paymentReceived',
   PAID: 'paid',
   IN_PROGRESS: 'inProgress',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
+  REJECTED: 'rejected',
   REFUNDED: 'refunded',
 };
 

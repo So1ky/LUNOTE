@@ -418,7 +418,14 @@ export class PaymentsService {
     await tx.quoteRequest.updateMany({
       where: {
         id: requestId,
-        status: { in: [RequestStatus.PAID, RequestStatus.IN_PROGRESS] },
+        // PAYMENT_RECEIVED: 관리자 확인 전에 PortOne에서 환불된 PayPal 결제
+        status: {
+          in: [
+            RequestStatus.PAYMENT_RECEIVED,
+            RequestStatus.PAID,
+            RequestStatus.IN_PROGRESS,
+          ],
+        },
       },
       data: { status: RequestStatus.REFUNDED },
     });
@@ -439,8 +446,9 @@ export class PaymentsService {
   }
 
   /**
-   * PENDING → PAID 전이 + 문의 QUOTED → PAID + 사용자 알림 + 관리자 메일.
-   * PayPal 웹훅/확인(applyRemote)과 관리자 입금 확인(confirmBankTransfer)이 공유한다 — 두 경로의 PAID는 같은 의미여야 한다.
+   * PENDING → PAID 전이 + 문의 QUOTED → (PayPal) PAYMENT_RECEIVED / (계좌이체) PAID + 알림 + 관리자 메일.
+   * PayPal 웹훅/확인(applyRemote)과 관리자 입금 확인(confirmBankTransfer)이 공유한다 — 결제 행 PAID는 두 경로에서 같은 의미다.
+   * PayPal은 관리자가 관리자 웹에서 확인해야 문의가 PAID가 된다 (2026-10-20 기획 결정, ARCHITECTURE §7) — 사용자 알림도 그때.
    */
   private async markPaid(
     tx: Prisma.TransactionClient,
@@ -459,9 +467,14 @@ export class PaymentsService {
     });
     if (count === 0) return 'noop'; // 이미 PAID (웹훅과 confirm 경쟁, 또는 입금 확인 재클릭)
 
+    const awaitingAdminConfirm = local.provider === PaymentProvider.PAYPAL;
     const moved = await tx.quoteRequest.updateMany({
       where: { id: requestId, status: RequestStatus.QUOTED },
-      data: { status: RequestStatus.PAID },
+      data: {
+        status: awaitingAdminConfirm
+          ? RequestStatus.PAYMENT_RECEIVED
+          : RequestStatus.PAID,
+      },
     });
     if (moved.count === 0) {
       // 결제 중 사용자가 문의를 취소한 경우 등 — 돈은 받았으니 관리자가 환불/복구 판단
@@ -475,12 +488,21 @@ export class PaymentsService {
         reason: 'request not in QUOTED status at payment time',
       });
     }
-    const notice = await this.notifications.notifyPaymentPaid(tx, {
+    await this.notifications.notifyAdminsPaymentPaid(tx, {
       requestId,
-      ownerId: local.quote.request.userId,
       amount: local.amount.toString(),
       currency: local.currency,
+      // 문의가 PAYMENT_RECEIVED가 됐을 때만 "확인하라"고 안내 — 불일치면 위의 mismatch 알림이 안내한다
+      awaitingAdminConfirm: awaitingAdminConfirm && moved.count > 0,
     });
+    // 사용자 "결제가 확인됐어요"는 문의가 PAID가 될 때만 — PayPal은 관리자 확인(updateStatus)이 보낸다
+    const notice = awaitingAdminConfirm
+      ? null
+      : await this.notifications.notifyUserWorkStatus(tx, {
+          requestId,
+          ownerId: local.quote.request.userId,
+          status: RequestStatus.PAID,
+        });
     // 이메일은 커밋 이후 큐로 — tx 안에서 등록하면 롤백된 결제의 메일이 나갈 수 있다
     this.enqueueAfterCommit(() => {
       this.notifications.enqueueAdminEmail({
@@ -490,12 +512,14 @@ export class PaymentsService {
         currency: local.currency,
         provider: local.provider,
       });
-      this.notifications.enqueueUserPush({
-        type: 'USER_PUSH',
-        userId: local.quote.request.userId,
-        requestId,
-        ...notice,
-      });
+      if (notice) {
+        this.notifications.enqueueUserPush({
+          type: 'USER_PUSH',
+          userId: local.quote.request.userId,
+          requestId,
+          ...notice,
+        });
+      }
     });
     return 'paid';
   }

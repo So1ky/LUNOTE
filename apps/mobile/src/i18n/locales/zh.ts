@@ -35,6 +35,8 @@ const zh: Resources = {
     completed: '已完成',
     cancelled: '已取消',
     refunded: '已退款',
+    paymentReceived: '付款确认中',
+    rejected: '已拒绝',
   },
 
   categories: {
@@ -369,6 +371,7 @@ const zh: Resources = {
       '此操作无法撤销，您需要重新提交申请。',
     cancelConfirm: '确认取消',
     cancelKeep: '保留',
+    rejectedReason: '我们无法受理此请求。原因：{{reason}}',
   },
 
   notifications: {

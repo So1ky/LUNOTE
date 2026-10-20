@@ -24,8 +24,9 @@ export type AccountCleanupJob = { userId: string };
 export const deletedEmail = (userId: string) =>
   `deleted+${userId}@deleted.lunoteapp.invalid`;
 
-/** 결제가 끝나 서비스가 진행 중인 상태 — 완료·환불 전 탈퇴 불가 */
+/** 결제가 끝나 서비스가 진행 중인 상태 — 완료·환불 전 탈퇴 불가 (PAYMENT_RECEIVED: 돈은 받았고 관리자 확인 대기) */
 const BLOCKING: RequestStatus[] = [
+  RequestStatus.PAYMENT_RECEIVED,
   RequestStatus.PAID,
   RequestStatus.IN_PROGRESS,
 ];

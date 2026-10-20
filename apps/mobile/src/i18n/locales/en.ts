@@ -43,6 +43,8 @@ const en = {
     completed: 'Completed',
     cancelled: 'Cancelled',
     refunded: 'Refunded',
+    paymentReceived: 'Confirming payment',
+    rejected: 'Declined',
   },
 
   categories: {
@@ -379,6 +381,7 @@ const en = {
       'This cannot be undone — you would need to submit a new request.',
     cancelConfirm: 'Yes, cancel',
     cancelKeep: 'Keep it',
+    rejectedReason: 'We could not take this request. Reason: {{reason}}',
   },
 
   notifications: {

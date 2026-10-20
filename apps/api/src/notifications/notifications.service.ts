@@ -146,7 +146,8 @@ export class NotificationsService {
   }
 
   /**
-   * 관리자의 작업 상태 전이(IN_PROGRESS·COMPLETED) → 소유자에게 인앱 알림.
+   * 관리자의 상태 전이(PAID·IN_PROGRESS·COMPLETED) → 소유자에게 인앱 알림.
+   * PAID는 PayPal 결제의 관리자 확인(PAYMENT_RECEIVED → PAID) — 계좌이체 입금 확인(markPaid)과 같은 PAYMENT_PAID 문구.
    * 상태 전이와 같은 트랜잭션으로 호출한다 (견적 알림과 같은 규칙)
    */
   async notifyUserWorkStatus(
@@ -154,13 +155,18 @@ export class NotificationsService {
     data: {
       requestId: number;
       ownerId: string;
-      status: typeof RequestStatus.IN_PROGRESS | typeof RequestStatus.COMPLETED;
+      status:
+        | typeof RequestStatus.PAID
+        | typeof RequestStatus.IN_PROGRESS
+        | typeof RequestStatus.COMPLETED;
     },
   ) {
     const kind =
-      data.status === RequestStatus.IN_PROGRESS
-        ? 'WORK_STARTED'
-        : 'WORK_COMPLETED';
+      data.status === RequestStatus.PAID
+        ? 'PAYMENT_PAID'
+        : data.status === RequestStatus.IN_PROGRESS
+          ? 'WORK_STARTED'
+          : 'WORK_COMPLETED';
     const notice = {
       title: userNoticeTitle(kind, await this.languageOf(tx, data.ownerId)),
       body: '',
@@ -199,46 +205,58 @@ export class NotificationsService {
     return notice;
   }
 
-  /** 결제 확정 → 소유자 + 모든 관리자에게 인앱 알림 (결제 확정 트랜잭션 안에서 호출) */
-  async notifyPaymentPaid(
+  /** 관리자 거절 → 소유자에게 인앱 알림. 본문은 관리자가 적은 사유 그대로 (거절 트랜잭션 안에서 호출) */
+  async notifyUserRequestRejected(
+    tx: Prisma.TransactionClient,
+    data: { requestId: number; ownerId: string; reason: string },
+  ) {
+    const notice = {
+      title: userNoticeTitle(
+        'REQUEST_REJECTED',
+        await this.languageOf(tx, data.ownerId),
+      ),
+      body: data.reason,
+    };
+    await tx.notification.create({
+      data: {
+        userId: data.ownerId,
+        type: 'REQUEST_REJECTED',
+        ...notice,
+        requestId: data.requestId,
+      },
+    });
+    return notice;
+  }
+
+  /**
+   * 결제 행 PAID → 모든 관리자에게 인앱 알림 (결제 확정 트랜잭션 안에서 호출).
+   * 사용자 알림은 문의가 PAID가 되는 시점에 notifyUserWorkStatus(PAID)로 — 계좌이체는 같은 트랜잭션, PayPal은 관리자 확인 때
+   */
+  async notifyAdminsPaymentPaid(
     tx: Prisma.TransactionClient,
     data: {
       requestId: number;
-      ownerId: string;
       amount: string;
       currency: string;
+      awaitingAdminConfirm: boolean;
     },
   ) {
     const amountText = formatAmount(data.amount, data.currency);
-    const notice = {
-      title: userNoticeTitle(
-        'PAYMENT_PAID',
-        await this.languageOf(tx, data.ownerId),
-      ),
-      body: '', // 사용자 알림은 제목만, 프로필 언어로 (견적 알림과 동일 규칙)
-    };
     const admins = await tx.user.findMany({
       where: { role: UserRole.ADMIN },
       select: { id: true },
     });
     await tx.notification.createMany({
-      data: [
-        {
-          userId: data.ownerId,
-          type: 'PAYMENT_PAID',
-          ...notice,
-          requestId: data.requestId,
-        },
-        ...admins.map((a) => ({
-          userId: a.id,
-          type: 'PAYMENT_PAID',
-          title: `Payment received #${data.requestId}`,
-          body: `${amountText} · start the work`,
-          requestId: data.requestId,
-        })),
-      ],
+      data: admins.map((a) => ({
+        userId: a.id,
+        type: 'PAYMENT_PAID',
+        title: `Payment received #${data.requestId}`,
+        body: data.awaitingAdminConfirm
+          ? `${amountText} · confirm the payment in admin`
+          : `${amountText} · start the work`,
+        requestId: data.requestId,
+      })),
     });
-    return notice;
   }
 
   /**

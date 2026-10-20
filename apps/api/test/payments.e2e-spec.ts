@@ -332,7 +332,7 @@ describe('Payments (e2e)', () => {
     expect(paymentId).not.toBe(mismatchPaymentId);
   });
 
-  it('웹훅 — 검증 통과 + 금액 일치 → PAID 전이 + 인앱 알림', async () => {
+  it('웹훅 — 검증 통과 + 금액 일치 → 결제 PAID, 문의는 PAYMENT_RECEIVED(관리자 확인 대기), 관리자 알림만', async () => {
     remote = paidRemote();
     const { raw, headers } = signedWebhook({
       type: 'Transaction.Paid',
@@ -349,19 +349,66 @@ describe('Payments (e2e)', () => {
     const req = await prisma.quoteRequest.findUnique({
       where: { id: requestId },
     });
-    expect(req?.status).toBe('PAID');
+    expect(req?.status).toBe('PAYMENT_RECEIVED');
 
+    // 사용자에게는 관리자가 확인한 뒤에만 "결제가 확인됐어요"가 간다
     const owner = await prisma.user.findUnique({
       where: { email: `pay-owner-${stamp}@test.lunote.app` },
     });
-    const noti = await prisma.notification.findFirst({
+    const userNoti = await prisma.notification.findFirst({
       where: { userId: owner!.id, type: 'PAYMENT_PAID', requestId },
     });
-    expect(noti).not.toBeNull();
+    expect(userNoti).toBeNull();
+    const admin = await prisma.user.findUniqueOrThrow({
+      where: { email: adminEmail },
+    });
+    const adminNoti = await prisma.notification.findFirst({
+      where: { userId: admin.id, type: 'PAYMENT_PAID', requestId },
+    });
+    expect(adminNoti?.body).toContain('confirm');
     const event = await prisma.paymentEvent.findUnique({
       where: { eventId: headers['webhook-id'] },
     });
     expect(event?.paymentId).toBe(paymentId);
+  });
+
+  it('PAYMENT_RECEIVED — 사용자 취소·재결제 모두 불가 (409)', async () => {
+    await request(app.getHttpServer())
+      .patch(`/quote-requests/${requestId}/cancel`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(409);
+    const res = await request(app.getHttpServer())
+      .post('/payments')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ quoteId, withdrawalConsent: true })
+      .expect(409);
+    expect((res.body as { message: string }).message).toBe('QUOTE_NOT_PAYABLE');
+  });
+
+  it('관리자 확인(PATCH status PAID) → 문의 PAID + 사용자 PAYMENT_PAID 알림 + 감사 로그', async () => {
+    const res = await request(app.getHttpServer())
+      .patch(`/admin/quote-requests/${requestId}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ status: 'PAID' })
+      .expect(200);
+    expect((res.body as { status: string }).status).toBe('PAID');
+
+    const owner = await prisma.user.findUniqueOrThrow({
+      where: { email: `pay-owner-${stamp}@test.lunote.app` },
+    });
+    const noti = await prisma.notification.findFirst({
+      where: { userId: owner.id, type: 'PAYMENT_PAID', requestId },
+    });
+    expect(noti?.title).toBe('Payment received');
+    const logs = await prisma.adminAuditLog.findMany({
+      where: {
+        targetType: 'QUOTE_REQUEST',
+        targetId: String(requestId),
+        action: 'REQUEST_STATUS_CHANGED',
+      },
+    });
+    expect(logs).toHaveLength(1);
+    expect(logs[0].detail).toEqual({ from: 'PAYMENT_RECEIVED', to: 'PAID' });
   });
 
   it('웹훅 — 같은 이벤트 재전송은 200 duplicate, 상태 그대로', async () => {
@@ -480,5 +527,70 @@ describe('Payments (e2e)', () => {
       where: { userId: req.userId, requestId, type: 'PAYMENT_REFUNDED' },
     });
     expect(notice).not.toBeNull();
+  });
+
+  it('웹훅 — 관리자 확인 전(PAYMENT_RECEIVED) 환불도 문의를 REFUNDED로 보낸다', async () => {
+    // 새 문의·견적·결제로 PAYMENT_RECEIVED를 만든다
+    const created = await request(app.getHttpServer())
+      .post('/quote-requests')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        category: 'VISA',
+        description: 'Second request to test refund before admin confirmation.',
+        contactMethod: 'email: owner@test.com',
+      })
+      .expect(201);
+    const secondRequestId = (created.body as { id: number }).id;
+    const quoted = await request(app.getHttpServer())
+      .post(`/admin/quote-requests/${secondRequestId}/quote`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ amount: 340, explanation: 'Visa extension support.' })
+      .expect(201);
+    const secondQuoteId = (quoted.body as { quote: { id: string } }).quote.id;
+    const intent = await request(app.getHttpServer())
+      .post('/payments')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ quoteId: secondQuoteId, withdrawalConsent: true })
+      .expect(201);
+    const secondPaymentId = (intent.body as { paymentId: string }).paymentId;
+
+    remote = paidRemote();
+    const paid = signedWebhook({
+      type: 'Transaction.Paid',
+      timestamp: new Date().toISOString(),
+      data: { paymentId: secondPaymentId, storeId, transactionId: 'tx-2' },
+    });
+    await postWebhook(paid.raw, paid.headers).expect(200);
+    expect(
+      (
+        await prisma.quoteRequest.findUniqueOrThrow({
+          where: { id: secondRequestId },
+        })
+      ).status,
+    ).toBe('PAYMENT_RECEIVED');
+
+    remote = {
+      ...paidRemote(),
+      status: 'CANCELLED',
+    } as unknown as PortOnePayment;
+    const cancelled = signedWebhook({
+      type: 'Transaction.Cancelled',
+      timestamp: new Date().toISOString(),
+      data: {
+        paymentId: secondPaymentId,
+        storeId,
+        transactionId: 'tx-2',
+        cancellationId: 'c2',
+      },
+    });
+    const res = await postWebhook(cancelled.raw, cancelled.headers).expect(200);
+    expect((res.body as { outcome: string }).outcome).toBe('refunded');
+    expect(
+      (
+        await prisma.quoteRequest.findUniqueOrThrow({
+          where: { id: secondRequestId },
+        })
+      ).status,
+    ).toBe('REFUNDED');
   });
 });
