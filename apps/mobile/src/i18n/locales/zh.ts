@@ -32,6 +32,7 @@ const zh: Resources = {
     quoted: '报价已出',
     paid: '已支付',
     inProgress: '进行中',
+    awaitingConfirmation: '待确认',
     completed: '已完成',
     cancelled: '已取消',
     refunded: '已退款',
@@ -372,6 +373,18 @@ const zh: Resources = {
     cancelConfirm: '确认取消',
     cancelKeep: '保留',
     rejectedReason: '我们无法受理此请求。原因：{{reason}}',
+    awaitingConfirmation:
+      '您的服务已完成。请在{{date}}前确认完成，如有遗漏请提出异议。若无回应，请求将自动完成。',
+    confirmCompletion: '确认完成',
+    confirmCompletionTitle: '确认完成？',
+    confirmCompletionMessage: '请求将被关闭。之后您仍可随时联系我们。',
+    confirmCompletionYes: '是，确认',
+    confirmCompletionNo: '还没有',
+    dispute: '提出异议',
+    disputePlaceholder: '请告诉我们缺少或有误的地方…',
+    disputeSubmit: '发送',
+    disputeCancel: '取消',
+    disputed: '您于{{date}}提出了异议。我们正在处理并将与您联系。',
   },
 
   notifications: {

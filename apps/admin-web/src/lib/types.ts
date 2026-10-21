@@ -14,6 +14,7 @@ export type RequestStatus =
   | 'PAYMENT_RECEIVED'
   | 'PAID'
   | 'IN_PROGRESS'
+  | 'AWAITING_CONFIRMATION'
   | 'COMPLETED'
   | 'CANCELLED'
   | 'REJECTED'
@@ -34,18 +35,22 @@ export const STATUS_META: Record<RequestStatus, { label: string; color: string }
   PAYMENT_RECEIVED: { label: 'Confirming payment', color: 'var(--warning)' }, // PayPal 결제 검증됨, 관리자 확인 대기
   PAID: { label: 'Paid', color: 'var(--success)' },
   IN_PROGRESS: { label: 'In progress', color: 'var(--info)' },
+  AWAITING_CONFIRMATION: { label: 'Awaiting confirmation', color: 'var(--purple)' }, // 완료 통지됨 — 고객 확인·5영업일 자동 완료 대기
   COMPLETED: { label: 'Completed', color: 'var(--text-muted)' },
   CANCELLED: { label: 'Cancelled', color: 'var(--danger)' },
   REJECTED: { label: 'Rejected', color: 'var(--danger)' },
   REFUNDED: { label: 'Refunded', color: 'var(--text-muted)' },
 };
 
-/** 관리자가 수동으로 옮길 수 있는 다음 상태 — 서버 REQUIRED_CURRENT와 동일(PAYMENT_RECEIVED → PAID → IN_PROGRESS → COMPLETED) */
+/**
+ * 관리자가 수동으로 옮길 수 있는 다음 상태 — 서버 REQUIRED_CURRENT와 동일(PAYMENT_RECEIVED → PAID → IN_PROGRESS → AWAITING_CONFIRMATION).
+ * COMPLETED는 관리자가 만들지 않는다 — 고객 확인 또는 5영업일 경과 자동 완료 (약관 제6조)
+ */
 export const WORK_TRANSITIONS: Partial<
   Record<
     RequestStatus,
     {
-      to: 'PAID' | 'IN_PROGRESS' | 'COMPLETED';
+      to: 'PAID' | 'IN_PROGRESS' | 'AWAITING_CONFIRMATION';
       hint: string;
       buttonLabel: string;
       confirmTitle: string;
@@ -69,11 +74,11 @@ export const WORK_TRANSITIONS: Partial<
     doneMessage: 'Request is now in progress',
   },
   IN_PROGRESS: {
-    to: 'COMPLETED',
-    hint: 'Mark the request as completed once everything has been delivered to the customer.',
-    buttonLabel: 'Mark completed',
-    confirmTitle: 'Mark this request as completed?',
-    doneMessage: 'Request marked as completed',
+    to: 'AWAITING_CONFIRMATION',
+    hint: 'Once everything has been delivered, notify the customer. They have 5 business days to confirm or dispute; with no response the request completes automatically.',
+    buttonLabel: 'Notify completion',
+    confirmTitle: 'Notify the customer that the service is complete?',
+    doneMessage: 'Completion notice sent',
   },
 };
 
@@ -142,6 +147,10 @@ export type AdminQuoteRequest = {
   paymentMethod: PaymentMethod;
   status: RequestStatus;
   rejectionReason: string | null; // REJECTED일 때만 — 고객에게도 그대로 보인다
+  completionNoticedAt: string | null; // AWAITING_CONFIRMATION 통지 시각
+  confirmationDeadlineAt: string | null; // 통지 + 5영업일 — 지나면 자동 COMPLETED
+  disputeReason: string | null; // 고객 이의제기 사유 — IN_PROGRESS 복귀 시 저장
+  disputedAt: string | null;
   createdAt: string;
   updatedAt: string;
   user: AdminUser;

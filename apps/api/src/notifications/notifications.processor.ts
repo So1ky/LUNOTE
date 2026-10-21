@@ -34,8 +34,30 @@ export class NotificationsProcessor extends WorkerHost {
         return this.sendAdminEmails(job.data);
       case 'ADMIN_PAYMENT_PAID_EMAIL':
         return this.sendAdminPaymentPaidEmails(job.data);
+      case 'ADMIN_DISPUTE_EMAIL':
+        return this.sendAdminDisputeEmails(job.data);
       case 'USER_PUSH':
         return this.sendUserPush(job.data);
+    }
+  }
+
+  /** 고객 이의제기 → 모든 관리자에게 이메일. 사유는 발송 시점에 DB에서 읽는다 */
+  private async sendAdminDisputeEmails(data: { requestId: number }) {
+    const request = await this.prisma.quoteRequest.findUnique({
+      where: { id: data.requestId },
+      select: { disputeReason: true, status: true },
+    });
+    if (!request) return;
+    const admins = await this.prisma.user.findMany({
+      where: { role: UserRole.ADMIN },
+      select: { email: true },
+    });
+    for (const admin of admins) {
+      await this.mail.send(
+        admin.email,
+        `[LUNOTE] 완료 이의제기 #${data.requestId}`,
+        `문의 #${data.requestId}의 고객이 완료에 이의를 제기했습니다. 문의는 IN_PROGRESS로 돌아갔습니다.\n\n사유: ${request.disputeReason ?? '(없음)'}\n\n고객과 연락해 해결한 뒤 관리자 웹에서 다시 완료를 통지하세요.`,
+      );
     }
   }
 

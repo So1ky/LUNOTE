@@ -9,7 +9,8 @@ export type UserNoticeKind =
   | 'WORK_STARTED'
   | 'WORK_COMPLETED'
   | 'PAYMENT_REFUNDED'
-  | 'REQUEST_REJECTED';
+  | 'REQUEST_REJECTED'
+  | 'COMPLETION_NOTICE';
 
 const FALLBACK = 'en';
 
@@ -63,6 +64,15 @@ const TITLES: Record<UserNoticeKind, Record<string, string>> = {
     zh: '您的请求已取消',
     de: 'Ihre Anfrage wurde storniert',
     es: 'Tu solicitud fue cancelada',
+  },
+  // 관리자의 완료 통지 — 고객은 앱 상세에서 기한 안에 확인하거나 이의를 제기한다 (약관 제6조)
+  COMPLETION_NOTICE: {
+    ko: '서비스가 완료됐어요 — 확인해 주세요',
+    en: 'Your service is complete — please confirm',
+    ja: 'サービスが完了しました — ご確認ください',
+    zh: '服务已完成 — 请确认',
+    de: 'Ihr Service ist abgeschlossen — bitte bestätigen',
+    es: 'Tu servicio está completo — por favor confirma',
   },
 };
 

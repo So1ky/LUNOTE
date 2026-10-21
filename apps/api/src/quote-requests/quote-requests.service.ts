@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PaymentMethod, Prisma, RequestStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MetricsService } from '../observability/metrics.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
@@ -22,6 +23,11 @@ const REQUEST_SELECT = {
   contactMethod: true,
   status: true,
   rejectionReason: true, // 관리자 거절 사유 — REJECTED일 때만 값이 있다
+  // 완료 확인 절차 — 앱이 기한을 표시하고, 이의제기 사유는 고객 본인 기록용
+  completionNoticedAt: true,
+  confirmationDeadlineAt: true,
+  disputeReason: true,
+  disputedAt: true,
   createdAt: true,
   updatedAt: true,
   quote: {
@@ -62,6 +68,7 @@ export class QuoteRequestsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly notifications: NotificationsService,
+    private readonly metrics: MetricsService,
   ) {}
 
   async create(userId: string, userEmail: string, dto: CreateQuoteRequestDto) {
@@ -175,5 +182,110 @@ export class QuoteRequestsService {
       );
     }
     return this.findOne(userId, id);
+  }
+
+  /** 고객의 완료 확인 — AWAITING_CONFIRMATION → COMPLETED. 본인이 확인했으니 완료 알림은 보내지 않는다 (약관 제6조) */
+  async confirmCompletion(userId: string, id: number) {
+    await this.assertOwned(userId, id);
+    const { count } = await this.prisma.quoteRequest.updateMany({
+      where: { id, userId, status: RequestStatus.AWAITING_CONFIRMATION },
+      data: { status: RequestStatus.COMPLETED },
+    });
+    if (count === 0) {
+      throw new ConflictException(
+        'Only requests awaiting confirmation can be confirmed',
+      );
+    }
+    return this.findOne(userId, id);
+  }
+
+  /**
+   * 고객의 이의제기 — AWAITING_CONFIRMATION → IN_PROGRESS + 사유 저장 + 통지 필드 초기화 + 관리자 인앱 알림(같은 트랜잭션) + 메일(커밋 후).
+   * 관리자가 처리한 뒤 다시 완료를 통지하면 새 기한이 시작된다
+   */
+  async dispute(userId: string, id: number, reason: string) {
+    await this.assertOwned(userId, id);
+    await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.quoteRequest.updateMany({
+        where: { id, userId, status: RequestStatus.AWAITING_CONFIRMATION },
+        data: {
+          status: RequestStatus.IN_PROGRESS,
+          disputeReason: reason,
+          disputedAt: new Date(),
+          completionNoticedAt: null,
+          confirmationDeadlineAt: null,
+        },
+      });
+      if (count === 0) {
+        throw new ConflictException(
+          'Only requests awaiting confirmation can be disputed',
+        );
+      }
+      await this.notifications.notifyAdminsDispute(tx, {
+        requestId: id,
+        reason,
+      });
+    });
+    this.notifications.enqueueAdminEmail({
+      type: 'ADMIN_DISPUTE_EMAIL',
+      requestId: id,
+    });
+    return this.findOne(userId, id);
+  }
+
+  /**
+   * 확인 기한이 지난 AWAITING_CONFIRMATION을 자동 완료한다 (CompletionProcessor가 1시간마다 호출).
+   * 건별 조건부 updateMany라 동시에 두 번 돌아도, 그 사이 고객이 확인·이의제기해도 한 번만 전이된다.
+   * 완료 통지(재차 통지를 겸함)는 전이와 같은 트랜잭션, 푸시는 커밋 뒤. 반환값 = 완료 처리 건수
+   */
+  async autoCompleteExpired(now: Date): Promise<number> {
+    const due = await this.prisma.quoteRequest.findMany({
+      where: {
+        status: RequestStatus.AWAITING_CONFIRMATION,
+        confirmationDeadlineAt: { lte: now },
+      },
+      select: { id: true, userId: true },
+      take: 200, // 한 주기 상한 — 남은 건은 다음 주기에
+    });
+    let completed = 0;
+    for (const { id, userId } of due) {
+      const notice = await this.prisma.$transaction(async (tx) => {
+        const { count } = await tx.quoteRequest.updateMany({
+          where: {
+            id,
+            status: RequestStatus.AWAITING_CONFIRMATION,
+            confirmationDeadlineAt: { lte: now },
+          },
+          data: { status: RequestStatus.COMPLETED },
+        });
+        if (count === 0) return null;
+        return this.notifications.notifyUserWorkStatus(tx, {
+          requestId: id,
+          ownerId: userId,
+          status: RequestStatus.COMPLETED,
+        });
+      });
+      if (!notice) continue;
+      completed++;
+      this.notifications.enqueueUserPush({
+        type: 'USER_PUSH',
+        userId,
+        requestId: id,
+        ...notice,
+      });
+    }
+    this.metrics.requestAutoCompleted(completed);
+    return completed;
+  }
+
+  /** 존재+소유권만 확인 (없으면 404) — 상태 검사는 호출자가 조건부 updateMany로 한다 */
+  private async assertOwned(userId: string, id: number) {
+    const exists = await this.prisma.quoteRequest.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!exists) {
+      throw new NotFoundException('Quote request not found');
+    }
   }
 }

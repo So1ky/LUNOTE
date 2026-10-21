@@ -114,8 +114,15 @@ graph TB
   3. 결제 상태 전이는 DB 트랜잭션 안에서: 이벤트 기록 → PortOne API로 금액/통화 재검증 →
      주문 상태 변경 → 커밋. 금액 불일치 시 상태 변경 없이 알림만 발송.
   4. 처리 실패 시 5xx를 반환해 PortOne 재전송을 유도하고, BullMQ로 자체 재처리 잡도 등록.
-- 주문 상태 머신: `REVIEWING → QUOTED → [PAYMENT_RECEIVED →] PAID → IN_PROGRESS → COMPLETED`
+- 주문 상태 머신: `REVIEWING → QUOTED → [PAYMENT_RECEIVED →] PAID → IN_PROGRESS → AWAITING_CONFIRMATION → COMPLETED`
   (+ `CANCELLED`, `REJECTED`, `REFUNDED`). 허용되지 않은 전이는 서비스 레이어에서 거부.
+  - **AWAITING_CONFIRMATION (2026-10-21 기획 결정, 약관 제6조)**: 관리자의 "완료"는 고객에게 완료 **통지**다
+    (`PATCH status AWAITING_CONFIRMATION`, `completionNoticedAt`·`confirmationDeadlineAt = 통지 + 5영업일(토·일 제외)` 저장).
+    COMPLETED는 관리자가 직접 만들 수 없다 — 고객 확인(`PATCH /quote-requests/:id/confirm-completion`) 또는
+    기한 경과 자동 완료(BullMQ repeatable 1시간 스캔, 조건부 updateMany + 고객 알림)만. 고객 이의제기
+    (`PATCH /quote-requests/:id/dispute { reason }`)는 IN_PROGRESS로 복귀 + `disputeReason` + 관리자 알림·메일 — 관리자가 다시 통지하면 새 기한.
+    지연 잡이 아니라 주기 스캔인 이유: Redis(staging 비영속)가 유실돼도 DB가 원천이라 다음 주기에 복구된다.
+    환불 웹훅은 이 상태도 REFUNDED로, 탈퇴는 차단, 사용자 취소 불가.
   - **PAYMENT_RECEIVED (2026-10-20 기획 결정)**: PayPal 전용 중간 상태. 웹훅+교차검증이 결제 행을 PAID로
     만들면 문의는 QUOTED→PAYMENT_RECEIVED까지만 가고, **관리자가 관리자 웹에서 확인(`PATCH status PAID`)해야 PAID**가 된다
     (계좌이체의 "입금 확인"과 같은 수동 단계를 PayPal에도 두기로 한 제품 결정). 사용자 알림 "결제가 확인됐어요"는 이 시점에.

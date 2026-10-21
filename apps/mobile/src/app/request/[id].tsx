@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
+import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
@@ -24,6 +25,8 @@ import { useAuth } from '@/lib/auth-context';
 import {
   CATEGORY_META,
   cancelQuoteRequest,
+  confirmCompletion,
+  disputeCompletion,
   formatAmount,
   formatDate,
   getQuoteRequest,
@@ -41,6 +44,11 @@ export default function RequestDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  // 완료 확인 절차 (AWAITING_CONFIRMATION) — 확인은 다이얼로그, 이의제기는 인라인 입력
+  const [confirmingDone, setConfirmingDone] = useState(false);
+  const [disputing, setDisputing] = useState(false);
+  const [disputeText, setDisputeText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // effect 내 직접 fetch — cancelled 플래그로 언마운트/stale 응답을 가드한다
   useEffect(() => {
@@ -72,6 +80,36 @@ export default function RequestDetailScreen() {
       setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const onConfirmCompletion = async () => {
+    if (!token) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      setRequest(await confirmCompletion(token, id));
+      setConfirmingDone(false);
+    } catch (e) {
+      setConfirmingDone(false);
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onDispute = async () => {
+    if (!token || disputeText.trim().length === 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      setRequest(await disputeCompletion(token, id, disputeText.trim()));
+      setDisputing(false);
+      setDisputeText('');
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -212,6 +250,70 @@ export default function RequestDetailScreen() {
             )
           )}
 
+          {request.status === 'AWAITING_CONFIRMATION' && request.confirmationDeadlineAt && (
+            <Card style={styles.actions}>
+              <ThemedText type="small" themeColor="textSecondary">
+                {t('requestDetail.awaitingConfirmation', {
+                  date: formatDate(request.confirmationDeadlineAt, locale),
+                })}
+              </ThemedText>
+              <Button
+                label={t('requestDetail.confirmCompletion')}
+                size="lg"
+                onPress={() => setConfirmingDone(true)}
+              />
+              {disputing ? (
+                <>
+                  <TextField
+                    placeholder={t('requestDetail.disputePlaceholder')}
+                    value={disputeText}
+                    onChangeText={setDisputeText}
+                    multiline
+                    maxLength={500}
+                  />
+                  <Button
+                    label={t('requestDetail.disputeSubmit')}
+                    variant="outline"
+                    disabled={submitting || disputeText.trim().length === 0}
+                    onPress={() => void onDispute()}
+                  />
+                  <Button
+                    label={t('requestDetail.disputeCancel')}
+                    variant="ghost"
+                    onPress={() => setDisputing(false)}
+                  />
+                </>
+              ) : (
+                <Button
+                  label={t('requestDetail.dispute')}
+                  variant="outline"
+                  onPress={() => setDisputing(true)}
+                />
+              )}
+            </Card>
+          )}
+
+          {request.status === 'IN_PROGRESS' && request.disputedAt && (
+            <Card>
+              <ThemedText type="small" themeColor="textSecondary">
+                {t('requestDetail.disputed', {
+                  date: formatDate(request.disputedAt, locale),
+                })}
+              </ThemedText>
+            </Card>
+          )}
+
+          <ConfirmDialog
+            visible={confirmingDone}
+            title={t('requestDetail.confirmCompletionTitle')}
+            message={t('requestDetail.confirmCompletionMessage')}
+            confirmLabel={t('requestDetail.confirmCompletionYes')}
+            dismissLabel={t('requestDetail.confirmCompletionNo')}
+            loading={submitting}
+            onConfirm={() => void onConfirmCompletion()}
+            onDismiss={() => setConfirmingDone(false)}
+          />
+
           {cancellable && (
             <Button
               label={t('requestDetail.cancel')}
@@ -244,6 +346,9 @@ export default function RequestDetailScreen() {
 const styles = StyleSheet.create({
   body: {
     gap: Spacing.md,
+  },
+  actions: {
+    gap: Spacing.sm,
   },
   error: {
     color: Brand.danger,

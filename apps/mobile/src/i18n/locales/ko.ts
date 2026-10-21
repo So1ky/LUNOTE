@@ -32,6 +32,7 @@ const ko: Resources = {
     quoted: '견적 도착',
     paid: '결제 완료',
     inProgress: '진행 중',
+    awaitingConfirmation: '확인 요청',
     completed: '완료',
     cancelled: '취소됨',
     refunded: '환불됨',
@@ -373,6 +374,18 @@ const ko: Resources = {
     cancelConfirm: '네, 취소할게요',
     cancelKeep: '유지하기',
     rejectedReason: '이 요청은 진행할 수 없어요. 사유: {{reason}}',
+    awaitingConfirmation:
+      '서비스를 완료했어요. {{date}}까지 완료를 확인해 주시거나, 부족한 점이 있으면 이의를 제기해 주세요. 응답이 없으면 자동으로 완료 처리돼요.',
+    confirmCompletion: '완료 확인',
+    confirmCompletionTitle: '완료를 확인할까요?',
+    confirmCompletionMessage: '요청이 종료돼요. 이후에도 언제든 문의할 수 있어요.',
+    confirmCompletionYes: '네, 확인해요',
+    confirmCompletionNo: '아직이요',
+    dispute: '이의제기',
+    disputePlaceholder: '빠졌거나 잘못된 점을 알려 주세요…',
+    disputeSubmit: '보내기',
+    disputeCancel: '취소',
+    disputed: '{{date}}에 이의를 제기하셨어요. 확인 후 연락드릴게요.',
   },
 
   notifications: {

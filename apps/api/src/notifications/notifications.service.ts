@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, RequestStatus, UserRole } from '@prisma/client';
 import { Queue } from 'bullmq';
 
-import { userNoticeTitle } from './user-notice-copy';
+import { userNoticeTitle, type UserNoticeKind } from './user-notice-copy';
 
 export const NOTIFICATIONS_QUEUE = 'notifications';
 
@@ -31,6 +31,12 @@ export type AdminPaymentPaidEmailJob = {
   provider: string;
 };
 
+/** 고객 이의제기 → 관리자 메일 (커밋 후 등록). 사유는 잡에 싣지 않고 발송 시 조회 — 완료 잡이 Redis에 남기 때문 */
+export type AdminDisputeEmailJob = {
+  type: 'ADMIN_DISPUTE_EMAIL';
+  requestId: number;
+};
+
 /** 사용자 기기 푸시 — 인앱 알림이 원천이고 제목·본문을 그대로 복사한다 (커밋 후 등록) */
 export type UserPushJob = {
   type: 'USER_PUSH';
@@ -41,7 +47,7 @@ export type UserPushJob = {
 };
 
 export type NotificationJob =
-  AdminEmailJob | AdminPaymentPaidEmailJob | UserPushJob;
+  AdminEmailJob | AdminPaymentPaidEmailJob | AdminDisputeEmailJob | UserPushJob;
 
 @Injectable()
 export class NotificationsService {
@@ -158,15 +164,18 @@ export class NotificationsService {
       status:
         | typeof RequestStatus.PAID
         | typeof RequestStatus.IN_PROGRESS
+        | typeof RequestStatus.AWAITING_CONFIRMATION
         | typeof RequestStatus.COMPLETED;
     },
   ) {
-    const kind =
+    const kind: UserNoticeKind =
       data.status === RequestStatus.PAID
         ? 'PAYMENT_PAID'
         : data.status === RequestStatus.IN_PROGRESS
           ? 'WORK_STARTED'
-          : 'WORK_COMPLETED';
+          : data.status === RequestStatus.AWAITING_CONFIRMATION
+            ? 'COMPLETION_NOTICE'
+            : 'WORK_COMPLETED';
     const notice = {
       title: userNoticeTitle(kind, await this.languageOf(tx, data.ownerId)),
       body: '',
@@ -226,6 +235,32 @@ export class NotificationsService {
       },
     });
     return notice;
+  }
+
+  /** 고객 이의제기 → 모든 관리자에게 인앱 알림, 본문 = 사유 (이의제기 트랜잭션 안에서 호출) */
+  async notifyAdminsDispute(
+    tx: Prisma.TransactionClient,
+    data: { requestId: number; reason: string },
+  ) {
+    const admins = await tx.user.findMany({
+      where: { role: UserRole.ADMIN },
+      select: { id: true },
+    });
+    if (admins.length === 0) {
+      this.logger.error(
+        `이의제기를 알릴 관리자 계정이 없습니다 (request #${data.requestId})`,
+      );
+      return;
+    }
+    await tx.notification.createMany({
+      data: admins.map((a) => ({
+        userId: a.id,
+        type: 'REQUEST_DISPUTED',
+        title: `Customer disputed completion #${data.requestId}`,
+        body: data.reason,
+        requestId: data.requestId,
+      })),
+    });
   }
 
   /**

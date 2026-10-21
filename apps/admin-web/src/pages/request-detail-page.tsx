@@ -435,6 +435,45 @@ export function RequestDetailPage() {
             <div className="error" style={{ marginBottom: 12 }}>{transferError}</div>
           )}
 
+          {request.status === 'AWAITING_CONFIRMATION' && request.confirmationDeadlineAt && (
+            <div
+              style={{
+                margin: '0 0 16px',
+                padding: 12,
+                borderRadius: 10,
+                background: 'var(--surface-alt)',
+                fontSize: 14,
+              }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Awaiting customer confirmation</div>
+              <div className="muted">
+                Completion notice sent {formatDate(request.completionNoticedAt ?? request.updatedAt)}. The customer
+                can confirm or dispute until{' '}
+                <strong style={{ color: 'var(--text)' }}>{formatDate(request.confirmationDeadlineAt)}</strong>; after
+                that the request completes automatically.
+              </div>
+            </div>
+          )}
+
+          {request.status === 'IN_PROGRESS' && request.disputeReason && (
+            <div
+              style={{
+                margin: '0 0 16px',
+                padding: 12,
+                borderRadius: 10,
+                background: 'var(--surface-alt)',
+                borderLeft: '3px solid var(--danger)',
+                fontSize: 14,
+              }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                Customer disputed completion{request.disputedAt ? ` · ${formatDate(request.disputedAt)}` : ''}
+              </div>
+              <div className="muted">{request.disputeReason}</div>
+              <div className="muted" style={{ marginTop: 6 }}>
+                Resolve it with the customer, then notify completion again to start a new 5-business-day window.
+              </div>
+            </div>
+          )}
+
           {nextTransition && (
             <div
               style={{

@@ -40,6 +40,7 @@ const en = {
     quoted: 'Quote ready',
     paid: 'Paid',
     inProgress: 'In progress',
+    awaitingConfirmation: 'Please confirm',
     completed: 'Completed',
     cancelled: 'Cancelled',
     refunded: 'Refunded',
@@ -382,6 +383,18 @@ const en = {
     cancelConfirm: 'Yes, cancel',
     cancelKeep: 'Keep it',
     rejectedReason: 'We could not take this request. Reason: {{reason}}',
+    awaitingConfirmation:
+      'We have completed your service. Please confirm by {{date}}, or raise an issue if something is missing. Without a response, the request completes automatically.',
+    confirmCompletion: 'Confirm completion',
+    confirmCompletionTitle: 'Confirm completion?',
+    confirmCompletionMessage: 'This closes the request. You can still contact us afterwards.',
+    confirmCompletionYes: 'Yes, confirm',
+    confirmCompletionNo: 'Not yet',
+    dispute: 'Raise an issue',
+    disputePlaceholder: 'Tell us what is missing or wrong…',
+    disputeSubmit: 'Send',
+    disputeCancel: 'Cancel',
+    disputed: 'You raised an issue on {{date}}. We are on it and will contact you.',
   },
 
   notifications: {
