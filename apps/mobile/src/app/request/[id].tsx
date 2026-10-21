@@ -250,16 +250,20 @@ export default function RequestDetailScreen() {
             )
           )}
 
-          {request.status === 'AWAITING_CONFIRMATION' && request.confirmationDeadlineAt && (
+          {request.status === 'AWAITING_CONFIRMATION' && (
             <Card style={styles.actions}>
-              <ThemedText type="small" themeColor="textSecondary">
-                {t('requestDetail.awaitingConfirmation', {
-                  date: formatDate(request.confirmationDeadlineAt, locale),
-                })}
-              </ThemedText>
+              {/* 기한은 서버가 항상 함께 저장하지만, 없더라도 확인·이의제기 버튼은 남긴다 */}
+              {request.confirmationDeadlineAt && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {t('requestDetail.awaitingConfirmation', {
+                    date: formatDate(request.confirmationDeadlineAt, locale),
+                  })}
+                </ThemedText>
+              )}
               <Button
                 label={t('requestDetail.confirmCompletion')}
                 size="lg"
+                disabled={submitting}
                 onPress={() => setConfirmingDone(true)}
               />
               {disputing ? (
@@ -270,7 +274,13 @@ export default function RequestDetailScreen() {
                     onChangeText={setDisputeText}
                     multiline
                     maxLength={500}
+                    style={styles.disputeInput}
                   />
+                  {error && (
+                    <ThemedText type="small" style={styles.error}>
+                      {error}
+                    </ThemedText>
+                  )}
                   <Button
                     label={t('requestDetail.disputeSubmit')}
                     variant="outline"
@@ -280,6 +290,7 @@ export default function RequestDetailScreen() {
                   <Button
                     label={t('requestDetail.disputeCancel')}
                     variant="ghost"
+                    disabled={submitting}
                     onPress={() => setDisputing(false)}
                   />
                 </>
@@ -287,6 +298,7 @@ export default function RequestDetailScreen() {
                 <Button
                   label={t('requestDetail.dispute')}
                   variant="outline"
+                  disabled={submitting}
                   onPress={() => setDisputing(true)}
                 />
               )}
@@ -349,6 +361,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: Spacing.sm,
+  },
+  disputeInput: {
+    minHeight: 96,
+    textAlignVertical: 'top',
   },
   error: {
     color: Brand.danger,
