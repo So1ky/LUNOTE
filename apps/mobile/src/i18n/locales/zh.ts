@@ -36,7 +36,7 @@ const zh: Resources = {
     cancelled: '已取消',
     refunded: '已退款',
     paymentReceived: '付款确认中',
-    rejected: '已拒绝',
+    rejected: '已取消',
   },
 
   categories: {

@@ -439,7 +439,7 @@ describe('Admin quotes (e2e)', () => {
         },
       });
       expect(notices).toHaveLength(1);
-      expect(notices[0].title).toBe('Your request was declined');
+      expect(notices[0].title).toBe('Your request was cancelled');
       expect(notices[0].body).toBe(reason);
     });
 

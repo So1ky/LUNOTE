@@ -44,7 +44,7 @@ const en = {
     cancelled: 'Cancelled',
     refunded: 'Refunded',
     paymentReceived: 'Confirming payment',
-    rejected: 'Declined',
+    rejected: 'Cancelled',
   },
 
   categories: {
