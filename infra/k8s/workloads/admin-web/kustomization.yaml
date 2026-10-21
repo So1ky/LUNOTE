@@ -8,4 +8,4 @@ resources:
 images:
   - name: lunote-admin-web
     newName: 695019457880.dkr.ecr.ap-northeast-2.amazonaws.com/lunote/admin-web
-    newTag: "7ac658fdab43" # scripts/admin-web-release.sh가 push한 git SHA — 사람이 PR로 배포
+    newTag: "1371a1f513ec" # scripts/admin-web-release.sh가 push한 git SHA — 사람이 PR로 배포
