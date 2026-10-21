@@ -54,14 +54,15 @@ const TITLES: Record<UserNoticeKind, Record<string, string>> = {
     de: 'Ihre Zahlung wurde erstattet',
     es: 'Tu pago ha sido reembolsado',
   },
-  // 본문에 관리자가 적은 사유가 그대로 들어간다 (유일하게 body를 쓰는 사용자 알림)
+  // 본문에 관리자가 적은 사유가 그대로 들어간다 (유일하게 body를 쓰는 사용자 알림).
+  // 고객 문구는 "거절"이 아니라 "취소" 톤 — 기획 결정 2026-10-21 (내부 상태명 REJECTED는 유지)
   REQUEST_REJECTED: {
-    ko: '요청이 거절됐어요',
-    en: 'Your request was declined',
-    ja: 'ご依頼をお受けできませんでした',
-    zh: '您的请求未被受理',
-    de: 'Ihre Anfrage wurde abgelehnt',
-    es: 'Tu solicitud fue rechazada',
+    ko: '요청이 취소됐어요',
+    en: 'Your request was cancelled',
+    ja: 'ご依頼はキャンセルされました',
+    zh: '您的请求已取消',
+    de: 'Ihre Anfrage wurde storniert',
+    es: 'Tu solicitud fue cancelada',
   },
 };
 

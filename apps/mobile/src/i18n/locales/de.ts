@@ -36,7 +36,7 @@ const de: Resources = {
     cancelled: 'Storniert',
     refunded: 'Erstattet',
     paymentReceived: 'Zahlung wird geprüft',
-    rejected: 'Abgelehnt',
+    rejected: 'Storniert',
   },
 
   categories: {

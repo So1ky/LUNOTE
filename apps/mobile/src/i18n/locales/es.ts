@@ -36,7 +36,7 @@ const es: Resources = {
     cancelled: 'Cancelado',
     refunded: 'Reembolsado',
     paymentReceived: 'Confirmando el pago',
-    rejected: 'Rechazada',
+    rejected: 'Cancelada',
   },
 
   categories: {

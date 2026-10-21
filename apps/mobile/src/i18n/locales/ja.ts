@@ -36,7 +36,7 @@ const ja: Resources = {
     cancelled: 'キャンセル',
     refunded: '返金済み',
     paymentReceived: 'お支払い確認中',
-    rejected: 'お断り',
+    rejected: 'キャンセル',
   },
 
   categories: {

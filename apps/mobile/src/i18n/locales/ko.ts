@@ -36,7 +36,7 @@ const ko: Resources = {
     cancelled: '취소됨',
     refunded: '환불됨',
     paymentReceived: '결제 확인 중',
-    rejected: '거절됨',
+    rejected: '취소됨',
   },
 
   categories: {
