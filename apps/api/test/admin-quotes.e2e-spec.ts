@@ -353,8 +353,8 @@ describe('Admin quotes (e2e)', () => {
     it('PAID가 아닌데 IN_PROGRESS 재요청은 409 (멱등 아님, 전이 거부)', () =>
       patchStatus(adminToken, 'IN_PROGRESS').expect(409));
 
-    it('관리자는 COMPLETED를 직접 만들 수 없다 (400) — 고객 확인·자동 완료만', () =>
-      patchStatus(adminToken, 'COMPLETED').expect(400));
+    it('IN_PROGRESS에서 COMPLETED는 409 — 완료 통지 없이 끝낼 수 없다 (강제 완료는 AWAITING_CONFIRMATION에서만)', () =>
+      patchStatus(adminToken, 'COMPLETED').expect(409));
 
     it('IN_PROGRESS → AWAITING_CONFIRMATION: 완료 통지 — 기한(+5영업일)·알림 COMPLETION_NOTICE', async () => {
       const before = Date.now();
@@ -513,6 +513,34 @@ describe('Admin quotes (e2e)', () => {
       expect(notices).toHaveLength(1);
       // 두 번 돌아도 다시 세지 않는다
       expect(await service.autoCompleteExpired(new Date())).toBe(0);
+
+      // 관리자 강제 완료 — 기한 전 AWAITING_CONFIRMATION을 바로 COMPLETED, 고객 알림·감사 로그
+      const forced = await request(app.getHttpServer())
+        .patch(`/admin/quote-requests/${pendingId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'COMPLETED' })
+        .expect(200);
+      expect((forced.body as { status: string }).status).toBe('COMPLETED');
+      const forcedNotices = await prisma.notification.findMany({
+        where: {
+          userId: pending.userId,
+          requestId: pendingId,
+          type: 'WORK_COMPLETED',
+        },
+      });
+      expect(forcedNotices).toHaveLength(1);
+      const logs = await prisma.adminAuditLog.findMany({
+        where: {
+          targetType: 'QUOTE_REQUEST',
+          targetId: String(pendingId),
+          action: 'REQUEST_STATUS_CHANGED',
+        },
+      });
+      expect(logs).toHaveLength(1);
+      expect(logs[0].detail).toEqual({
+        from: 'AWAITING_CONFIRMATION',
+        to: 'COMPLETED',
+      });
     });
 
     it('없는 문의는 404', () =>

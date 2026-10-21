@@ -38,7 +38,8 @@ const MAX_BY_CURRENCY: Record<string, number> = {
 const REQUIRED_CURRENT: Record<AdminSettableStatus, RequestStatus> = {
   [RequestStatus.PAID]: RequestStatus.PAYMENT_RECEIVED,
   [RequestStatus.IN_PROGRESS]: RequestStatus.PAID,
-  [RequestStatus.AWAITING_CONFIRMATION]: RequestStatus.IN_PROGRESS, // 완료 통지 — COMPLETED는 고객 확인·자동 완료만
+  [RequestStatus.AWAITING_CONFIRMATION]: RequestStatus.IN_PROGRESS, // 완료 통지
+  [RequestStatus.COMPLETED]: RequestStatus.AWAITING_CONFIRMATION, // 관리자 강제 완료 — 고객 확인·자동 완료의 비상 대체
 };
 
 /** 관리자 화면용 — 사용자 요약 정보를 포함해 노출한다 */

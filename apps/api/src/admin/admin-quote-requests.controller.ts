@@ -84,7 +84,7 @@ export class AdminQuoteRequestsController {
   @Patch(':id/status')
   @ApiOperation({
     summary:
-      '[관리자] 상태 전이 — PAYMENT_RECEIVED → PAID(PayPal 결제 확인), PAID → IN_PROGRESS, IN_PROGRESS → COMPLETED',
+      '[관리자] 상태 전이 — PAYMENT_RECEIVED → PAID(PayPal 결제 확인), PAID → IN_PROGRESS, IN_PROGRESS → AWAITING_CONFIRMATION(완료 통지), AWAITING_CONFIRMATION → COMPLETED(강제 완료)',
   })
   @ApiResponse({ status: 404, description: '문의 없음' })
   @ApiResponse({ status: 409, description: '현재 상태에서 허용되지 않는 전이' })

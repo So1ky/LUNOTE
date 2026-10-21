@@ -111,10 +111,27 @@ describe('AdminQuoteRequestsService.updateStatus', () => {
     });
   });
 
-  it('IN_PROGRESS → COMPLETED는 관리자가 만들 수 없다 (409) — 고객 확인·자동 완료만', async () => {
+  it('AWAITING_CONFIRMATION → COMPLETED: 관리자 강제 완료 — 고객 알림 WORK_COMPLETED', async () => {
+    const s = setup({
+      status: RequestStatus.AWAITING_CONFIRMATION,
+      userId: 'u1',
+    });
+    await s.service.updateStatus(7, RequestStatus.COMPLETED, 'admin1');
+    expect(s.tx.quoteRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: 7, status: RequestStatus.AWAITING_CONFIRMATION },
+      data: { status: RequestStatus.COMPLETED },
+    });
+    expect(s.notifications.notifyUserWorkStatus).toHaveBeenCalledWith(s.tx, {
+      requestId: 7,
+      ownerId: 'u1',
+      status: RequestStatus.COMPLETED,
+    });
+  });
+
+  it('IN_PROGRESS → COMPLETED는 불가 (409) — 완료 통지 단계를 건너뛸 수 없다', async () => {
     const s = setup({ status: RequestStatus.IN_PROGRESS, userId: 'u1' });
     await expect(
-      s.service.updateStatus(7, RequestStatus.COMPLETED as never, 'admin1'),
+      s.service.updateStatus(7, RequestStatus.COMPLETED, 'admin1'),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
