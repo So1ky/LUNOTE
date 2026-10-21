@@ -50,6 +50,10 @@ export function RequestDetailPage() {
   const [refundError, setRefundError] = useState<string | null>(null);
   /** 기록 성공 후 재조회 전까지 블록을 숨겨 중복 클릭을 막는다 */
   const [refundDone, setRefundDone] = useState(false);
+  // 강제 완료 — AWAITING_CONFIRMATION에서 고객 확인 없이 COMPLETED (비상용)
+  const [confirmingForce, setConfirmingForce] = useState(false);
+  const [forceBusy, setForceBusy] = useState(false);
+  const [forceError, setForceError] = useState<string | null>(null);
   // 거절 — REVIEWING에서만, 사유는 고객에게 그대로 전달된다
   const [rejectReason, setRejectReason] = useState('');
   const [confirmingReject, setConfirmingReject] = useState(false);
@@ -204,6 +208,27 @@ export function RequestDetailPage() {
     } finally {
       setStatusBusy(false);
       setConfirmingStatus(false);
+    }
+  };
+
+  // 강제 완료 — AWAITING_CONFIRMATION에서만 서버가 허용한다 (updateStatus COMPLETED)
+  const onForceComplete = async () => {
+    setForceBusy(true);
+    setForceError(null);
+    try {
+      const updated = await api<AdminQuoteRequestDetail>(
+        `/admin/quote-requests/${request.id}/status`,
+        { method: 'PATCH', body: { status: 'COMPLETED' } },
+      );
+      setRequest(updated);
+      setStatusMessage('Request completed — customer notified.');
+    } catch (err) {
+      setForceError(
+        err instanceof ApiError ? err.message : 'Something went wrong',
+      );
+    } finally {
+      setForceBusy(false);
+      setConfirmingForce(false);
     }
   };
 
@@ -445,12 +470,40 @@ export function RequestDetailPage() {
                 fontSize: 14,
               }}>
               <div style={{ fontWeight: 600, marginBottom: 6 }}>Awaiting customer confirmation</div>
-              <div className="muted">
+              <div className="muted" style={{ marginBottom: 10 }}>
                 Completion notice sent {formatDate(request.completionNoticedAt ?? request.updatedAt)}. The customer
                 can confirm or dispute until{' '}
                 <strong style={{ color: 'var(--text)' }}>{formatDate(request.confirmationDeadlineAt)}</strong>; after
                 that the request completes automatically.
               </div>
+              {/* 비상용 — 자동 완료가 돌지 않거나 기한 전에 끝내야 할 때만 */}
+              <button
+                type="button"
+                className="ghost"
+                disabled={forceBusy}
+                onClick={() => setConfirmingForce(true)}>
+                {forceBusy ? 'Completing…' : 'Complete now (force)'}
+              </button>
+              {forceError && (
+                <div className="error" style={{ marginTop: 10 }}>{forceError}</div>
+              )}
+              <ConfirmDialog
+                open={confirmingForce}
+                title="Complete this request without customer confirmation?"
+                message={
+                  <>
+                    Request #{request.id} becomes{' '}
+                    <strong style={{ color: 'var(--text)' }}>COMPLETED</strong> right now and{' '}
+                    {customerName(request.user)} is notified. Use this only if the automatic completion did not run or
+                    the request must be closed before the deadline. This cannot be undone.
+                  </>
+                }
+                confirmLabel="Complete now"
+                dismissLabel="Go back"
+                loading={forceBusy}
+                onConfirm={() => void onForceComplete()}
+                onDismiss={() => setConfirmingForce(false)}
+              />
             </div>
           )}
 
