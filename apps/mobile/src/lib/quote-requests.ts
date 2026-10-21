@@ -9,6 +9,7 @@ export type RequestStatus =
   | 'PAYMENT_RECEIVED' // PayPal 결제 검증됨, 관리자 확인 대기
   | 'PAID'
   | 'IN_PROGRESS'
+  | 'AWAITING_CONFIRMATION' // 완료 통지됨 — 고객 확인·이의제기 또는 5영업일 후 자동 완료
   | 'COMPLETED'
   | 'CANCELLED'
   | 'REJECTED' // 관리자 거절 — rejectionReason에 사유
@@ -45,6 +46,10 @@ export type QuoteRequest = {
   paymentMethod: PaymentMethod;
   status: RequestStatus;
   rejectionReason: string | null;
+  completionNoticedAt: string | null;
+  confirmationDeadlineAt: string | null; // 통지 + 5영업일 — 지나면 자동 완료
+  disputeReason: string | null;
+  disputedAt: string | null;
   createdAt: string;
   updatedAt: string;
   quote: Quote | null;
@@ -85,6 +90,23 @@ export function cancelQuoteRequest(token: string, id: number) {
   return api<QuoteRequest>(`/quote-requests/${id}/cancel`, {
     method: 'PATCH',
     token,
+  });
+}
+
+/** 완료 확인 — AWAITING_CONFIRMATION → COMPLETED (약관 제6조) */
+export function confirmCompletion(token: string, id: number) {
+  return api<QuoteRequest>(`/quote-requests/${id}/confirm-completion`, {
+    method: 'PATCH',
+    token,
+  });
+}
+
+/** 완료 이의제기 — AWAITING_CONFIRMATION → IN_PROGRESS, 사유는 관리자에게 전달 */
+export function disputeCompletion(token: string, id: number, reason: string) {
+  return api<QuoteRequest>(`/quote-requests/${id}/dispute`, {
+    method: 'PATCH',
+    token,
+    body: { reason },
   });
 }
 

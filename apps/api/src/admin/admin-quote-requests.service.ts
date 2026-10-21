@@ -8,6 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { PaymentMethod, Prisma, RequestStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  addBusinessDays,
+  CONFIRMATION_BUSINESS_DAYS,
+} from '../quote-requests/business-days';
 import { StorageService } from '../storage/storage.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import type { AdminSettableStatus } from './dto/update-request-status.dto';
@@ -34,7 +38,7 @@ const MAX_BY_CURRENCY: Record<string, number> = {
 const REQUIRED_CURRENT: Record<AdminSettableStatus, RequestStatus> = {
   [RequestStatus.PAID]: RequestStatus.PAYMENT_RECEIVED,
   [RequestStatus.IN_PROGRESS]: RequestStatus.PAID,
-  [RequestStatus.COMPLETED]: RequestStatus.IN_PROGRESS,
+  [RequestStatus.AWAITING_CONFIRMATION]: RequestStatus.IN_PROGRESS, // 완료 통지 — COMPLETED는 고객 확인·자동 완료만
 };
 
 /** 관리자 화면용 — 사용자 요약 정보를 포함해 노출한다 */
@@ -49,6 +53,10 @@ const ADMIN_REQUEST_SELECT = {
   contactMethod: true,
   status: true,
   rejectionReason: true,
+  completionNoticedAt: true,
+  confirmationDeadlineAt: true,
+  disputeReason: true,
+  disputedAt: true,
   createdAt: true,
   updatedAt: true,
   user: {
@@ -308,11 +316,24 @@ export class AdminQuoteRequestsService {
       );
     }
 
+    // 완료 통지면 통지 시각과 확인 기한(+5영업일)을 함께 기록 — 자동 완료 스캔과 앱 표시가 이 값을 쓴다
+    const noticedAt = new Date();
+    const completionFields =
+      status === RequestStatus.AWAITING_CONFIRMATION
+        ? {
+            completionNoticedAt: noticedAt,
+            confirmationDeadlineAt: addBusinessDays(
+              noticedAt,
+              CONFIRMATION_BUSINESS_DAYS,
+            ),
+          }
+        : {};
+
     const notice = await this.prisma.$transaction(async (tx) => {
       // 상태 조건을 where에 다시 걸어 동시 클릭·웹훅(환불)과의 경쟁을 차단
       const { count } = await tx.quoteRequest.updateMany({
         where: { id: requestId, status: from },
-        data: { status },
+        data: { status, ...completionFields },
       });
       if (count === 0) {
         throw new ConflictException('Request status changed concurrently');

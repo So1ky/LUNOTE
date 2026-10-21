@@ -28,8 +28,17 @@ export class MetricsService {
   private readonly webhookFailureCounter: Counter;
   private readonly accountDeletionCounter: Counter;
   private readonly accountCleanupFailureCounter: Counter;
+  private readonly requestAutoCompletedCounter: Counter;
 
   constructor(meter: Meter = metrics.getMeter('lunote-api')) {
+    this.requestAutoCompletedCounter = meter.createCounter(
+      'lunote_request_auto_completed',
+      {
+        description:
+          '완료 확인 기한(5영업일) 무응답으로 자동 완료된 문의 수 — 급증하면 통지가 고객에게 닿지 않는 신호',
+      },
+    );
+    this.requestAutoCompletedCounter.add(0);
     this.paymentMismatchCounter = meter.createCounter(
       'lunote_payment_mismatch',
       {
@@ -67,6 +76,10 @@ export class MetricsService {
 
   paymentMismatch(reason: PaymentMismatchReason): void {
     this.paymentMismatchCounter.add(1, { reason });
+  }
+
+  requestAutoCompleted(count: number): void {
+    if (count > 0) this.requestAutoCompletedCounter.add(count);
   }
 
   webhookFailure(reason: WebhookFailureReason): void {

@@ -20,6 +20,7 @@ const FILTERS: { key: RequestStatus | 'ALL'; label: string }[] = [
   { key: 'PAYMENT_RECEIVED', label: 'Confirming payment' },
   { key: 'PAID', label: 'Paid' },
   { key: 'IN_PROGRESS', label: 'In progress' },
+  { key: 'AWAITING_CONFIRMATION', label: 'Awaiting confirmation' },
   { key: 'COMPLETED', label: 'Completed' },
   { key: 'CANCELLED', label: 'Cancelled' },
   { key: 'REJECTED', label: 'Rejected' },

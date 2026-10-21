@@ -418,12 +418,13 @@ export class PaymentsService {
     await tx.quoteRequest.updateMany({
       where: {
         id: requestId,
-        // PAYMENT_RECEIVED: 관리자 확인 전에 PortOne에서 환불된 PayPal 결제
+        // PAYMENT_RECEIVED: 관리자 확인 전에 PortOne에서 환불된 PayPal 결제. AWAITING_CONFIRMATION: 완료 확인 전 환불
         status: {
           in: [
             RequestStatus.PAYMENT_RECEIVED,
             RequestStatus.PAID,
             RequestStatus.IN_PROGRESS,
+            RequestStatus.AWAITING_CONFIRMATION,
           ],
         },
       },

@@ -32,6 +32,7 @@ const de: Resources = {
     quoted: 'Angebot bereit',
     paid: 'Bezahlt',
     inProgress: 'In Bearbeitung',
+    awaitingConfirmation: 'Bitte bestätigen',
     completed: 'Abgeschlossen',
     cancelled: 'Storniert',
     refunded: 'Erstattet',
@@ -373,6 +374,18 @@ const de: Resources = {
     cancelConfirm: 'Ja, stornieren',
     cancelKeep: 'Behalten',
     rejectedReason: 'Wir konnten diese Anfrage nicht annehmen. Grund: {{reason}}',
+    awaitingConfirmation:
+      'Wir haben Ihren Service abgeschlossen. Bitte bestätigen Sie bis {{date}} oder melden Sie ein Problem. Ohne Antwort wird die Anfrage automatisch abgeschlossen.',
+    confirmCompletion: 'Abschluss bestätigen',
+    confirmCompletionTitle: 'Abschluss bestätigen?',
+    confirmCompletionMessage: 'Die Anfrage wird geschlossen. Sie können uns danach jederzeit kontaktieren.',
+    confirmCompletionYes: 'Ja, bestätigen',
+    confirmCompletionNo: 'Noch nicht',
+    dispute: 'Problem melden',
+    disputePlaceholder: 'Was fehlt oder ist falsch?…',
+    disputeSubmit: 'Senden',
+    disputeCancel: 'Abbrechen',
+    disputed: 'Sie haben am {{date}} ein Problem gemeldet. Wir kümmern uns darum und melden uns.',
   },
 
   notifications: {

@@ -11,6 +11,7 @@ export type BadgeTone =
   | 'paymentReceived'
   | 'paid'
   | 'inProgress'
+  | 'awaitingConfirmation'
   | 'completed'
   | 'cancelled'
   | 'rejected'
@@ -23,6 +24,7 @@ const TONE_COLOR: Record<BadgeTone, string> = {
   paymentReceived: Brand.warning, // PayPal 결제 검증됨, 관리자 확인 대기
   paid: Brand.success,
   inProgress: Brand.info,
+  awaitingConfirmation: Brand.purple, // 완료 통지됨 — 고객의 확인·이의제기 대기
   completed: Brand.textMuted,
   cancelled: Brand.danger,
   rejected: Brand.danger,
@@ -36,6 +38,7 @@ export const STATUS_TONE: Record<string, BadgeTone> = {
   PAYMENT_RECEIVED: 'paymentReceived',
   PAID: 'paid',
   IN_PROGRESS: 'inProgress',
+  AWAITING_CONFIRMATION: 'awaitingConfirmation',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
   REJECTED: 'rejected',

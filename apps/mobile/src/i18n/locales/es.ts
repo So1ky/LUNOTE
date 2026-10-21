@@ -32,6 +32,7 @@ const es: Resources = {
     quoted: 'Presupuesto listo',
     paid: 'Pagado',
     inProgress: 'En curso',
+    awaitingConfirmation: 'Por confirmar',
     completed: 'Completado',
     cancelled: 'Cancelado',
     refunded: 'Reembolsado',
@@ -373,6 +374,18 @@ const es: Resources = {
     cancelConfirm: 'Sí, cancelar',
     cancelKeep: 'Conservar',
     rejectedReason: 'No pudimos aceptar esta solicitud. Motivo: {{reason}}',
+    awaitingConfirmation:
+      'Hemos completado tu servicio. Confirma antes del {{date}} o plantea un problema si falta algo. Sin respuesta, la solicitud se completa automáticamente.',
+    confirmCompletion: 'Confirmar finalización',
+    confirmCompletionTitle: '¿Confirmar finalización?',
+    confirmCompletionMessage: 'La solicitud se cerrará. Después podrás contactarnos cuando quieras.',
+    confirmCompletionYes: 'Sí, confirmar',
+    confirmCompletionNo: 'Todavía no',
+    dispute: 'Plantear un problema',
+    disputePlaceholder: 'Cuéntanos qué falta o está mal…',
+    disputeSubmit: 'Enviar',
+    disputeCancel: 'Cancelar',
+    disputed: 'Planteaste un problema el {{date}}. Nos encargamos y te contactaremos.',
   },
 
   notifications: {

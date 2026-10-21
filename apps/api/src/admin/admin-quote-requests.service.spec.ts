@@ -70,13 +70,52 @@ describe('AdminQuoteRequestsService.updateStatus', () => {
     });
   });
 
-  it('IN_PROGRESS → COMPLETED 허용', async () => {
+  it('IN_PROGRESS → AWAITING_CONFIRMATION: 완료 통지 — 통지 시각·기한(+5영업일) 저장 + 알림', async () => {
     const s = setup({ status: RequestStatus.IN_PROGRESS, userId: 'u1' });
-    await s.service.updateStatus(7, RequestStatus.COMPLETED, 'admin1');
-    expect(s.tx.quoteRequest.updateMany).toHaveBeenCalledWith({
-      where: { id: 7, status: RequestStatus.IN_PROGRESS },
-      data: { status: RequestStatus.COMPLETED },
+    await s.service.updateStatus(
+      7,
+      RequestStatus.AWAITING_CONFIRMATION,
+      'admin1',
+    );
+    type UpdateArgs = {
+      where: Record<string, unknown>;
+      data: {
+        status: RequestStatus;
+        completionNoticedAt?: Date;
+        confirmationDeadlineAt?: Date;
+      };
+    };
+    const updateMany = s.tx.quoteRequest.updateMany as jest.Mock<
+      Promise<{ count: number }>,
+      [UpdateArgs]
+    >;
+    expect(updateMany).toHaveBeenCalledTimes(1);
+    const [{ where, data }] = updateMany.mock.calls[0];
+    expect(where).toEqual({ id: 7, status: RequestStatus.IN_PROGRESS });
+    expect(data.status).toBe(RequestStatus.AWAITING_CONFIRMATION);
+    expect(data.completionNoticedAt).toBeInstanceOf(Date);
+    expect(data.confirmationDeadlineAt).toBeInstanceOf(Date);
+    if (!data.completionNoticedAt || !data.confirmationDeadlineAt) {
+      throw new Error('completion fields missing');
+    }
+    const diffDays =
+      (data.confirmationDeadlineAt.getTime() -
+        data.completionNoticedAt.getTime()) /
+      86_400_000;
+    expect(diffDays).toBeGreaterThanOrEqual(5);
+    expect(diffDays).toBeLessThanOrEqual(7); // 주말이 끼면 최대 7달력일
+    expect(s.notifications.notifyUserWorkStatus).toHaveBeenCalledWith(s.tx, {
+      requestId: 7,
+      ownerId: 'u1',
+      status: RequestStatus.AWAITING_CONFIRMATION,
     });
+  });
+
+  it('IN_PROGRESS → COMPLETED는 관리자가 만들 수 없다 (409) — 고객 확인·자동 완료만', async () => {
+    const s = setup({ status: RequestStatus.IN_PROGRESS, userId: 'u1' });
+    await expect(
+      s.service.updateStatus(7, RequestStatus.COMPLETED as never, 'admin1'),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('PAYMENT_RECEIVED → PAID 허용 (PayPal 결제의 관리자 확인) + 사용자 알림', async () => {
@@ -110,10 +149,10 @@ describe('AdminQuoteRequestsService.updateStatus', () => {
     expect(s.notifications.enqueueUserPush).not.toHaveBeenCalled();
   });
 
-  it('PAID에서 바로 COMPLETED는 불가(409)', async () => {
+  it('PAID에서 바로 AWAITING_CONFIRMATION은 불가(409)', async () => {
     const s = setup({ status: RequestStatus.PAID, userId: 'u1' });
     await expect(
-      s.service.updateStatus(7, RequestStatus.COMPLETED, 'admin1'),
+      s.service.updateStatus(7, RequestStatus.AWAITING_CONFIRMATION, 'admin1'),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 

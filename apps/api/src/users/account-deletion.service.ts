@@ -29,6 +29,7 @@ const BLOCKING: RequestStatus[] = [
   RequestStatus.PAYMENT_RECEIVED,
   RequestStatus.PAID,
   RequestStatus.IN_PROGRESS,
+  RequestStatus.AWAITING_CONFIRMATION, // 완료 확인 대기 — 고객이 확인·이의제기할 창이 열려 있다
 ];
 const CANCELLABLE: RequestStatus[] = [
   RequestStatus.REVIEWING,

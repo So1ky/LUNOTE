@@ -20,7 +20,7 @@ import {
 } from '@/lib/quote-requests';
 
 /** 결제 탭에 보여줄 상태: 견적 도착(결제 대기) + 결제 이후 단계들 */
-const PAYMENT_STATUSES = new Set(['QUOTED', 'PAYMENT_RECEIVED', 'PAID', 'IN_PROGRESS', 'COMPLETED', 'REFUNDED']);
+const PAYMENT_STATUSES = new Set(['QUOTED', 'PAYMENT_RECEIVED', 'PAID', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED', 'REFUNDED']);
 
 export default function PaymentScreen() {
   const router = useRouter();

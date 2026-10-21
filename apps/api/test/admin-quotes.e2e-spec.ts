@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
+import { QuoteRequestsService } from './../src/quote-requests/quote-requests.service';
 
 describe('Admin quotes (e2e)', () => {
   let app: INestApplication<App>;
@@ -352,8 +353,100 @@ describe('Admin quotes (e2e)', () => {
     it('PAID가 아닌데 IN_PROGRESS 재요청은 409 (멱등 아님, 전이 거부)', () =>
       patchStatus(adminToken, 'IN_PROGRESS').expect(409));
 
-    it('IN_PROGRESS → COMPLETED: 사용자 알림 WORK_COMPLETED', async () => {
-      const res = await patchStatus(adminToken, 'COMPLETED').expect(200);
+    it('관리자는 COMPLETED를 직접 만들 수 없다 (400) — 고객 확인·자동 완료만', () =>
+      patchStatus(adminToken, 'COMPLETED').expect(400));
+
+    it('IN_PROGRESS → AWAITING_CONFIRMATION: 완료 통지 — 기한(+5영업일)·알림 COMPLETION_NOTICE', async () => {
+      const before = Date.now();
+      const res = await patchStatus(adminToken, 'AWAITING_CONFIRMATION').expect(
+        200,
+      );
+      const body = res.body as {
+        status: string;
+        completionNoticedAt: string;
+        confirmationDeadlineAt: string;
+      };
+      expect(body.status).toBe('AWAITING_CONFIRMATION');
+      const noticed = new Date(body.completionNoticedAt).getTime();
+      const deadline = new Date(body.confirmationDeadlineAt).getTime();
+      expect(noticed).toBeGreaterThanOrEqual(before - 1000);
+      const diffDays = (deadline - noticed) / 86_400_000;
+      expect(diffDays).toBeGreaterThanOrEqual(5);
+      expect(diffDays).toBeLessThanOrEqual(7);
+
+      const owner = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: requestId },
+        select: { userId: true },
+      });
+      const notices = await prisma.notification.findMany({
+        where: { userId: owner.userId, requestId, type: 'COMPLETION_NOTICE' },
+      });
+      expect(notices).toHaveLength(1);
+      expect(notices[0].title).toBe(
+        'Your service is complete — please confirm',
+      );
+    });
+
+    it('AWAITING_CONFIRMATION에서 사용자 취소는 409', () =>
+      request(app.getHttpServer())
+        .patch(`/quote-requests/${requestId}/cancel`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(409));
+
+    it('이의제기 — 남의 문의는 404, 빈 사유는 400', async () => {
+      const otherToken = await signup(`adm-other-${stamp}@test.lunote.app`);
+      await request(app.getHttpServer())
+        .patch(`/quote-requests/${requestId}/dispute`)
+        .set('Authorization', `Bearer ${otherToken}`)
+        .send({ reason: 'Not done' })
+        .expect(404);
+      await request(app.getHttpServer())
+        .patch(`/quote-requests/${requestId}/dispute`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ reason: '  ' })
+        .expect(400);
+    });
+
+    it('이의제기 → IN_PROGRESS 복귀 + 사유 저장 + 통지 필드 초기화 + 관리자 알림', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/quote-requests/${requestId}/dispute`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ reason: 'The translated contract is missing page 3.' })
+        .expect(200);
+      const body = res.body as {
+        status: string;
+        disputeReason: string;
+        confirmationDeadlineAt: string | null;
+      };
+      expect(body.status).toBe('IN_PROGRESS');
+      expect(body.disputeReason).toBe(
+        'The translated contract is missing page 3.',
+      );
+      expect(body.confirmationDeadlineAt).toBeNull();
+
+      const admin = await prisma.user.findUniqueOrThrow({
+        where: { email: adminEmail },
+      });
+      const notices = await prisma.notification.findMany({
+        where: { userId: admin.id, requestId, type: 'REQUEST_DISPUTED' },
+      });
+      expect(notices).toHaveLength(1);
+      expect(notices[0].body).toContain('missing page 3');
+    });
+
+    it('이의제기 후 재이의는 409 (AWAITING_CONFIRMATION 아님)', () =>
+      request(app.getHttpServer())
+        .patch(`/quote-requests/${requestId}/dispute`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ reason: 'again' })
+        .expect(409));
+
+    it('관리자가 다시 완료 통지 → 새 기한, 고객이 확인 → COMPLETED (WORK_COMPLETED 알림 없음)', async () => {
+      await patchStatus(adminToken, 'AWAITING_CONFIRMATION').expect(200);
+      const res = await request(app.getHttpServer())
+        .patch(`/quote-requests/${requestId}/confirm-completion`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(200);
       expect((res.body as { status: string }).status).toBe('COMPLETED');
       const owner = await prisma.quoteRequest.findUniqueOrThrow({
         where: { id: requestId },
@@ -362,12 +455,64 @@ describe('Admin quotes (e2e)', () => {
       const notices = await prisma.notification.findMany({
         where: { userId: owner.userId, requestId, type: 'WORK_COMPLETED' },
       });
-      expect(notices).toHaveLength(1);
+      expect(notices).toHaveLength(0);
     });
 
-    it('COMPLETED 이후 어떤 전이도 409', async () => {
+    it('COMPLETED 이후 어떤 전이도 409 (확인 재요청 포함)', async () => {
       await patchStatus(adminToken, 'IN_PROGRESS').expect(409);
-      await patchStatus(adminToken, 'COMPLETED').expect(409);
+      await patchStatus(adminToken, 'AWAITING_CONFIRMATION').expect(409);
+      await request(app.getHttpServer())
+        .patch(`/quote-requests/${requestId}/confirm-completion`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(409);
+    });
+
+    it('자동 완료 — 기한이 지난 AWAITING_CONFIRMATION만 COMPLETED + WORK_COMPLETED 알림', async () => {
+      const mk = async (deadline: Date) => {
+        const created = await request(app.getHttpServer())
+          .post('/quote-requests')
+          .set('Authorization', `Bearer ${userToken}`)
+          .send({
+            category: 'BANK',
+            description: 'Open a bank account — auto-complete fixture.',
+            contactMethod: 'email: user@test.com',
+          })
+          .expect(201);
+        const id = (created.body as { id: number }).id;
+        await prisma.quoteRequest.update({
+          where: { id },
+          data: {
+            status: 'AWAITING_CONFIRMATION',
+            completionNoticedAt: new Date(deadline.getTime() - 7 * 86_400_000),
+            confirmationDeadlineAt: deadline,
+          },
+        });
+        return id;
+      };
+      const expiredId = await mk(new Date(Date.now() - 60_000));
+      const pendingId = await mk(new Date(Date.now() + 3 * 86_400_000));
+
+      const service = app.get(QuoteRequestsService);
+      expect(await service.autoCompleteExpired(new Date())).toBe(1);
+
+      const expired = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: expiredId },
+      });
+      expect(expired.status).toBe('COMPLETED');
+      const pending = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: pendingId },
+      });
+      expect(pending.status).toBe('AWAITING_CONFIRMATION');
+      const notices = await prisma.notification.findMany({
+        where: {
+          userId: expired.userId,
+          requestId: expiredId,
+          type: 'WORK_COMPLETED',
+        },
+      });
+      expect(notices).toHaveLength(1);
+      // 두 번 돌아도 다시 세지 않는다
+      expect(await service.autoCompleteExpired(new Date())).toBe(0);
     });
 
     it('없는 문의는 404', () =>

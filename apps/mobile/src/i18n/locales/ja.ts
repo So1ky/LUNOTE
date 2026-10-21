@@ -32,6 +32,7 @@ const ja: Resources = {
     quoted: '見積もり完了',
     paid: '支払い済み',
     inProgress: '対応中',
+    awaitingConfirmation: '確認待ち',
     completed: '完了',
     cancelled: 'キャンセル',
     refunded: '返金済み',
@@ -373,6 +374,18 @@ const ja: Resources = {
     cancelConfirm: 'はい、キャンセルします',
     cancelKeep: 'そのままにする',
     rejectedReason: 'このご依頼はお受けできませんでした。理由: {{reason}}',
+    awaitingConfirmation:
+      'サービスが完了しました。{{date}}までに完了をご確認いただくか、不足があれば申し立ててください。ご返答がない場合は自動的に完了となります。',
+    confirmCompletion: '完了を確認',
+    confirmCompletionTitle: '完了を確認しますか？',
+    confirmCompletionMessage: 'ご依頼が終了します。その後もいつでもお問い合わせいただけます。',
+    confirmCompletionYes: 'はい、確認します',
+    confirmCompletionNo: 'まだです',
+    dispute: '申し立てる',
+    disputePlaceholder: '不足や誤りをお知らせください…',
+    disputeSubmit: '送信',
+    disputeCancel: 'キャンセル',
+    disputed: '{{date}}に申し立てを受け付けました。確認のうえご連絡します。',
   },
 
   notifications: {

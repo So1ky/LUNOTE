@@ -19,6 +19,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { EmailVerifiedGuard } from '../auth/email-verified.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
+import { DisputeRequestDto } from './dto/dispute-request.dto';
 import { QuoteRequestsService } from './quote-requests.service';
 
 @ApiTags('quote-requests')
@@ -58,5 +59,32 @@ export class QuoteRequestsController {
   @ApiResponse({ status: 409, description: '취소 불가능한 상태' })
   cancel(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
     return this.service.cancel(user.id, id);
+  }
+
+  @Patch(':id/confirm-completion')
+  @ApiOperation({
+    summary:
+      '서비스 완료 확인 — AWAITING_CONFIRMATION → COMPLETED (약관 제6조)',
+  })
+  @ApiResponse({ status: 409, description: '완료 통지 상태가 아님' })
+  confirmCompletion(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.service.confirmCompletion(user.id, id);
+  }
+
+  @Patch(':id/dispute')
+  @ApiOperation({
+    summary:
+      '완료 이의제기 — AWAITING_CONFIRMATION → IN_PROGRESS, 사유는 관리자에게 전달',
+  })
+  @ApiResponse({ status: 409, description: '완료 통지 상태가 아님' })
+  dispute(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DisputeRequestDto,
+  ) {
+    return this.service.dispute(user.id, id, dto.reason);
   }
 }
