@@ -10,13 +10,9 @@ const config: ExpoConfig = {
   version: '1.0.0',
   // EAS Update(OTA) — JS·에셋만 바뀐 수정은 스토어 심사 없이 배포한다 (2026-10-20).
   // runtimeVersion은 app version과 묶는다: 네이티브 모듈·설정이 바뀌면 version을 올려 새 빌드와 번들을 분리한다.
-  // 코드 서명: certs/certificate.pem(공개, 커밋)으로 검증되는 번들만 적용한다. 개인키는 keys/(git 제외) —
-  // 원본은 Secrets Manager lunote/shared/eas-update. 배포 시 `eas update --private-key-path keys/private-key.pem`.
-  updates: {
-    url: 'https://u.expo.dev/9310e104-679f-484f-8459-3613fc9cd271',
-    codeSigningCertificate: './certs/certificate.pem',
-    codeSigningMetadata: { keyid: 'main', alg: 'rsa-v1_5-sha256' },
-  },
+  // 코드 서명은 두지 않는다 — EAS Update 코드 서명은 유료 Production 플랜 전용(2026-10-21 확인, 무료 플랜 유지 결정).
+  // 번들 무결성은 Expo HTTPS 전송 + 계정 2FA에 의존한다. 유료 전환 시 codeSigningCertificate/Metadata 추가 후 재빌드.
+  updates: { url: 'https://u.expo.dev/9310e104-679f-484f-8459-3613fc9cd271' },
   runtimeVersion: { policy: 'appVersion' },
   orientation: 'portrait',
   icon: './assets/images/icon.png',

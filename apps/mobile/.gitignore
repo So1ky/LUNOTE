@@ -28,9 +28,9 @@ yarn-error.*
 
 # macOS
 .DS_Store
-# EAS Update 코드 서명: 공개 인증서 certs/certificate.pem은 커밋(빌드에 내장), 개인키는 keys/ — Secrets Manager lunote/shared/eas-update.
-# `*.pem` 전체 제외 + 부정 규칙은 EAS CLI 업로드가 인식하지 못해 인증서가 빠진다(2026-10-20 Prebuild 실패) — 폴더 단위로만 제외한다.
+*.pem
 keys/
+certs/
 
 # local env files
 .env*.local
