@@ -7,7 +7,7 @@ const googleServicesFile = process.env.GOOGLE_SERVICES_JSON;
 const config: ExpoConfig = {
   name: 'LUNOTE',
   slug: 'lunote',
-  version: '1.0.0',
+  version: '1.0.1',
   // EAS Update(OTA) — JS·에셋만 바뀐 수정은 스토어 심사 없이 배포한다 (2026-10-20).
   // runtimeVersion은 app version과 묶는다: 네이티브 모듈·설정이 바뀌면 version을 올려 새 빌드와 번들을 분리한다.
   // 코드 서명은 두지 않는다 — EAS Update 코드 서명은 유료 Production 플랜 전용(2026-10-21 확인, 무료 플랜 유지 결정).
@@ -52,6 +52,17 @@ const config: ExpoConfig = {
       },
     ],
     'expo-secure-store',
+    [
+      // 사진은 문의 첨부·프로필 사진에만 쓴다. 카메라·마이크는 쓰지 않으므로 권한 자체를 넣지 않는다
+      // (App Store 5.1.1 — 목적 문구는 구체적으로, 미사용 권한은 제외).
+      'expo-image-picker',
+      {
+        photosPermission:
+          'LUNOTE uses your photo library so you can attach photos to a request and set a profile picture.',
+        cameraPermission: false,
+        microphonePermission: false,
+      },
+    ],
     '@portone/react-native-sdk',
     'expo-apple-authentication',
     [

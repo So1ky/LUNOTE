@@ -11,6 +11,7 @@ const ICONS = {
   bellBadge: { sf: 'bell.badge', ion: 'notifications' },
   camera: { sf: 'camera.fill', ion: 'camera' },
   arrowRight: { sf: 'arrow.right', ion: 'arrow-forward' },
+  externalLink: { sf: 'arrow.up.right', ion: 'open-outline' },
   // 문의 카테고리 (CATEGORY_META가 참조)
   housing: { sf: 'house', ion: 'home-outline' },
   visa: { sf: 'person.text.rectangle', ion: 'id-card-outline' },

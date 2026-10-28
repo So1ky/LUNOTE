@@ -534,6 +534,7 @@ const en = {
     faq4q: 'What languages do you support?',
     faq4a: 'The app is available in six languages, and our concierge team can assist you in English and Korean.',
     contactLabel: 'Contact',
+    legalLabel: 'Legal',
     contactNote:
       'Can’t find your answer? Email us and we’ll get back to you within one business day.',
     emailSupport: 'Email support',

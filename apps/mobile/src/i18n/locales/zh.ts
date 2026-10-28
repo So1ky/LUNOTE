@@ -521,6 +521,7 @@ const zh: Resources = {
     faq4q: '你们支持哪些语言？',
     faq4a: '本应用提供六种语言，我们的礼宾团队可用英语和韩语为您提供协助。',
     contactLabel: '联系我们',
+    legalLabel: '法律信息',
     contactNote:
       '没找到答案？给我们发邮件，我们将在一个工作日内回复您。',
     emailSupport: '邮件客服',
