@@ -159,7 +159,10 @@ graph TB
     웹훅·confirm이 동시에 와도 전이는 한 번만 일어난다.
   - 같은 견적에 PAID 결제가 2건 생기는 것은 DB 부분 유니크 인덱스(`payments_one_paid_per_quote`)가 막는다.
   - 취소/환불은 PortOne 콘솔에서 실행하고 `Transaction.Cancelled` 웹훅으로 REFUNDED를 반영한다
-    (관리자 환불 API는 필요가 입증될 때 추가). PAID뿐 아니라 PENDING 결제(금액·통화 불일치,
+    (관리자 환불 API는 필요가 입증될 때 추가). **PayPal 판매자 사이트에서 직접 환불하면 안 된다** —
+    PortOne이 PG 측 취소를 동기화하지 않아 웹훅이 오지 않고 우리 DB는 PAID로 남는다
+    (2026-10-28 실측, PortOne 문서도 "PG사 직접 취소 시 상태 불일치" 경고). 그렇게 어긋난 건은
+    바스천 + psql로 `markRefunded`와 같은 전이를 수동 적용한다. PAID뿐 아니라 PENDING 결제(금액·통화 불일치,
     PAID 웹훅 유실)도 같은 경로로 REFUNDED가 된다 — 불일치 기록(`failReason='MISMATCH: …'`)은
     감사용으로 남기고, "미해결 불일치" = PENDING + MISMATCH.
   - 결제 의도 재사용은 사유 없는 PENDING(`failReason` null)만 — PG에 이미 결제된 불일치 결제의
