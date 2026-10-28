@@ -28,7 +28,7 @@ export function RequestRow({ request, onPress }: RequestRowProps) {
           {t(`categories.${request.category}`)}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          #{request.id} · {formatDate(request.createdAt, locale)}
+          {formatDate(request.createdAt, locale)}
         </ThemedText>
       </View>
       <Badge tone={STATUS_TONE[request.status] ?? 'completed'} />
