@@ -525,6 +525,7 @@ const es: Resources = {
     faq4q: '¿En qué idiomas ofrecen soporte?',
     faq4a: 'La app está disponible en seis idiomas y nuestro equipo de conserjería puede atenderte en inglés y coreano.',
     contactLabel: 'Contacto',
+    legalLabel: 'Legal',
     contactNote:
       '¿No encuentras tu respuesta? Escríbenos y te responderemos en un día laborable.',
     emailSupport: 'Escribir a soporte',

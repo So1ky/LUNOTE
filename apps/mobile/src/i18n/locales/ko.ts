@@ -523,6 +523,7 @@ const ko: Resources = {
     faq4q: '어떤 언어를 지원하나요?',
     faq4a: '앱은 6개 언어로 제공되며, 컨시어지 팀은 영어와 한국어로 도와드릴 수 있어요.',
     contactLabel: '문의',
+    legalLabel: '약관 및 정책',
     contactNote:
       '원하는 답을 찾지 못하셨나요? 이메일을 보내주시면 영업일 기준 1일 이내에 답변드려요.',
     emailSupport: '이메일 문의',

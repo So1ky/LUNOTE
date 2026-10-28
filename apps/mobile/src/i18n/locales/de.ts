@@ -525,6 +525,7 @@ const de: Resources = {
     faq4q: 'Welche Sprachen unterstützen Sie?',
     faq4a: 'Die App ist in sechs Sprachen verfügbar, und unser Concierge-Team unterstützt Sie auf Englisch und Koreanisch.',
     contactLabel: 'Kontakt',
+    legalLabel: 'Rechtliches',
     contactNote:
       'Keine Antwort gefunden? Schreiben Sie uns eine E-Mail und wir melden uns innerhalb eines Werktags.',
     emailSupport: 'Support kontaktieren',

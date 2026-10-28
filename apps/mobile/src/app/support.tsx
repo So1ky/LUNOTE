@@ -3,14 +3,17 @@ import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppIcon } from '@/components/ui/app-icon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
+import { type LegalDoc, openLegal } from '@/lib/legal';
 
 const SUPPORT_EMAIL = 'contact@lunoteapp.com';
+const LEGAL_DOCS: LegalDoc[] = ['terms', 'privacy', 'refund'];
 
 export default function SupportScreen() {
   const { t } = useTranslation();
@@ -82,6 +85,27 @@ export default function SupportScreen() {
         </Card>
       </View>
 
+      {/* 약관·처리방침·환불 규정 — 가입 화면 외에도 앱 안에서 항상 접근 가능해야 한다 (App Store 5.1.1) */}
+      <View style={styles.section}>
+        <ThemedText type="caption" themeColor="textSecondary">
+          {t('support.legalLabel')}
+        </ThemedText>
+        <Card style={styles.faqCard}>
+          {LEGAL_DOCS.map((doc, i) => (
+            <View key={doc}>
+              {i > 0 && <View style={styles.divider} />}
+              <Pressable
+                accessibilityRole="link"
+                style={({ pressed }) => [styles.legalRow, pressed && styles.pressed]}
+                onPress={() => openLegal(doc)}>
+                <ThemedText type="body">{t(`legal.${doc}`)}</ThemedText>
+                <AppIcon name="externalLink" size={16} color={Brand.textSecondary} />
+              </Pressable>
+            </View>
+          ))}
+        </Card>
+      </View>
+
       <ThemedText type="caption" themeColor="textSecondary" style={styles.version}>
         {t('support.version', { version })}
       </ThemedText>
@@ -119,6 +143,12 @@ const styles = StyleSheet.create({
   },
   contactCard: {
     gap: Spacing.md,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
   },
   email: {
     textAlign: 'center',
