@@ -115,7 +115,6 @@ export default function ForgotPasswordScreen() {
         <View style={styles.form}>
           <TextField
             label={t('forgotPassword.email')}
-            placeholder="you@example.com"
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"

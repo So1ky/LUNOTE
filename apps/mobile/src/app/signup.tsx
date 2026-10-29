@@ -83,7 +83,6 @@ export default function SignupScreen() {
         </View>
         <TextField
           label={t('signup.email')}
-          placeholder="you@example.com"
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"

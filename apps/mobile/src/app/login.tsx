@@ -46,7 +46,6 @@ export default function LoginScreen() {
       <View style={styles.form}>
         <TextField
           label={t('login.emailLabel')}
-          placeholder="you@example.com"
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
