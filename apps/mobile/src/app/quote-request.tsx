@@ -39,13 +39,12 @@ type ContactChannel = 'email' | 'phone' | 'whatsapp';
 const CONTACT_CHANNELS: {
   key: ContactChannel;
   icon: AppIconName;
-  placeholder: string;
+  placeholder?: string; // 전화·WhatsApp만 번호 형식 힌트. 이메일은 라벨로 충분
   keyboardType: 'email-address' | 'phone-pad';
 }[] = [
   {
     key: 'email',
     icon: 'email',
-    placeholder: 'you@example.com',
     keyboardType: 'email-address',
   },
   {
