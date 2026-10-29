@@ -19,7 +19,6 @@ const config: ExpoConfig = {
   scheme: 'lunote',
   userInterfaceStyle: 'dark',
   ios: {
-    icon: './assets/expo.icon',
     bundleIdentifier: 'com.lunoteapp',
     appleTeamId: 'R8529642F3',
     usesAppleSignIn: true,
@@ -30,7 +29,7 @@ const config: ExpoConfig = {
     package: 'com.lunoteapp',
     ...(googleServicesFile ? { googleServicesFile } : {}),
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#6847E0',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
