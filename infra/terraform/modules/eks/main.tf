@@ -8,6 +8,11 @@ module "eks" {
   vpc_id     = var.vpc_id
   subnet_ids = var.subnet_ids
 
+  # 컨트롤 플레인 로그는 authenticator만. 모듈 기본값(audit·api·authenticator)은 하루 1.9GB,
+  # 월 $40+(vended log $0.76/GB)로 10월 청구서의 최대 단일 항목이었다 (2026-10-29).
+  # 감사가 필요해지면 "audit"를 다시 넣는다 — 클러스터 재생성 없이 in-place 변경.
+  enabled_log_types = ["authenticator"]
+
   # 1인 운영·고정 IP 없음 — 퍼블릭 엔드포인트 유지(IAM 인증), 노드는 프라이빗 경로 사용
   endpoint_public_access  = true
   endpoint_private_access = true
