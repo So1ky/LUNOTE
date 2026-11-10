@@ -468,8 +468,7 @@ const de: Resources = {
     wrongPassword: 'Das Passwort ist falsch.',
     noPassword: 'Dieses Konto kann nicht in der App gelöscht werden. Bitte kontaktieren Sie den Support.',
     activeOrders:
-      'Sie haben einen bezahlten Service in Bearbeitung. Sie können Ihr Konto löschen, sobald er abgeschlossen oder erstattet ist.',
-    contactSupport: 'Support kontaktieren',
+      'Sie haben einen bezahlten Service in Bearbeitung. Sobald er abgeschlossen oder erstattet ist, können Sie Ihr Konto direkt hier in der App löschen – ohne uns zu kontaktieren.',
     doneTitle: 'Ihr Konto wurde gelöscht',
     doneSubtitle: 'Danke, dass Sie LUNOTE genutzt haben.',
     done: 'OK',

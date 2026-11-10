@@ -468,8 +468,7 @@ const es: Resources = {
     wrongPassword: 'La contraseña no es correcta.',
     noPassword: 'Esta cuenta no se puede eliminar desde la app. Contacta con soporte.',
     activeOrders:
-      'Tienes un servicio pagado en curso. Podrás eliminar tu cuenta cuando se complete o se reembolse.',
-    contactSupport: 'Contactar con soporte',
+      'Tienes un servicio pagado en curso. Cuando se complete o se reembolse, podrás eliminar tu cuenta directamente aquí en la app, sin necesidad de contactarnos.',
     doneTitle: 'Tu cuenta ha sido eliminada',
     doneSubtitle: 'Gracias por usar LUNOTE.',
     done: 'Aceptar',

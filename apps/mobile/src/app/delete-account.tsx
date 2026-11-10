@@ -132,17 +132,11 @@ export default function DeleteAccountScreen() {
             {error}
           </ThemedText>
         )}
+        {/* 5.1.1(v): 고객센터 유도 버튼을 두지 않는다 — 완료 후 이 화면에서 직접 삭제 가능함을 안내만 한다 */}
         {blocked && (
-          <View style={styles.blocked}>
-            <ThemedText type="small" style={styles.error}>
-              {t('deleteAccount.activeOrders')}
-            </ThemedText>
-            <Button
-              label={t('deleteAccount.contactSupport')}
-              variant="outline"
-              onPress={() => router.push('/support')}
-            />
-          </View>
+          <ThemedText type="small" style={styles.error}>
+            {t('deleteAccount.activeOrders')}
+          </ThemedText>
         )}
 
         <Button
@@ -182,9 +176,6 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     gap: Spacing.xs,
-  },
-  blocked: {
-    gap: Spacing.sm,
   },
   hero: {
     alignItems: 'center',

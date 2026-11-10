@@ -477,8 +477,7 @@ const en = {
     wrongPassword: 'Your password is incorrect.',
     noPassword: 'This account can’t be deleted in the app. Please contact support.',
     activeOrders:
-      'You have a paid service in progress. You can delete your account once it’s completed or refunded.',
-    contactSupport: 'Contact support',
+      'You have a paid service in progress. Once it’s completed or refunded, come back here to delete your account directly in the app — no need to contact us.',
     doneTitle: 'Your account has been deleted',
     doneSubtitle: 'Thank you for using LUNOTE.',
     done: 'OK',

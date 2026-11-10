@@ -466,8 +466,7 @@ const ko: Resources = {
     wrongPassword: '비밀번호가 올바르지 않아요.',
     noPassword: '이 계정은 앱에서 삭제할 수 없어요. 고객센터로 문의해 주세요.',
     activeOrders:
-      '결제 후 진행 중인 서비스가 있어요. 서비스가 완료되거나 환불된 뒤 삭제할 수 있어요.',
-    contactSupport: '고객센터 문의',
+      '결제 후 진행 중인 서비스가 있어요. 서비스가 완료되거나 환불된 뒤 이 화면에서 바로 삭제할 수 있어요. 별도 문의는 필요 없어요.',
     doneTitle: '계정이 삭제되었어요',
     doneSubtitle: 'LUNOTE를 이용해 주셔서 감사합니다.',
     done: '확인',
