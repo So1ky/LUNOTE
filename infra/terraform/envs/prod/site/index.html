@@ -58,6 +58,25 @@
     margin-bottom: 1.1rem;
   }
   .desc:lang(ko) { word-break: keep-all; }
+  .store-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 1.4rem;
+  }
+  .store-links a {
+    border: 1px solid var(--moon);
+    border-radius: 999px;
+    padding: 0.7rem 1.4rem;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s;
+  }
+  .store-links a:hover {
+    background: var(--moon);
+    color: var(--night);
+  }
   section {
     width: 100%;
     max-width: 40rem;
@@ -199,7 +218,11 @@
   <p class="tagline">A concierge for life in Korea.</p>
   <p class="desc">LUNOTE helps foreigners moving to or living in Korea handle the hard parts — housing, phone plans, banking, healthcare and more — through a simple request-and-quote service with vetted local partners.</p>
   <p class="desc" lang="ko">한국에 거주 중이거나 입국을 앞둔 외국인을 위한 컨시어지 서비스입니다.</p>
-  <p class="desc">The LUNOTE app is in development and will launch on iOS and Android.</p>
+  <p class="desc">The LUNOTE app is available on iOS and Android.</p>
+  <p class="store-links">
+    <a href="https://apps.apple.com/app/id6821768153">Download on the App Store</a>
+    <a href="https://play.google.com/store/apps/details?id=com.lunoteapp">Get it on Google Play</a>
+  </p>
 </header>
 
 <section aria-labelledby="services-title">
